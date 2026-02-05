@@ -129,6 +129,11 @@
   gap: 12px;
 }
 
+.row-control--grow {
+  flex: 1;
+  justify-content: flex-end;
+}
+
 /* Controls */
 .settings-select {
   padding: 6px 12px;
@@ -164,6 +169,11 @@
   width: 140px;
   text-align: right;
   outline: none;
+}
+
+.settings-input--path {
+  width: 100%;
+  text-align: left;
 }
 
 .settings-input:focus {

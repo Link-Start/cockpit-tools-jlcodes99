@@ -77,7 +77,16 @@
       "opencodeRestartDesc": "Codex-Kontoinformationen in OpenCode synchronisieren",
       "opencodeAppPath": "OpenCode-Startpfad",
       "opencodeAppPathPlaceholder": "Standardpfad",
-      "opencodePathReset": "Standard zurücksetzen"
+      "opencodePathReset": "Standard zurücksetzen",
+      "opencodePathSelect": "Auswählen",
+      "codexTitle": "Codex-Start",
+      "codexAppPath": "Codex-App-Pfad",
+      "codexAppPathDesc": "Leer lassen, um den Standardpfad zu verwenden",
+      "codexAppPathPlaceholder": "Standardpfad",
+      "codexPathSelect": "Auswählen",
+      "codexPathReset": "Standard zurücksetzen",
+      "antigravityAppPath": "Antigravity-App-Pfad",
+      "antigravityTitle": "Antigravity-Start"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API",
@@ -932,6 +941,13 @@
     "modal": {
       "createTitle": "Neue Instanz",
       "editTitle": "Instanz bearbeiten"
+    }
+  },
+  "appPath": {
+    "missing": {
+      "title": "Anwendungspfad nicht gefunden",
+      "desc": "Der Anwendungspfad für {{app}} wurde nicht gefunden. Bitte jetzt festlegen, um fortzufahren.",
+      "action": "Jetzt festlegen"
     }
   }
 }

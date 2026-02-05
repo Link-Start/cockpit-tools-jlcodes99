@@ -77,7 +77,16 @@
       "opencodeRestartDesc": "مزامنة معلومات حساب Codex في OpenCode",
       "opencodeAppPath": "مسار تشغيل OpenCode",
       "opencodeAppPathPlaceholder": "المسار الافتراضي",
-      "opencodePathReset": "إعادة التعيين إلى الافتراضي"
+      "opencodePathReset": "إعادة التعيين إلى الافتراضي",
+      "opencodePathSelect": "اختيار",
+      "codexTitle": "تشغيل Codex",
+      "codexAppPath": "مسار تطبيق Codex",
+      "codexAppPathDesc": "اتركه فارغًا لاستخدام المسار الافتراضي",
+      "codexAppPathPlaceholder": "المسار الافتراضي",
+      "codexPathSelect": "اختيار",
+      "codexPathReset": "إعادة التعيين إلى الافتراضي",
+      "antigravityAppPath": "مسار تطبيق Antigravity",
+      "antigravityTitle": "تشغيل Antigravity"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API",
@@ -932,6 +941,13 @@
     "modal": {
       "createTitle": "إنشاء مثيل",
       "editTitle": "تحرير مثيل"
+    }
+  },
+  "appPath": {
+    "missing": {
+      "title": "لم يتم العثور على مسار التطبيق",
+      "desc": "تعذر العثور على مسار تطبيق {{app}}. الرجاء تعيينه الآن للمتابعة.",
+      "action": "تعيين الآن"
     }
   }
 }

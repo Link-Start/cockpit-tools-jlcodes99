@@ -168,7 +168,7 @@ pub async fn start_oauth_flow(app_handle: tauri::AppHandle) -> Result<oauth::Tok
 }
 
 /// 完成 OAuth 流程（不打开浏览器）
-#[allow(dead_code)]
+
 pub async fn complete_oauth_flow(app_handle: tauri::AppHandle) -> Result<oauth::TokenResponse, String> {
     let _ = ensure_oauth_flow_prepared(&app_handle).await?;
 

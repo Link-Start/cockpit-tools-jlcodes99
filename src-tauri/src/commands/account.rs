@@ -1,5 +1,7 @@
 
 
+use tauri::AppHandle;
+use tauri::Emitter;
 use crate::models;
 use crate::modules;
 use crate::error::{AppError, AppResult};
@@ -105,7 +107,7 @@ pub async fn refresh_current_quota(app: tauri::AppHandle) -> Result<(), String> 
 
 /// 切换账号（完整流程：Token刷新 + 关闭程序 + 注入 + 指纹同步 + 重启）
 #[tauri::command]
-pub async fn switch_account(account_id: String) -> Result<models::Account, String> {
+pub async fn switch_account(app: AppHandle, account_id: String) -> Result<models::Account, String> {
     use std::fs;
     
     modules::logger::log_info(&format!("开始切换账号: {}", account_id));
@@ -178,9 +180,22 @@ pub async fn switch_account(account_id: String) -> Result<models::Account, Strin
     
     // 8. 重启 Antigravity
     modules::logger::log_info("正在重启 Antigravity...");
-    if let Err(e) = modules::process::start_antigravity() {
-        modules::logger::log_warn(&format!("Antigravity 启动失败: {}", e));
-        // 不中断流程，允许用户手动启动
+    match modules::process::start_antigravity() {
+        Ok(pid) => {
+            if let Err(e) = modules::instance::update_default_pid(Some(pid)) {
+                modules::logger::log_warn(&format!("更新默认实例 PID 失败: {}", e));
+            }
+        }
+        Err(e) => {
+            modules::logger::log_warn(&format!("Antigravity 启动失败: {}", e));
+            if e.starts_with("APP_PATH_NOT_FOUND:") {
+                let _ = app.emit(
+                    "app:path_missing",
+                    serde_json::json!({ "app": "antigravity", "retry": { "kind": "default" } }),
+                );
+            }
+            // 不中断流程，允许用户手动启动
+        }
     }
     
     modules::logger::log_info(&format!("账号切换完成: {}", account.email));

@@ -216,7 +216,16 @@
       "opencodeRestartDesc": "Sync Codex account info in OpenCode",
       "opencodeAppPath": "OpenCode launch path",
       "opencodeAppPathPlaceholder": "Default path",
-      "opencodePathReset": "Reset default"
+      "opencodePathReset": "Reset default",
+      "opencodePathSelect": "Select",
+      "codexTitle": "Codex Launch",
+      "codexAppPath": "Codex App Path",
+      "codexAppPathDesc": "Leave empty to use default path",
+      "codexAppPathPlaceholder": "Default path",
+      "codexPathSelect": "Select",
+      "codexPathReset": "Reset default",
+      "antigravityAppPath": "Antigravity App Path",
+      "antigravityTitle": "Antigravity Launch"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API",
@@ -253,6 +262,13 @@
       "checkFailed": "Failed to check updates, please try again"
     },
     "saveSettings": "Save Settings"
+  },
+  "appPath": {
+    "missing": {
+      "title": "Application path not found",
+      "desc": "Could not find the {{app}} application path. Please set it now to continue.",
+      "action": "Set now"
+    }
   },
   "accounts": {
     "title": "Account Management",

@@ -220,6 +220,8 @@ pub fn delete_instance(instance_id: &str) -> Result<(), String> {
     Ok(())
 }
 
+
+#[allow(dead_code)]
 pub fn update_instance_last_launched(instance_id: &str) -> Result<InstanceProfile, String> {
     let _lock = CODEX_INSTANCE_STORE_LOCK.lock().map_err(|_| "无法获取实例锁")?;
     let mut store = load_instance_store()?;

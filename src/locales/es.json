@@ -77,7 +77,16 @@
       "opencodeRestartDesc": "Sincronizar la información de la cuenta de Codex en OpenCode",
       "opencodeAppPath": "Ruta de inicio de OpenCode",
       "opencodeAppPathPlaceholder": "Ruta predeterminada",
-      "opencodePathReset": "Restablecer predeterminado"
+      "opencodePathReset": "Restablecer predeterminado",
+      "opencodePathSelect": "Seleccionar",
+      "codexTitle": "Inicio de Codex",
+      "codexAppPath": "Ruta de la app de Codex",
+      "codexAppPathDesc": "Déjalo vacío para usar la ruta predeterminada",
+      "codexAppPathPlaceholder": "Ruta predeterminada",
+      "codexPathSelect": "Seleccionar",
+      "codexPathReset": "Restablecer predeterminado",
+      "antigravityAppPath": "Ruta de la app de Antigravity",
+      "antigravityTitle": "Inicio de Antigravity"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API",
@@ -932,6 +941,13 @@
     "modal": {
       "createTitle": "Nueva instancia",
       "editTitle": "Editar instancia"
+    }
+  },
+  "appPath": {
+    "missing": {
+      "title": "No se encontró la ruta de la aplicación",
+      "desc": "No se pudo encontrar la ruta de la aplicación {{app}}. Establécela ahora para continuar.",
+      "action": "Establecer ahora"
     }
   }
 }

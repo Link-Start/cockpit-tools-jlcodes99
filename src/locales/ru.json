@@ -77,7 +77,16 @@
       "opencodeRestartDesc": "Синхронизировать данные аккаунта Codex в OpenCode",
       "opencodeAppPath": "Путь запуска OpenCode",
       "opencodeAppPathPlaceholder": "Путь по умолчанию",
-      "opencodePathReset": "Сбросить по умолчанию"
+      "opencodePathReset": "Сбросить по умолчанию",
+      "opencodePathSelect": "Выбрать",
+      "codexTitle": "Запуск Codex",
+      "codexAppPath": "Путь к приложению Codex",
+      "codexAppPathDesc": "Оставьте пустым, чтобы использовать путь по умолчанию",
+      "codexAppPathPlaceholder": "Путь по умолчанию",
+      "codexPathSelect": "Выбрать",
+      "codexPathReset": "Сбросить по умолчанию",
+      "antigravityAppPath": "Путь к приложению Antigravity",
+      "antigravityTitle": "Запуск Antigravity"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API",
@@ -932,6 +941,13 @@
     "modal": {
       "createTitle": "Новый экземпляр",
       "editTitle": "Редактировать экземпляр"
+    }
+  },
+  "appPath": {
+    "missing": {
+      "title": "Путь к приложению не найден",
+      "desc": "Не удалось найти путь к приложению {{app}}. Установите его сейчас, чтобы продолжить.",
+      "action": "Установить сейчас"
     }
   }
 }

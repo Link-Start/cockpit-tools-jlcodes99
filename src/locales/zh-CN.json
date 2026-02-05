@@ -216,7 +216,16 @@
       "opencodeAppPath": "OpenCode 启动路径",
       "opencodeAppPathDesc": "留空则使用默认路径",
       "opencodeAppPathPlaceholder": "默认路径",
-      "opencodePathReset": "重置默认"
+      "opencodePathReset": "重置默认",
+      "opencodePathSelect": "选择",
+      "codexTitle": "Codex 启动",
+      "codexAppPath": "Codex 启动路径",
+      "codexAppPathDesc": "留空则使用默认路径",
+      "codexAppPathPlaceholder": "默认路径",
+      "codexPathSelect": "选择",
+      "codexPathReset": "重置默认",
+      "antigravityAppPath": "Antigravity 启动路径",
+      "antigravityTitle": "Antigravity 启动"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API",
@@ -253,6 +262,13 @@
       "checkFailed": "检查更新失败，请稍后重试"
     },
     "saveSettings": "保存设置"
+  },
+  "appPath": {
+    "missing": {
+      "title": "未找到应用程序路径",
+      "desc": "未找到 {{app}} 应用程序路径，请立即设置后继续启动。",
+      "action": "立即设置"
+    }
   },
   "accounts": {
     "title": "账号管理",

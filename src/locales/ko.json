@@ -77,7 +77,16 @@
       "opencodeRestartDesc": "OpenCode에서 Codex 계정 정보를 동기화하여 전환",
       "opencodeAppPath": "OpenCode 실행 경로",
       "opencodeAppPathPlaceholder": "기본 경로",
-      "opencodePathReset": "기본값으로 재설정"
+      "opencodePathReset": "기본값으로 재설정",
+      "opencodePathSelect": "선택",
+      "codexTitle": "Codex 실행",
+      "codexAppPath": "Codex 앱 경로",
+      "codexAppPathDesc": "비워 두면 기본 경로를 사용합니다",
+      "codexAppPathPlaceholder": "기본 경로",
+      "codexPathSelect": "선택",
+      "codexPathReset": "기본값으로 재설정",
+      "antigravityAppPath": "Antigravity 앱 경로",
+      "antigravityTitle": "Antigravity 실행"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API",
@@ -932,6 +941,13 @@
     "modal": {
       "createTitle": "새 인스턴스",
       "editTitle": "인스턴스 편집"
+    }
+  },
+  "appPath": {
+    "missing": {
+      "title": "애플리케이션 경로를 찾을 수 없음",
+      "desc": "{{app}} 애플리케이션 경로를 찾을 수 없습니다. 계속하려면 지금 설정해 주세요.",
+      "action": "지금 설정"
     }
   }
 }

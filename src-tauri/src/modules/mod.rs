@@ -12,6 +12,8 @@ pub mod process;
 pub mod websocket;
 pub mod config;
 pub mod wakeup;
+pub mod wakeup_scheduler;
+pub mod wakeup_history;
 pub mod sync_settings;
 pub mod update_checker;
 pub mod group_settings;

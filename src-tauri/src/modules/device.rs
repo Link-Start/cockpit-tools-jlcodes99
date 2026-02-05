@@ -313,18 +313,6 @@ fn save_global_original_force(profile: &DeviceProfile) -> Result<(), String> {
     fs::write(&path, content).map_err(|e| format!("写入失败: {}", e))
 }
 
-/// 保存全局原始指纹（不存在时才保存）
-#[allow(dead_code)]
-pub fn save_global_original(profile: &DeviceProfile) -> Result<(), String> {
-    let dir = get_data_dir()?;
-    let path = dir.join(GLOBAL_BASELINE);
-    if path.exists() {
-        return Ok(());
-    }
-    let content = serde_json::to_string_pretty(profile).map_err(|e| format!("序列化失败: {}", e))?;
-    fs::write(&path, content).map_err(|e| format!("写入失败: {}", e))
-}
-
 /// 恢复原始设备指纹到 storage.json
 pub fn restore_original_device() -> Result<String, String> {
     let baseline = load_global_original().ok_or("未找到原始指纹备份")?;

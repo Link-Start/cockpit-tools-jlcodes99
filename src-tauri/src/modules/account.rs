@@ -458,7 +458,6 @@ pub fn get_device_profiles(account_id: &str) -> Result<DeviceProfiles, String> {
 }
 
 /// 绑定设备指纹（兼容旧 API，现在会创建新指纹并绑定）
-#[allow(dead_code)]
 pub fn bind_device_profile(account_id: &str, mode: &str) -> Result<DeviceProfile, String> {
     let name = format!("自动生成 {}", chrono::Utc::now().format("%Y-%m-%d %H:%M"));
     
@@ -502,13 +501,11 @@ pub fn bind_device_profile_with_profile(account_id: &str, profile: DeviceProfile
 }
 
 /// 列出指纹版本（兼容旧 API）
-#[allow(dead_code)]
 pub fn list_device_versions(account_id: &str) -> Result<DeviceProfiles, String> {
     get_device_profiles(account_id)
 }
 
 /// 恢复指纹版本（兼容旧 API）
-#[allow(dead_code)]
 pub fn restore_device_version(_account_id: &str, version_id: &str) -> Result<DeviceProfile, String> {
     // 直接应用指定的指纹
     let fingerprint = crate::modules::fingerprint::get_fingerprint(version_id)?;
@@ -517,7 +514,7 @@ pub fn restore_device_version(_account_id: &str, version_id: &str) -> Result<Dev
 }
 
 /// 删除历史指纹（兼容旧 API - 已废弃）
-#[allow(dead_code)]
+
 pub fn delete_device_version(_account_id: &str, version_id: &str) -> Result<(), String> {
     crate::modules::fingerprint::delete_fingerprint(version_id)
 }

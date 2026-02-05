@@ -100,6 +100,7 @@ export function InstancesManager<TAccount extends AccountLike>({
   const [pathAuto, setPathAuto] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const appType = restartStrategyMode === 'codex' ? 'codex' : 'antigravity';
 
   useEffect(() => {
     fetchDefaults();
@@ -341,6 +342,20 @@ export function InstancesManager<TAccount extends AccountLike>({
     }
   };
 
+  const handleMissingPathError = (error: unknown, instanceId?: string) => {
+    const message = String(error ?? '');
+    if (!message.startsWith('APP_PATH_NOT_FOUND:')) {
+      return false;
+    }
+    const rawApp = message.slice('APP_PATH_NOT_FOUND:'.length);
+    const app = rawApp === 'codex' || rawApp === 'antigravity' ? rawApp : appType;
+    const retry = instanceId
+      ? { kind: 'instance' as const, instanceId }
+      : { kind: 'default' as const };
+    window.dispatchEvent(new CustomEvent('app-path-missing', { detail: { app, retry } }));
+    return true;
+  };
+
   const handleStart = async (instance: InstanceProfile) => {
     if (instance.running) {
       setRunningNoticeInstance(instance);
@@ -351,6 +366,9 @@ export function InstancesManager<TAccount extends AccountLike>({
       await startInstance(instance.id);
       setMessage({ text: t('instances.messages.started', '实例已启动') });
     } catch (e) {
+      if (handleMissingPathError(e, instance.id)) {
+        return;
+      }
       setMessage({ text: String(e), tone: 'error' });
     } finally {
       setActionLoading(null);
@@ -407,6 +425,9 @@ export function InstancesManager<TAccount extends AccountLike>({
       }
       setMessage({ text: t('instances.messages.started', '实例已启动') });
     } catch (e) {
+      if (handleMissingPathError(e, target.id)) {
+        return;
+      }
       setMessage({ text: String(e), tone: 'error' });
     } finally {
       setRestartingAll(false);
@@ -445,6 +466,9 @@ export function InstancesManager<TAccount extends AccountLike>({
       }
       setMessage({ text: t('instances.messages.startedAll', '已启动所有未运行实例') });
     } catch (e) {
+      if (handleMissingPathError(e)) {
+        return;
+      }
       setMessage({ text: String(e), tone: 'error' });
     } finally {
       setBulkActionLoading(false);

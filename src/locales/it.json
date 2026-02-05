@@ -77,7 +77,16 @@
       "opencodeRestartDesc": "Sincronizza le informazioni dell'account Codex in OpenCode",
       "opencodeAppPath": "Percorso di avvio OpenCode",
       "opencodeAppPathPlaceholder": "Percorso predefinito",
-      "opencodePathReset": "Ripristina predefinito"
+      "opencodePathReset": "Ripristina predefinito",
+      "opencodePathSelect": "Seleziona",
+      "codexTitle": "Avvio di Codex",
+      "codexAppPath": "Percorso app Codex",
+      "codexAppPathDesc": "Lascia vuoto per usare il percorso predefinito",
+      "codexAppPathPlaceholder": "Percorso predefinito",
+      "codexPathSelect": "Seleziona",
+      "codexPathReset": "Ripristina predefinito",
+      "antigravityAppPath": "Percorso app Antigravity",
+      "antigravityTitle": "Avvio di Antigravity"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API",
@@ -932,6 +941,13 @@
     "modal": {
       "createTitle": "Nuova istanza",
       "editTitle": "Modifica istanza"
+    }
+  },
+  "appPath": {
+    "missing": {
+      "title": "Percorso dell’applicazione non trovato",
+      "desc": "Impossibile trovare il percorso dell’applicazione {{app}}. Impostalo ora per continuare.",
+      "action": "Imposta ora"
     }
   }
 }

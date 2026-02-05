@@ -77,7 +77,16 @@
       "opencodeRestartDesc": "同步切換 OpenCode 裡的 Codex 帳號資訊",
       "opencodeAppPath": "OpenCode 啟動路徑",
       "opencodeAppPathPlaceholder": "預設路徑",
-      "opencodePathReset": "重設預設值"
+      "opencodePathReset": "重設預設值",
+      "opencodePathSelect": "選擇",
+      "codexTitle": "Codex 啟動",
+      "codexAppPath": "Codex 啟動路徑",
+      "codexAppPathDesc": "留空則使用預設路徑",
+      "codexAppPathPlaceholder": "預設路徑",
+      "codexPathSelect": "選擇",
+      "codexPathReset": "重設預設值",
+      "antigravityAppPath": "Antigravity 啟動路徑",
+      "antigravityTitle": "Antigravity 啟動"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API",
@@ -932,6 +941,13 @@
     "modal": {
       "createTitle": "新增實例",
       "editTitle": "編輯實例"
+    }
+  },
+  "appPath": {
+    "missing": {
+      "title": "找不到應用程式路徑",
+      "desc": "找不到 {{app}} 的應用程式路徑。請立即設定以繼續。",
+      "action": "立即設定"
     }
   }
 }

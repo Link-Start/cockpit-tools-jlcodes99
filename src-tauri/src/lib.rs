@@ -157,10 +157,13 @@ pub fn run() {
             // System Commands
             commands::system::open_data_folder,
             commands::system::save_text_file,
+            commands::system::get_downloads_dir,
             commands::system::get_network_config,
             commands::system::save_network_config,
             commands::system::get_general_config,
             commands::system::save_general_config,
+            commands::system::set_app_path,
+            commands::system::detect_app_path,
             commands::system::set_wakeup_override,
             commands::system::handle_window_close,
             commands::system::open_folder,
@@ -169,6 +172,9 @@ pub fn run() {
             // Wakeup Commands
             commands::wakeup::trigger_wakeup,
             commands::wakeup::fetch_available_models,
+            commands::wakeup::wakeup_sync_state,
+            commands::wakeup::wakeup_load_history,
+            commands::wakeup::wakeup_clear_history,
             
             // Update Commands
             commands::update::check_for_updates,

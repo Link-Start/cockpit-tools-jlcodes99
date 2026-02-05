@@ -35,6 +35,8 @@ pub struct GeneralConfig {
     pub opencode_app_path: String,
     /// Antigravity 启动路径（为空则使用默认路径）
     pub antigravity_app_path: String,
+    /// Codex 启动路径（为空则使用默认路径）
+    pub codex_app_path: String,
     /// 切换 Codex 时是否自动重启 OpenCode
     pub opencode_sync_on_switch: bool,
 }
@@ -76,6 +78,18 @@ pub async fn save_text_file(path: String, content: String) -> Result<(), String>
     std::fs::write(&path, content).map_err(|e| format!("写入文件失败: {}", e))
 }
 
+/// 获取下载目录
+#[tauri::command]
+pub fn get_downloads_dir() -> Result<String, String> {
+    if let Some(dir) = dirs::download_dir() {
+        return Ok(dir.to_string_lossy().to_string());
+    }
+    if let Some(home) = dirs::home_dir() {
+        return Ok(home.join("Downloads").to_string_lossy().to_string());
+    }
+    Err("无法获取下载目录".to_string())
+}
+
 /// 获取网络服务配置
 #[tauri::command]
 pub fn get_network_config() -> Result<NetworkConfig, String> {
@@ -107,6 +121,7 @@ pub fn save_network_config(ws_enabled: bool, ws_port: u16) -> Result<bool, Strin
         close_behavior: current.close_behavior,
         opencode_app_path: current.opencode_app_path,
         antigravity_app_path: current.antigravity_app_path,
+        codex_app_path: current.codex_app_path,
         opencode_sync_on_switch: current.opencode_sync_on_switch,
     };
     
@@ -134,6 +149,7 @@ pub fn get_general_config() -> Result<GeneralConfig, String> {
         close_behavior: close_behavior_str.to_string(),
         opencode_app_path: user_config.opencode_app_path,
         antigravity_app_path: user_config.antigravity_app_path,
+        codex_app_path: user_config.codex_app_path,
         opencode_sync_on_switch: user_config.opencode_sync_on_switch,
     })
 }
@@ -148,11 +164,13 @@ pub fn save_general_config(
     close_behavior: String,
     opencode_app_path: String,
     antigravity_app_path: String,
+    codex_app_path: String,
     opencode_sync_on_switch: bool,
 ) -> Result<(), String> {
     let current = config::get_user_config();
     let normalized_opencode_path = opencode_app_path.trim().to_string();
     let normalized_antigravity_path = antigravity_app_path.trim().to_string();
+    let normalized_codex_path = codex_app_path.trim().to_string();
     // 标准化语言代码为小写，确保与插件端格式一致
     let normalized_language = language.to_lowercase();
     let language_changed = current.language != normalized_language;
@@ -177,6 +195,7 @@ pub fn save_general_config(
         close_behavior: close_behavior_enum,
         opencode_app_path: normalized_opencode_path,
         antigravity_app_path: normalized_antigravity_path,
+        codex_app_path: normalized_codex_path,
         opencode_sync_on_switch,
     };
     
@@ -194,6 +213,28 @@ pub fn save_general_config(
     }
     
     Ok(())
+}
+
+#[tauri::command]
+pub fn set_app_path(app: String, path: String) -> Result<(), String> {
+    let mut current = config::get_user_config();
+    let normalized_path = path.trim().to_string();
+    match app.as_str() {
+        "antigravity" => current.antigravity_app_path = normalized_path,
+        "codex" => current.codex_app_path = normalized_path,
+        "opencode" => current.opencode_app_path = normalized_path,
+        _ => return Err("未知应用类型".to_string()),
+    }
+    config::save_user_config(&current)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn detect_app_path(app: String) -> Result<Option<String>, String> {
+    match app.as_str() {
+        "antigravity" | "codex" | "opencode" => Ok(modules::process::detect_and_save_app_path(app.as_str())),
+        _ => Err("未知应用类型".to_string()),
+    }
 }
 
 /// 通知插件关闭/开启唤醒功能（互斥）

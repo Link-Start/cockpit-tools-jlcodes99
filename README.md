@@ -5,11 +5,11 @@
 [![GitHub stars](https://img.shields.io/github/stars/jlcodes99/cockpit-tools?style=flat&color=gold)](https://github.com/jlcodes99/cockpit-tools)
 [![GitHub issues](https://img.shields.io/github/issues/jlcodes99/cockpit-tools)](https://github.com/jlcodes99/cockpit-tools/issues)
 
-一款**通用的 AI IDE 账号管理工具**，目前完美支持 **Antigravity** 和 **Codex**。
+一款**通用的 AI IDE 账号管理工具**，目前完美支持 **Antigravity** 和 **Codex**，并支持多账号多实例并行运行。
 
-> 本工具旨在帮助用户高效管理多个 AI IDE 账号，支持一键切换、配额监控、自动唤醒等功能，助您充分利用不同账号的资源。
+> 本工具旨在帮助用户高效管理多个 AI IDE 账号，支持一键切换、配额监控、自动唤醒与多开实例并行运行，助您充分利用不同账号的资源。
 
-**功能**：一键切号 · 多账号管理 · 配额监控 · 唤醒任务 · 设备指纹 · 插件联动
+**功能**：一键切号 · 多账号管理 · 多开实例 · 配额监控 · 唤醒任务 · 设备指纹 · 插件联动
 
 **语言**：支持 16 种语言
 
@@ -43,6 +43,16 @@
 > ![Wakeup Tasks](docs/images/wakeup_detail.png)
 > ![Device Fingerprints](docs/images/fingerprint_detail.png)
 
+#### 2.1 Antigravity 多开实例
+
+支持同一平台多账号多实例并行运行。比如同时打开两个 Antigravity，分别绑定不同账号，分别处理不同项目，互不影响。
+
+- **独立账号**：每个实例绑定不同账号并独立运行
+- **并行项目**：多实例同时处理不同任务/项目
+- **参数隔离**：支持自定义实例目录与启动参数
+
+> ![Antigravity Instances](docs/images/antigravity_instances.png)
+
 ### 3. Codex 账号管理
 
 - **专属支持**：专为 Codex 优化的账号管理体验
@@ -50,6 +60,16 @@
 - **计划识别**：自动识别账号 Plan 类型 (Basic, Plus, Team 等)
 
 > ![Codex Accounts](docs/images/codex_list.png)
+
+#### 3.1 Codex 多开实例
+
+Codex 同样支持多账号多实例并行运行。比如同时打开两个 Codex，分别绑定不同账号，分别处理不同项目，互不影响。
+
+- **独立账号**：每个实例绑定不同账号并独立运行
+- **并行项目**：多实例同时处理不同任务/项目
+- **参数隔离**：支持自定义实例目录与启动参数
+
+> ![Codex Instances](docs/images/codex_instances.png)
 
 ### 4. 通用设置
 

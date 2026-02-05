@@ -1,4 +1,5 @@
 use tauri::AppHandle;
+use tauri::Emitter;
 use crate::models::codex::{CodexAccount, CodexQuota, CodexTokens};
 use crate::modules::{codex_account, codex_quota, codex_oauth, config, logger, opencode_auth, process};
 
@@ -50,6 +51,33 @@ pub async fn switch_codex_account(app: AppHandle, account_id: String) -> Result<
         }
     } else {
         logger::log_info("已关闭 OpenCode 自动重启");
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        if process::is_codex_running() {
+            logger::log_info("检测到 Codex 正在运行，正在关闭...");
+            if let Err(e) = process::close_codex(20) {
+                logger::log_warn(&format!("Codex 关闭失败: {}", e));
+            }
+        }
+
+        match process::start_codex_default() {
+            Ok(pid) => {
+                if let Err(e) = crate::modules::codex_instance::update_default_pid(Some(pid)) {
+                    logger::log_warn(&format!("更新 Codex 默认实例 PID 失败: {}", e));
+                }
+            }
+            Err(e) => {
+                logger::log_warn(&format!("Codex 启动失败: {}", e));
+                if e.starts_with("APP_PATH_NOT_FOUND:") {
+                    let _ = app.emit(
+                        "app:path_missing",
+                        serde_json::json!({ "app": "codex", "retry": { "kind": "default" } }),
+                    );
+                }
+            }
+        }
     }
 
     let _ = crate::modules::tray::update_tray_menu(&app);

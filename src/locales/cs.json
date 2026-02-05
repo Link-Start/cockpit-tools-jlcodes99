@@ -77,7 +77,16 @@
       "opencodeRestartDesc": "Synchronizovat informace o účtu Codex v OpenCode",
       "opencodeAppPath": "Cesta spuštění OpenCode",
       "opencodeAppPathPlaceholder": "Výchozí cesta",
-      "opencodePathReset": "Obnovit výchozí"
+      "opencodePathReset": "Obnovit výchozí",
+      "opencodePathSelect": "Vybrat",
+      "codexTitle": "Spuštění Codexu",
+      "codexAppPath": "Cesta k aplikaci Codex",
+      "codexAppPathDesc": "Ponechte prázdné pro použití výchozí cesty",
+      "codexAppPathPlaceholder": "Výchozí cesta",
+      "codexPathSelect": "Vybrat",
+      "codexPathReset": "Obnovit výchozí",
+      "antigravityAppPath": "Cesta k aplikaci Antigravity",
+      "antigravityTitle": "Spuštění Antigravity"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API",
@@ -932,6 +941,13 @@
     "modal": {
       "createTitle": "Nová instance",
       "editTitle": "Upravit instanci"
+    }
+  },
+  "appPath": {
+    "missing": {
+      "title": "Cesta k aplikaci nebyla nalezena",
+      "desc": "Nepodařilo se najít cestu k aplikaci {{app}}. Pro pokračování ji nyní nastavte.",
+      "action": "Nastavit nyní"
     }
   }
 }

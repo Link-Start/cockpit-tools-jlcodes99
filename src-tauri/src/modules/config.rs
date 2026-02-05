@@ -64,6 +64,9 @@ pub struct UserConfig {
     /// Antigravity 启动路径（为空则使用默认路径）
     #[serde(default = "default_antigravity_app_path")]
     pub antigravity_app_path: String,
+    /// Codex 启动路径（为空则使用默认路径）
+    #[serde(default = "default_codex_app_path")]
+    pub codex_app_path: String,
     /// 切换 Codex 时是否自动重启 OpenCode
     #[serde(default = "default_opencode_sync_on_switch")]
     pub opencode_sync_on_switch: bool,
@@ -96,6 +99,7 @@ fn default_codex_auto_refresh() -> i32 { 10 } // 默认 10 分钟
 fn default_close_behavior() -> CloseWindowBehavior { CloseWindowBehavior::Ask }
 fn default_opencode_app_path() -> String { String::new() }
 fn default_antigravity_app_path() -> String { String::new() }
+fn default_codex_app_path() -> String { String::new() }
 fn default_opencode_sync_on_switch() -> bool { true }
 
 impl Default for UserConfig {
@@ -110,6 +114,7 @@ impl Default for UserConfig {
             close_behavior: default_close_behavior(),
             opencode_app_path: default_opencode_app_path(),
             antigravity_app_path: default_antigravity_app_path(),
+            codex_app_path: default_codex_app_path(),
             opencode_sync_on_switch: default_opencode_sync_on_switch(),
         }
     }

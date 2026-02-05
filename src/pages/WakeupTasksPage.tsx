@@ -12,11 +12,7 @@ import { OverviewTabsHeader } from '../components/OverviewTabsHeader';
 const TASKS_STORAGE_KEY = 'agtools.wakeup.tasks';
 const WAKEUP_ENABLED_KEY = 'agtools.wakeup.enabled';
 const LEGACY_SCHEDULE_KEY = 'agtools.wakeup.schedule';
-const RESET_STATE_KEY = 'agtools.wakeup.reset_state';
-const HISTORY_STORAGE_KEY = 'agtools.wakeup.history';
-const MAX_HISTORY_ITEMS = 10;
-const RESET_TRIGGER_COOLDOWN_MS = 10 * 60 * 1000;
-const RESET_SAFETY_MARGIN_MS = 2 * 60 * 1000;  // 2分钟安全边际，确保服务端已完成重置
+const MAX_HISTORY_ITEMS = 100;
 
 const BASE_TIME_OPTIONS = [
   '06:00',
@@ -162,23 +158,6 @@ interface WakeupTask {
   schedule: ScheduleConfig;
 }
 
-/**
- * 配额重置状态跟踪
- * 用于防止重复触发和确保服务端完成重置
- */
-interface ResetState {
-  /** 记录每个模型上次触发时对应的 resetAt，用于时间安全边际计算 */
-  lastResetTriggerTimestamps: Record<string, string>;
-  /** 记录每个模型上次触发时间（用于冷却检测） */
-  lastResetTriggerAt: Record<string, number>;
-  /** 记录每个模型的剩余配额百分比（用于状态跟踪） */
-  lastResetRemaining: Record<string, number>;
-}
-
-interface ResetStateMap {
-  [taskId: string]: ResetState;
-}
-
 interface WakeupHistoryRecord {
   id: string;
   timestamp: number;
@@ -201,6 +180,12 @@ interface WakeupInvokeResult {
   traceId?: string;
   responseId?: string;
   durationMs?: number;
+}
+
+interface WakeupTaskResultPayload {
+  taskId: string;
+  lastRunAt: number;
+  records: WakeupHistoryRecord[];
 }
 
 const DEFAULT_SCHEDULE: ScheduleConfig = {
@@ -275,27 +260,16 @@ const loadTasks = (defaultTaskName: string): WakeupTask[] => {
   }
 };
 
-const loadResetStates = (): ResetStateMap => {
-  const raw = localStorage.getItem(RESET_STATE_KEY);
-  if (!raw) return {};
+const loadHistory = async (): Promise<WakeupHistoryRecord[]> => {
   try {
-    return JSON.parse(raw) as ResetStateMap;
-  } catch {
-    return {};
-  }
-};
-
-const loadHistory = (): WakeupHistoryRecord[] => {
-  const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw) as WakeupHistoryRecord[];
-    if (!Array.isArray(parsed)) return [];
-    return parsed
+    const records = await invoke<WakeupHistoryRecord[]>('wakeup_load_history');
+    if (!Array.isArray(records)) return [];
+    return records
       .filter((item) => item && typeof item.timestamp === 'number')
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, MAX_HISTORY_ITEMS);
-  } catch {
+  } catch (error) {
+    console.error('加载唤醒历史失败:', error);
     return [];
   }
 };
@@ -337,10 +311,6 @@ const formatWakeupMessage = (
   return t('wakeup.format.message', { model: modelId, reply, suffix });
 };
 
-const saveResetStates = (state: ResetStateMap) => {
-  localStorage.setItem(RESET_STATE_KEY, JSON.stringify(state));
-};
-
 const normalizeTimeInput = (value: string) => {
   const trimmed = String(value || '').trim();
   if (!trimmed) return null;
@@ -351,11 +321,6 @@ const normalizeTimeInput = (value: string) => {
   if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
   if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-};
-
-const parseTimeToMinutes = (value: string) => {
-  const [h, m] = value.split(':').map(Number);
-  return h * 60 + m;
 };
 
 const calculateNextRuns = (config: ScheduleConfig, count: number) => {
@@ -572,75 +537,6 @@ const getTriggerMode = (task: WakeupTask): TriggerMode => {
   return 'scheduled';
 };
 
-const isInTimeWindow = (startTime?: string, endTime?: string) => {
-  if (!startTime || !endTime) return true;
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const startMinutes = parseTimeToMinutes(startTime);
-  const endMinutes = parseTimeToMinutes(endTime);
-
-  if (startMinutes <= endMinutes) {
-    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
-  }
-  return currentMinutes >= startMinutes || currentMinutes < endMinutes;
-};
-
-const createEmptyResetState = (): ResetState => ({
-  lastResetRemaining: {},
-  lastResetTriggerAt: {},
-  lastResetTriggerTimestamps: {},
-});
-
-const shouldTriggerOnReset = (
-  state: ResetState,
-  modelKey: string,
-  resetAt: string,
-  remainingPercent: number
-) => {
-  // 条件 1：满额检测
-  const isFull = remainingPercent >= 100;
-  if (!isFull) {
-    state.lastResetRemaining[modelKey] = remainingPercent;
-    return false;
-  }
-
-  const now = Date.now();
-  const lastTriggeredResetAt = state.lastResetTriggerTimestamps[modelKey];
-
-  // 条件 2：时间边际检测
-  // 只有当上次记录的 resetAt 时间点 + 安全边际已过去，才认为是新周期
-  // 这可以防止 resetAt 滑动时的误触发，以及确保服务端已完成重置
-  if (lastTriggeredResetAt) {
-    const lastResetTime = new Date(lastTriggeredResetAt).getTime();
-    const safeTime = lastResetTime + RESET_SAFETY_MARGIN_MS;
-    if (now < safeTime) {
-      state.lastResetRemaining[modelKey] = remainingPercent;
-      return false;
-    }
-  }
-
-  // 条件 3：冷却检测（10分钟）
-  const lastTriggerAt = state.lastResetTriggerAt[modelKey];
-  if (lastTriggerAt !== undefined && now - lastTriggerAt < RESET_TRIGGER_COOLDOWN_MS) {
-    state.lastResetRemaining[modelKey] = remainingPercent;
-    return false;
-  }
-
-  // 条件 4：resetAt 变化检测
-  if (resetAt === lastTriggeredResetAt) {
-    state.lastResetRemaining[modelKey] = remainingPercent;
-    return false;
-  }
-
-  state.lastResetRemaining[modelKey] = remainingPercent;
-  return true;
-};
-
-const markResetTriggered = (state: ResetState, modelKey: string, resetAt: string) => {
-  state.lastResetTriggerTimestamps[modelKey] = resetAt;
-  state.lastResetTriggerAt[modelKey] = Date.now();
-};
-
 export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
   const { t, i18n } = useTranslation();
   const { accounts, currentAccount, fetchAccounts, fetchCurrentAccount } = useAccountStore();
@@ -653,7 +549,7 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
   const [availableModels, setAvailableModels] = useState<AvailableModel[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [notice, setNotice] = useState<{ text: string; tone?: NoticeTone } | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<WakeupHistoryRecord[]>(() => loadHistory());
+  const [historyRecords, setHistoryRecords] = useState<WakeupHistoryRecord[]>([]);
   const [testing, setTesting] = useState(false);
   const [showTestModal, setShowTestModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -693,13 +589,6 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
 
   const tasksRef = useRef(tasks);
   const wakeupEnabledRef = useRef(wakeupEnabled);
-  const taskTimersRef = useRef<Map<string, number>>(new Map());
-  const fallbackTimersRef = useRef<Map<string, number>>(new Map());
-  const quotaIntervalRef = useRef<number | null>(null);
-  const runningTasksRef = useRef<Set<string>>(new Set());
-  const [runningTaskIds, setRunningTaskIds] = useState<Set<string>>(new Set());
-  const resetStatesRef = useRef<ResetStateMap>(loadResetStates());
-
   const accountEmails = useMemo(() => accounts.map((account) => account.email), [accounts]);
   const accountByEmail = useMemo(() => {
     const map = new Map<string, (typeof accounts)[number]>();
@@ -752,15 +641,39 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
     localStorage.setItem(WAKEUP_ENABLED_KEY, String(wakeupEnabled));
   }, [wakeupEnabled]);
 
+  // 唤醒历史现在由后端存储，组件加载时异步加载
   useEffect(() => {
-    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(historyRecords));
-  }, [historyRecords]);
+    loadHistory().then(setHistoryRecords);
+  }, []);
 
   useEffect(() => {
     invoke('set_wakeup_override', { enabled: wakeupEnabled }).catch((error) => {
       console.error('唤醒互斥通知失败:', error);
     });
   }, [wakeupEnabled]);
+
+  useEffect(() => {
+    invoke('wakeup_sync_state', { enabled: wakeupEnabled, tasks }).catch((error) => {
+      console.error('[WakeupTasks] 同步唤醒任务状态失败:', error);
+    });
+  }, [tasks, wakeupEnabled]);
+
+  useEffect(() => {
+    const handleTaskResult = (event: Event) => {
+      const custom = event as CustomEvent<WakeupTaskResultPayload>;
+      if (!custom.detail) return;
+      const { taskId, lastRunAt, records } = custom.detail;
+      setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, lastRunAt } : task)));
+      if (records?.length) {
+        loadHistory().then(setHistoryRecords);
+      }
+    };
+
+    window.addEventListener('wakeup-task-result', handleTaskResult as EventListener);
+    return () => {
+      window.removeEventListener('wakeup-task-result', handleTaskResult as EventListener);
+    };
+  }, []);
 
   useEffect(() => {
     const loadModels = async () => {
@@ -867,40 +780,14 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
     });
   }, [accountEmails, activeAccountEmail]);
 
-  useEffect(() => {
-    const stateMap = resetStatesRef.current;
-    const taskIds = new Set(tasks.map((task) => task.id));
-    let changed = false;
-    Object.keys(stateMap).forEach((taskId) => {
-      if (!taskIds.has(taskId)) {
-        delete stateMap[taskId];
-        changed = true;
-      }
-    });
-    if (changed) {
-      saveResetStates(stateMap);
-    }
-  }, [tasks]);
-
-  const clearTimers = () => {
-    taskTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
-    taskTimersRef.current.clear();
-    fallbackTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
-    fallbackTimersRef.current.clear();
-    if (quotaIntervalRef.current) {
-      window.clearInterval(quotaIntervalRef.current);
-      quotaIntervalRef.current = null;
-    }
-  };
-
-  const appendHistoryRecords = (records: WakeupHistoryRecord[]) => {
+  function appendHistoryRecords(records: WakeupHistoryRecord[]) {
     if (records.length === 0) return;
     setHistoryRecords((prev) => {
       const next = [...records, ...prev];
       next.sort((a, b) => b.timestamp - a.timestamp);
       return next.slice(0, MAX_HISTORY_ITEMS);
     });
-  };
+  }
 
   const clearHistoryRecords = () => {
     setHistoryRecords([]);
@@ -913,125 +800,6 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
     emails
       .map((email) => accountByEmail.get(email.toLowerCase()))
       .filter((account): account is (typeof accounts)[number] => Boolean(account));
-
-  const updateRunningTask = (taskId: string, running: boolean) => {
-    setRunningTaskIds((prev) => {
-      const next = new Set(prev);
-      if (running) {
-        next.add(taskId);
-      } else {
-        next.delete(taskId);
-      }
-      return next;
-    });
-    if (running) {
-      runningTasksRef.current.add(taskId);
-    } else {
-      runningTasksRef.current.delete(taskId);
-    }
-  };
-
-  const runTask = async (
-    task: WakeupTask,
-    triggerSource: TriggerSource,
-    modelOverrides?: string[]
-  ) => {
-    if (!wakeupEnabledRef.current) {
-      setNotice({ text: t('wakeup.notice.featureDisabled'), tone: 'warning' });
-      return;
-    }
-    if (runningTasksRef.current.has(task.id)) return;
-
-    const schedule = task.schedule;
-    const models = modelOverrides && modelOverrides.length > 0
-      ? modelOverrides
-      : schedule.selectedModels;
-    if (models.length === 0) {
-      setNotice({ text: t('wakeup.notice.taskMissingModels'), tone: 'warning' });
-      return;
-    }
-
-    const selectedAccounts = resolveAccounts(schedule.selectedAccounts);
-    if (selectedAccounts.length === 0) {
-      setNotice({ text: t('wakeup.notice.taskMissingAccounts'), tone: 'warning' });
-      return;
-    }
-
-    updateRunningTask(task.id, true);
-
-    const actions: {
-      promise: Promise<WakeupInvokeResult>;
-      accountEmail: string;
-      modelId: string;
-      startedAt: number;
-    }[] = [];
-    const trimmedPrompt = schedule.customPrompt && schedule.customPrompt.trim()
-      ? schedule.customPrompt.trim()
-      : undefined;
-    const promptText = trimmedPrompt || DEFAULT_PROMPT;
-    const resolvedMaxTokens = normalizeMaxOutputTokens(schedule.maxOutputTokens, 0);
-    selectedAccounts.forEach((account) => {
-      models.forEach((model) => {
-        actions.push({
-          accountEmail: account.email,
-          modelId: model,
-          startedAt: Date.now(),
-          promise: invoke<WakeupInvokeResult>('trigger_wakeup', {
-            accountId: account.id,
-            model,
-            prompt: trimmedPrompt,
-            maxOutputTokens: resolvedMaxTokens,
-          }),
-        });
-      });
-    });
-
-    const results = await Promise.allSettled(actions.map((action) => action.promise));
-    const failed = results.filter((res) => res.status === 'rejected');
-    const timestamp = Date.now();
-    const historyItems = results.map((result, index) => {
-      const action = actions[index];
-      let duration = Date.now() - action.startedAt;
-      let message: string | undefined;
-      if (result.status === 'fulfilled') {
-        const value = result.value;
-        if (typeof value.durationMs === 'number') {
-          duration = value.durationMs;
-        }
-        message = formatWakeupMessage(action.modelId, value, duration, t);
-      } else {
-        message = formatErrorMessage(result.reason);
-      }
-      return {
-        id: crypto.randomUUID ? crypto.randomUUID() : `${timestamp}-${index}`,
-        timestamp,
-        triggerType: 'auto' as HistoryTriggerType,
-        triggerSource,
-        taskName: task.name,
-        accountEmail: action.accountEmail,
-        modelId: action.modelId,
-        prompt: promptText,
-        success: result.status === 'fulfilled',
-        message,
-        duration,
-      };
-    });
-    appendHistoryRecords(historyItems);
-
-    setTasks((prev) =>
-      prev.map((item) =>
-        item.id === task.id ? { ...item, lastRunAt: Date.now() } : item
-      )
-    );
-
-    updateRunningTask(task.id, false);
-
-    if (failed.length > 0) {
-      setNotice({ text: t('wakeup.notice.taskFailed', { name: task.name, count: failed.length }), tone: 'error' });
-    } else {
-      setNotice({ text: t('wakeup.notice.taskCompleted', { name: task.name }), tone: 'success' });
-    }
-  };
 
   const runImmediateTest = async () => {
     if (testing) return;
@@ -1116,145 +884,6 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
       setNotice({ text: t('wakeup.notice.testCompleted'), tone: 'success' });
     }
   };
-
-  const scheduleTaskTimer = (taskId: string) => {
-    const task = tasksRef.current.find((item) => item.id === taskId);
-    if (!task) return;
-    if (!wakeupEnabledRef.current || !task.enabled) return;
-
-    const mode = getTriggerMode(task);
-    if (mode === 'quota_reset') return;
-
-    const schedule = task.schedule;
-    const nextRun = mode === 'crontab'
-      ? calculateCrontabNextRuns(schedule.crontab || '', 1)[0]
-      : calculateNextRuns(schedule, 1)[0];
-
-    if (!nextRun) return;
-
-    const delay = Math.max(0, nextRun.getTime() - Date.now());
-    const timerId = window.setTimeout(async () => {
-      const latest = tasksRef.current.find((item) => item.id === taskId);
-      if (!latest || !wakeupEnabledRef.current || !latest.enabled) {
-        scheduleTaskTimer(taskId);
-        return;
-      }
-      await runTask(latest, mode);
-      scheduleTaskTimer(taskId);
-    }, delay);
-
-    taskTimersRef.current.set(taskId, timerId);
-  };
-
-  const scheduleFallbackTimer = (taskId: string) => {
-    const task = tasksRef.current.find((item) => item.id === taskId);
-    if (!task) return;
-    if (!task.enabled || !task.schedule.timeWindowEnabled || !task.schedule.fallbackTimes?.length) return;
-
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    const times = task.schedule.fallbackTimes.map(parseTimeToMinutes).sort((a, b) => a - b);
-    let nextTime = times.find((time) => time > currentMinutes);
-    const isNextDay = nextTime === undefined;
-    if (isNextDay) {
-      nextTime = times[0];
-    }
-    if (nextTime === undefined) return;
-
-    let delayMinutes = nextTime - currentMinutes;
-    if (isNextDay) delayMinutes += 24 * 60;
-    const delay = delayMinutes * 60 * 1000;
-
-    const timerId = window.setTimeout(async () => {
-      const latest = tasksRef.current.find((item) => item.id === taskId);
-      if (!latest || !latest.enabled || !wakeupEnabledRef.current) {
-        scheduleFallbackTimer(taskId);
-        return;
-      }
-      if (latest.schedule.timeWindowEnabled) {
-        const inWindow = isInTimeWindow(latest.schedule.timeWindowStart, latest.schedule.timeWindowEnd);
-        if (inWindow) {
-          scheduleFallbackTimer(taskId);
-          return;
-        }
-      }
-      await runTask(latest, 'scheduled');
-      scheduleFallbackTimer(taskId);
-    }, delay);
-
-    fallbackTimersRef.current.set(taskId, timerId);
-  };
-
-  const checkQuotaResetTasks = async () => {
-    if (!wakeupEnabledRef.current) return;
-
-    const tasksToCheck = tasksRef.current.filter(
-      (task) => task.enabled && task.schedule.wakeOnReset
-    );
-
-    if (tasksToCheck.length === 0) return;
-
-    for (const task of tasksToCheck) {
-      if (runningTasksRef.current.has(task.id)) {
-        continue;
-      }
-      if (task.schedule.timeWindowEnabled && !isInTimeWindow(task.schedule.timeWindowStart, task.schedule.timeWindowEnd)) {
-        continue;
-      }
-
-      const selectedAccounts = resolveAccounts(task.schedule.selectedAccounts);
-      if (selectedAccounts.length === 0) continue;
-
-      const stateMap = resetStatesRef.current;
-      const resetState = stateMap[task.id] || createEmptyResetState();
-      const modelsToTrigger = new Set<string>();
-
-      task.schedule.selectedModels.forEach((modelId) => {
-        const modelKey = modelConstantRef.current.get(modelId) || modelId;
-        selectedAccounts.forEach((account) => {
-          const quotaModels = account.quota?.models || [];
-          const quota = quotaModels.find((item) => item.name === modelKey || item.name === modelId);
-          if (!quota || !quota.reset_time) return;
-          if (shouldTriggerOnReset(resetState, modelKey, quota.reset_time, quota.percentage)) {
-            modelsToTrigger.add(modelId);
-            markResetTriggered(resetState, modelKey, quota.reset_time);
-          }
-        });
-      });
-
-      stateMap[task.id] = resetState;
-      saveResetStates(stateMap);
-
-      if (modelsToTrigger.size > 0) {
-        await runTask(task, 'quota_reset', Array.from(modelsToTrigger));
-      }
-    }
-  };
-
-  useEffect(() => {
-    clearTimers();
-    if (!wakeupEnabled) return;
-
-    tasks.forEach((task) => {
-      if (!task.enabled) return;
-      if (task.schedule.wakeOnReset) {
-        if (task.schedule.timeWindowEnabled && task.schedule.fallbackTimes?.length) {
-          scheduleFallbackTimer(task.id);
-        }
-        return;
-      }
-      scheduleTaskTimer(task.id);
-    });
-
-    if (tasks.some((task) => task.enabled && task.schedule.wakeOnReset)) {
-      checkQuotaResetTasks();
-      quotaIntervalRef.current = window.setInterval(checkQuotaResetTasks, 60 * 1000);
-    }
-
-    return () => {
-      clearTimers();
-    };
-  }, [tasks, wakeupEnabled, accounts]);
 
   const describeTask = (task: WakeupTask) => {
     const schedule = task.schedule;
@@ -1449,6 +1078,7 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
           closeBehavior: config.close_behavior || 'ask',
           opencodeAppPath: config.opencode_app_path ?? '',
           antigravityAppPath: config.antigravity_app_path ?? '',
+          codexAppPath: config.codex_app_path ?? '',
           opencodeSyncOnSwitch: config.opencode_sync_on_switch ?? true,
         });
         
@@ -1696,7 +1326,6 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
       ) : (
         <div className="wakeup-task-grid">
           {tasks.map((task) => {
-            const running = runningTaskIds.has(task.id);
             const modelLabels = task.schedule.selectedModels.map(
               (id) => modelById.get(id)?.displayName || getReadableModelLabel(id)
             );
@@ -1714,7 +1343,6 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
                     ) : (
                       <span className="pill pill-secondary">{t('wakeup.statusDisabled')}</span>
                     )}
-                    {running && <span className="pill pill-emphasis">{t('wakeup.statusRunning')}</span>}
                   </div>
                   <div className="wakeup-task-actions">
                     <button

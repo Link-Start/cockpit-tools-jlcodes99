@@ -77,7 +77,16 @@
       "opencodeRestartDesc": "OpenCode içinde Codex hesap bilgisini senkronize et",
       "opencodeAppPath": "OpenCode başlatma yolu",
       "opencodeAppPathPlaceholder": "Varsayılan yol",
-      "opencodePathReset": "Varsayılanı sıfırla"
+      "opencodePathReset": "Varsayılanı sıfırla",
+      "opencodePathSelect": "Seç",
+      "codexTitle": "Codex Başlatma",
+      "codexAppPath": "Codex Uygulama Yolu",
+      "codexAppPathDesc": "Varsayılan yolu kullanmak için boş bırakın",
+      "codexAppPathPlaceholder": "Varsayılan yol",
+      "codexPathSelect": "Seç",
+      "codexPathReset": "Varsayılana sıfırla",
+      "antigravityAppPath": "Antigravity Uygulama Yolu",
+      "antigravityTitle": "Antigravity Başlatma"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API",
@@ -932,6 +941,13 @@
     "modal": {
       "createTitle": "Yeni örnek",
       "editTitle": "Örneği düzenle"
+    }
+  },
+  "appPath": {
+    "missing": {
+      "title": "Uygulama yolu bulunamadı",
+      "desc": "{{app}} uygulama yolu bulunamadı. Devam etmek için şimdi ayarlayın.",
+      "action": "Şimdi ayarla"
     }
   }
 }

@@ -337,6 +337,8 @@ pub fn delete_instance_directory(dir_path: &Path) -> Result<(), String> {
     }
 }
 
+
+#[allow(dead_code)]
 pub fn update_instance_last_launched(instance_id: &str) -> Result<InstanceProfile, String> {
     let _lock = INSTANCE_STORE_LOCK.lock().map_err(|_| "无法获取实例锁")?;
     let mut store = load_instance_store()?;

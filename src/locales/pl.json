@@ -77,7 +77,16 @@
       "opencodeRestartDesc": "Synchronizuj informacje o koncie Codex w OpenCode",
       "opencodeAppPath": "Ścieżka uruchamiania OpenCode",
       "opencodeAppPathPlaceholder": "Domyślna ścieżka",
-      "opencodePathReset": "Przywróć domyślne"
+      "opencodePathReset": "Przywróć domyślne",
+      "opencodePathSelect": "Wybierz",
+      "codexTitle": "Uruchamianie Codex",
+      "codexAppPath": "Ścieżka aplikacji Codex",
+      "codexAppPathDesc": "Pozostaw puste, aby użyć domyślnej ścieżki",
+      "codexAppPathPlaceholder": "Domyślna ścieżka",
+      "codexPathSelect": "Wybierz",
+      "codexPathReset": "Przywróć domyślne",
+      "antigravityAppPath": "Ścieżka aplikacji Antigravity",
+      "antigravityTitle": "Uruchamianie Antigravity"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API",
@@ -932,6 +941,13 @@
     "modal": {
       "createTitle": "Nowa instancja",
       "editTitle": "Edytuj instancję"
+    }
+  },
+  "appPath": {
+    "missing": {
+      "title": "Nie znaleziono ścieżki aplikacji",
+      "desc": "Nie udało się znaleźć ścieżki aplikacji {{app}}. Ustaw ją teraz, aby kontynuować.",
+      "action": "Ustaw teraz"
     }
   }
 }

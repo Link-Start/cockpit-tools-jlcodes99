@@ -77,7 +77,16 @@
       "opencodeRestartDesc": "Đồng bộ thông tin tài khoản Codex trong OpenCode",
       "opencodeAppPath": "Đường dẫn khởi chạy OpenCode",
       "opencodeAppPathPlaceholder": "Đường dẫn mặc định",
-      "opencodePathReset": "Đặt lại mặc định"
+      "opencodePathReset": "Đặt lại mặc định",
+      "opencodePathSelect": "Chọn",
+      "codexTitle": "Khởi chạy Codex",
+      "codexAppPath": "Đường dẫn ứng dụng Codex",
+      "codexAppPathDesc": "Để trống để dùng đường dẫn mặc định",
+      "codexAppPathPlaceholder": "Đường dẫn mặc định",
+      "codexPathSelect": "Chọn",
+      "codexPathReset": "Đặt lại mặc định",
+      "antigravityAppPath": "Đường dẫn ứng dụng Antigravity",
+      "antigravityTitle": "Khởi chạy Antigravity"
     },
     "network": {
       "apiTitle": "API Antigravity Cockpit",
@@ -932,6 +941,13 @@
     "modal": {
       "createTitle": "Tạo phiên bản mới",
       "editTitle": "Chỉnh sửa phiên bản"
+    }
+  },
+  "appPath": {
+    "missing": {
+      "title": "Không tìm thấy đường dẫn ứng dụng",
+      "desc": "Không tìm thấy đường dẫn ứng dụng {{app}}. Vui lòng đặt ngay để tiếp tục.",
+      "action": "Đặt ngay"
     }
   }
 }

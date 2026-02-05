@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { open } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 import { changeLanguage, getCurrentLanguage, normalizeLanguage } from '../i18n';
@@ -30,6 +31,7 @@ interface GeneralConfig {
   close_behavior: 'ask' | 'minimize' | 'quit';
   opencode_app_path: string;
   antigravity_app_path: string;
+  codex_app_path: string;
   opencode_sync_on_switch: boolean;
 }
 
@@ -64,6 +66,7 @@ export function SettingsPage() {
   const [closeBehavior, setCloseBehavior] = useState<'ask' | 'minimize' | 'quit'>('ask');
   const [opencodeAppPath, setOpencodeAppPath] = useState('');
   const [antigravityAppPath, setAntigravityAppPath] = useState('');
+  const [codexAppPath, setCodexAppPath] = useState('');
   const [opencodeSyncOnSwitch, setOpencodeSyncOnSwitch] = useState(true);
   const [generalLoaded, setGeneralLoaded] = useState(false);
   const generalSaveTimerRef = useRef<number | null>(null);
@@ -131,6 +134,7 @@ export function SettingsPage() {
           closeBehavior,
           opencodeAppPath,
           antigravityAppPath,
+          codexAppPath,
           opencodeSyncOnSwitch,
         });
         window.dispatchEvent(new Event('config-updated'));
@@ -270,6 +274,7 @@ export function SettingsPage() {
       setCloseBehavior(config.close_behavior || 'ask');
       setOpencodeAppPath(config.opencode_app_path || '');
       setAntigravityAppPath(config.antigravity_app_path || '');
+      setCodexAppPath(config.codex_app_path || '');
       setOpencodeSyncOnSwitch(config.opencode_sync_on_switch ?? true);
       // 同步语言
       changeLanguage(config.language);
@@ -318,6 +323,55 @@ export function SettingsPage() {
 
   const openLink = (url: string) => {
     openUrl(url);
+  };
+
+  const handlePickAppPath = async (target: 'antigravity' | 'codex' | 'opencode') => {
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: false,
+      });
+
+      const path = Array.isArray(selected) ? selected[0] : selected;
+      if (!path) return;
+
+      if (target === 'antigravity') {
+        setAntigravityAppPath(path);
+      } else if (target === 'codex') {
+        setCodexAppPath(path);
+      } else {
+        setOpencodeAppPath(path);
+      }
+    } catch (err) {
+      console.error('选择启动路径失败:', err);
+    }
+  };
+
+  const handleResetAppPath = async (target: 'antigravity' | 'codex' | 'opencode') => {
+    try {
+      const detected = await invoke<string | null>('detect_app_path', { app: target });
+      const path = detected || '';
+      if (target === 'antigravity') {
+        setAntigravityAppPath(path);
+      } else {
+        if (target === 'codex') {
+          setCodexAppPath(path);
+        } else {
+          setOpencodeAppPath(path);
+        }
+      }
+    } catch (err) {
+      console.error('重置启动路径失败:', err);
+      if (target === 'antigravity') {
+        setAntigravityAppPath('');
+      } else {
+        if (target === 'codex') {
+          setCodexAppPath('');
+        } else {
+          setOpencodeAppPath('');
+        }
+      }
+    }
   };
 
   // 检查更新
@@ -563,20 +617,51 @@ export function SettingsPage() {
               <div className="settings-row">
                 <div className="row-label">
                   <div className="row-title">{t('settings.general.antigravityAppPath', 'Antigravity 启动路径')}</div>
-                  <div className="row-desc">{t('settings.general.antigravityAppPathDesc', '留空则使用默认路径')}</div>
+                  <div className="row-desc">{t('settings.general.codexAppPathDesc', '留空则使用默认路径')}</div>
                 </div>
-                <div className="row-control">
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div className="row-control row-control--grow">
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: 1 }}>
                     <input
                       type="text"
-                      className="settings-input"
+                      className="settings-input settings-input--path"
                       value={antigravityAppPath}
-                      placeholder={t('settings.general.antigravityAppPathPlaceholder', '默认路径')}
+                      placeholder={t('settings.general.codexAppPathPlaceholder', '默认路径')}
                       onChange={(e) => setAntigravityAppPath(e.target.value)}
                     />
-                    <button className="btn btn-secondary" onClick={() => setAntigravityAppPath('')}>
+                    <button className="btn btn-secondary" onClick={() => handlePickAppPath('antigravity')}>
+                      {t('settings.general.codexPathSelect', '选择')}
+                    </button>
+                    <button className="btn btn-secondary" onClick={() => handleResetAppPath('antigravity')}>
                       <RefreshCw size={16} />
-                      {t('settings.general.antigravityPathReset', '恢复默认')}
+                      {t('settings.general.codexPathReset', '恢复默认')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="group-title">{t('settings.general.codexTitle', 'Codex 启动')}</div>
+            <div className="settings-group">
+              <div className="settings-row">
+                <div className="row-label">
+                  <div className="row-title">{t('settings.general.codexAppPath', 'Codex 启动路径')}</div>
+                  <div className="row-desc">{t('settings.general.codexAppPathDesc', '留空则使用默认路径')}</div>
+                </div>
+                <div className="row-control row-control--grow">
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: 1 }}>
+                    <input
+                      type="text"
+                      className="settings-input settings-input--path"
+                      value={codexAppPath}
+                      placeholder={t('settings.general.codexAppPathPlaceholder', '默认路径')}
+                      onChange={(e) => setCodexAppPath(e.target.value)}
+                    />
+                    <button className="btn btn-secondary" onClick={() => handlePickAppPath('codex')}>
+                      {t('settings.general.codexPathSelect', '选择')}
+                    </button>
+                    <button className="btn btn-secondary" onClick={() => handleResetAppPath('codex')}>
+                      <RefreshCw size={16} />
+                      {t('settings.general.codexPathReset', '恢复默认')}
                     </button>
                   </div>
                 </div>
@@ -609,18 +694,21 @@ export function SettingsPage() {
                     {t('settings.general.opencodeAppPathDesc')}
                   </div>
                 </div>
-                <div className="row-control">
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div className="row-control row-control--grow">
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: 1 }}>
                     <input
                       type="text"
-                      className="settings-input"
+                      className="settings-input settings-input--path"
                       value={opencodeAppPath}
                       placeholder={t('settings.general.opencodeAppPathPlaceholder')}
                       onChange={(e) => setOpencodeAppPath(e.target.value)}
                     />
+                    <button className="btn btn-secondary" onClick={() => handlePickAppPath('opencode')}>
+                      {t('settings.general.opencodePathSelect', '选择')}
+                    </button>
                     <button
                       className="btn btn-secondary"
-                      onClick={() => setOpencodeAppPath('')}
+                      onClick={() => handleResetAppPath('opencode')}
                     >
                       <RefreshCw size={16} />
                       {t('settings.general.opencodePathReset')}

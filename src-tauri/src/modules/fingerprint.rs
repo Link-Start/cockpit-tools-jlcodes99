@@ -104,38 +104,6 @@ pub fn save_fingerprint_store(store: &FingerprintStore) -> Result<(), String> {
         .map_err(|e| format!("保存指纹存储失败: {}", e))
 }
 
-/// 列出所有指纹（包括原始指纹）
-#[allow(dead_code)]
-pub fn list_fingerprints() -> Result<Vec<Fingerprint>, String> {
-    let store = load_fingerprint_store()?;
-    let mut result = Vec::new();
-    
-    // 原始指纹放第一位
-    if let Some(baseline) = store.original_baseline {
-        result.push(baseline);
-    }
-    
-    // 当前应用的指纹放第二位，其他按创建时间排序
-    let current_id = store.current_fingerprint_id.clone();
-    let mut others: Vec<_> = store.fingerprints.clone();
-    
-    if let Some(ref cid) = current_id {
-        if cid != "original" {
-            // 找到当前指纹，放到前面
-            if let Some(pos) = others.iter().position(|f| &f.id == cid) {
-                let current = others.remove(pos);
-                result.push(current);
-            }
-        }
-    }
-    
-    // 其余按时间倒序
-    others.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-    result.extend(others);
-    
-    Ok(result)
-}
-
 /// 获取指纹详情
 pub fn get_fingerprint(fingerprint_id: &str) -> Result<Fingerprint, String> {
     let store = load_fingerprint_store()?;

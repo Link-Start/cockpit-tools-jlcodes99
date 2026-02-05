@@ -6,11 +6,11 @@ English · [简体中文](README.md)
 [![GitHub issues](https://img.shields.io/github/issues/jlcodes99/cockpit-tools)](https://github.com/jlcodes99/cockpit-tools/issues)
 [![License](https://img.shields.io/github/license/jlcodes99/cockpit-tools)](https://github.com/jlcodes99/cockpit-tools)
 
-A **universal AI IDE account management tool**, currently supporting **Antigravity** and **Codex**.
+A **universal AI IDE account management tool**, currently supporting **Antigravity** and **Codex**, with multi-instance parallel workflows.
 
-> Designed to help users efficiently manage multiple AI IDE accounts, this tool supports one-click switching, quota monitoring, automatic wake-up tasks, and more, helping you fully utilize resources from different accounts.
+> Designed to help users efficiently manage multiple AI IDE accounts, this tool supports one-click switching, quota monitoring, wake-up tasks, and multi-instance parallel runs, helping you fully utilize resources from different accounts.
 
-**Features**: One-click Switch · Multi-account Management · Quota Monitoring · Wake-up Tasks · Device Fingerprints · Plugin Integration
+**Features**: One-click Switch · Multi-account Management · Multi-instance · Quota Monitoring · Wake-up Tasks · Device Fingerprints · Plugin Integration
 
 **Languages**: Supports 16 languages
 
@@ -44,6 +44,16 @@ A brand new visual dashboard providing a one-stop status overview:
 > ![Wakeup Tasks](docs/images/wakeup_detail.png)
 > ![Device Fingerprints](docs/images/fingerprint_detail.png)
 
+#### 2.1 Antigravity Multi-Instance
+
+Run multiple Antigravity instances in parallel with different accounts. For example, open two Antigravity instances, bind different accounts, and handle different projects independently.
+
+- **Isolated Accounts**: Each instance binds a different account and runs independently
+- **Parallel Projects**: Run multiple tasks/projects at the same time
+- **Argument Isolation**: Custom instance directory and launch arguments
+
+> ![Antigravity Instances](docs/images/antigravity_instances.png)
+
 ### 3. Codex Account Management
 
 - **Dedicated Support**: Optimized account management experience for Codex
@@ -51,6 +61,16 @@ A brand new visual dashboard providing a one-stop status overview:
 - **Plan Recognition**: Automatically identifies account Plan types (Basic, Plus, Team, etc.)
 
 > ![Codex Accounts](docs/images/codex_list.png)
+
+#### 3.1 Codex Multi-Instance
+
+Codex also supports parallel multi-instance usage. For example, open two Codex instances, bind different accounts, and handle different projects independently.
+
+- **Isolated Accounts**: Each instance binds a different account and runs independently
+- **Parallel Projects**: Run multiple tasks/projects at the same time
+- **Argument Isolation**: Custom instance directory and launch arguments
+
+> ![Codex Instances](docs/images/codex_instances.png)
 
 ### 4. General Settings
 

@@ -1067,9 +1067,24 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
     }
   }
 
+  const resolveDefaultExportPath = async (fileName: string) => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (!userAgent.includes('mac')) return fileName;
+    try {
+      const dir = await invoke<string>('get_downloads_dir');
+      if (!dir) return fileName;
+      const normalized = dir.endsWith('/') ? dir.slice(0, -1) : dir;
+      return `${normalized}/${fileName}`;
+    } catch (e) {
+      console.error('获取下载目录失败:', e);
+      return fileName;
+    }
+  };
+
   const saveJsonFile = async (json: string, defaultFileName: string) => {
+    const defaultPath = await resolveDefaultExportPath(defaultFileName);
     const filePath = await save({
-      defaultPath: defaultFileName,
+      defaultPath,
       filters: [{ name: 'JSON', extensions: ['json'] }]
     })
     if (!filePath) return null

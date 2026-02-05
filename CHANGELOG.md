@@ -7,6 +7,24 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [0.5.1] - 2026-02-05
+
+### Added
+- **Wakeup scheduler backend sync**: Added scheduler sync command and backend-side history load/clear APIs.
+- **Download directory helper**: Exposed a system API to resolve the downloads directory.
+- **App path management**: Added Codex app path to general settings and introduced app-path detect/set commands.
+
+### Changed
+- **Wakeup history storage**: Moved history persistence to backend storage with higher retention (up to 100 items).
+- **macOS launch strategy**: Prefer direct executable launch (PID available), fallback to `open -a` for `.app` paths.
+- **App path reset**: Reset now auto-detects and fills the path instead of clearing it.
+- **Account switching**: Update default instance PID after launch; emit app-path-missing events when needed.
+- **Documentation**: Added multi-instance sections and image placeholders for Antigravity/Codex.
+- **i18n**: Added new app-path related keys and ensured locale consistency.
+
+### Fixed
+- **macOS app selection**: Improved `.app` selection/launch flow to reduce permission errors.
+
 ## [0.5.0] - 2026-02-04
 
 ### Added

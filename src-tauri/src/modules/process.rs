@@ -4,7 +4,6 @@ use std::process::{Child, Command, Stdio};
 use std::thread;
 use std::time::Duration;
 use sysinfo::{Pid, System};
-#[cfg(target_os = "windows")]
 use crate::modules::config;
 
 const OPENCODE_APP_NAME: &str = "OpenCode";
@@ -61,6 +60,429 @@ fn normalize_custom_path(value: Option<&str>) -> Option<String> {
     } else {
         Some(trimmed.to_string())
     }
+}
+
+const APP_PATH_NOT_FOUND_PREFIX: &str = "APP_PATH_NOT_FOUND:";
+
+fn app_path_missing_error(app: &str) -> String {
+    format!("{}{}", APP_PATH_NOT_FOUND_PREFIX, app)
+}
+
+#[cfg(target_os = "macos")]
+fn normalize_macos_app_root(path: &Path) -> Option<String> {
+    let path_str = path.to_string_lossy();
+    if let Some(app_idx) = path_str.find(".app") {
+        return Some(path_str[..app_idx + 4].to_string());
+    }
+    None
+}
+
+#[cfg(target_os = "macos")]
+fn resolve_macos_exec_path(path_str: &str, binary_name: &str) -> Option<std::path::PathBuf> {
+    let path = std::path::PathBuf::from(path_str);
+    if let Some(app_root) = normalize_macos_app_root(&path) {
+        let exec_path = std::path::PathBuf::from(&app_root)
+            .join("Contents")
+            .join("MacOS")
+            .join(binary_name);
+        if exec_path.exists() {
+            return Some(exec_path);
+        }
+    }
+    if path.exists() {
+        return Some(path);
+    }
+    None
+}
+
+#[cfg(not(target_os = "macos"))]
+fn resolve_macos_exec_path(path_str: &str, _binary_name: &str) -> Option<std::path::PathBuf> {
+    let path = std::path::PathBuf::from(path_str);
+    if path.exists() {
+        Some(path)
+    } else {
+        None
+    }
+}
+
+fn update_app_path_in_config(app: &str, path: &Path) {
+    let mut current = config::get_user_config();
+    let normalized = {
+        #[cfg(target_os = "macos")]
+        {
+            normalize_macos_app_root(path).unwrap_or_else(|| path.to_string_lossy().to_string())
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            path.to_string_lossy().to_string()
+        }
+    };
+    match app {
+        "antigravity" => {
+            if current.antigravity_app_path != normalized {
+                current.antigravity_app_path = normalized;
+            } else {
+                return;
+            }
+        }
+        "codex" => {
+            if current.codex_app_path != normalized {
+                current.codex_app_path = normalized;
+            } else {
+                return;
+            }
+        }
+        "opencode" => {
+            if current.opencode_app_path != normalized {
+                current.opencode_app_path = normalized;
+            } else {
+                return;
+            }
+        }
+        _ => return,
+    }
+    let _ = config::save_user_config(&current);
+}
+
+#[cfg(target_os = "macos")]
+fn resolve_macos_app_root_from_config(app: &str) -> Option<String> {
+    let current = config::get_user_config();
+    let raw = match app {
+        "antigravity" => current.antigravity_app_path,
+        "codex" => current.codex_app_path,
+        _ => String::new(),
+    };
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let path = std::path::Path::new(trimmed);
+    let app_root = normalize_macos_app_root(path)?;
+    if std::path::Path::new(&app_root).exists() {
+        return Some(app_root);
+    }
+    None
+}
+
+#[cfg(target_os = "macos")]
+fn spawn_open_app(app_root: &str, args: &[String]) -> Result<u32, String> {
+    let mut cmd = Command::new("open");
+    cmd.arg("-a").arg(app_root);
+    if !args.is_empty() {
+        cmd.arg("--args");
+        for arg in args {
+            if !arg.trim().is_empty() {
+                cmd.arg(arg);
+            }
+        }
+    }
+    let child = spawn_detached_unix(&mut cmd).map_err(|e| format!("启动失败: {}", e))?;
+    Ok(child.id())
+}
+
+fn find_antigravity_process_exe() -> Option<std::path::PathBuf> {
+    let mut system = System::new();
+    system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+
+    let current_pid = std::process::id();
+
+    for (pid, process) in system.processes() {
+        let pid_u32 = pid.as_u32();
+        if pid_u32 == current_pid {
+            continue;
+        }
+
+        let name = process.name().to_string_lossy().to_lowercase();
+        let exe_path = process
+            .exe()
+            .and_then(|p| p.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+
+        let args = process.cmd();
+        let args_str = args
+            .iter()
+            .map(|arg| arg.to_string_lossy().to_lowercase())
+            .collect::<Vec<String>>()
+            .join(" ");
+
+        let is_helper = args_str.contains("--type=")
+            || name.contains("helper")
+            || name.contains("plugin")
+            || name.contains("renderer")
+            || name.contains("gpu")
+            || name.contains("crashpad")
+            || name.contains("utility")
+            || name.contains("audio")
+            || name.contains("sandbox")
+            || exe_path.contains("crashpad");
+
+        #[cfg(target_os = "macos")]
+        let is_antigravity =
+            exe_path.contains("antigravity.app") && !exe_path.contains("antigravity tools.app");
+        #[cfg(target_os = "windows")]
+        let is_antigravity = name == "antigravity.exe" || exe_path.ends_with("\\antigravity.exe");
+        #[cfg(target_os = "linux")]
+        let is_antigravity = (name.contains("antigravity") || exe_path.contains("/antigravity"))
+            && !name.contains("tools")
+            && !exe_path.contains("tools");
+
+        if is_antigravity && !is_helper {
+            if let Some(exe) = process.exe() {
+                return Some(exe.to_path_buf());
+            }
+        }
+    }
+
+    None
+}
+
+#[cfg(target_os = "macos")]
+fn find_codex_process_exe() -> Option<std::path::PathBuf> {
+    let mut system = System::new();
+    system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+
+    let current_pid = std::process::id();
+
+    for (pid, process) in system.processes() {
+        let pid_u32 = pid.as_u32();
+        if pid_u32 == current_pid {
+            continue;
+        }
+
+        let name = process.name().to_string_lossy().to_lowercase();
+        let exe_path = process
+            .exe()
+            .and_then(|p| p.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+
+        let args = process.cmd();
+        let args_str = args
+            .iter()
+            .map(|arg| arg.to_string_lossy().to_lowercase())
+            .collect::<Vec<String>>()
+            .join(" ");
+
+        let is_helper = args_str.contains("--type=")
+            || name.contains("helper")
+            || name.contains("renderer")
+            || name.contains("gpu")
+            || name.contains("crashpad")
+            || name.contains("utility")
+            || name.contains("audio")
+            || name.contains("sandbox");
+
+        let is_codex = exe_path.contains("codex.app/contents/macos/codex");
+
+        if is_codex && !is_helper {
+            if let Some(exe) = process.exe() {
+                return Some(exe.to_path_buf());
+            }
+        }
+    }
+
+    None
+}
+
+fn detect_antigravity_exec_path() -> Option<std::path::PathBuf> {
+    if let Some(path) = find_antigravity_process_exe() {
+        return Some(path);
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let path = std::path::PathBuf::from(ANTIGRAVITY_APP_PATH);
+        if path.exists() {
+            return Some(path);
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let mut candidates: Vec<std::path::PathBuf> = Vec::new();
+        if let Ok(local_appdata) = std::env::var("LOCALAPPDATA") {
+            candidates.push(
+                std::path::PathBuf::from(local_appdata)
+                    .join("Programs")
+                    .join("Antigravity")
+                    .join("Antigravity.exe"),
+            );
+        }
+        if let Ok(program_files) = std::env::var("PROGRAMFILES") {
+            candidates.push(
+                std::path::PathBuf::from(program_files)
+                    .join("Antigravity")
+                    .join("Antigravity.exe"),
+            );
+        }
+        if let Ok(program_files_x86) = std::env::var("PROGRAMFILES(X86)") {
+            candidates.push(
+                std::path::PathBuf::from(program_files_x86)
+                    .join("Antigravity")
+                    .join("Antigravity.exe"),
+            );
+        }
+        for candidate in candidates {
+            if candidate.exists() {
+                return Some(candidate);
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let candidates = [
+            "/usr/bin/antigravity",
+            "/opt/antigravity/antigravity",
+            "/usr/share/antigravity/antigravity",
+        ];
+        for candidate in candidates {
+            let path = std::path::PathBuf::from(candidate);
+            if path.exists() {
+                return Some(path);
+            }
+        }
+        if let Some(home) = dirs::home_dir() {
+            let user_local = home.join(".local/bin/antigravity");
+            if user_local.exists() {
+                return Some(user_local);
+            }
+        }
+    }
+
+    None
+}
+
+fn detect_codex_exec_path() -> Option<std::path::PathBuf> {
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(path) = find_codex_process_exe() {
+            return Some(path);
+        }
+        let path = std::path::PathBuf::from(CODEX_APP_PATH);
+        if path.exists() {
+            return Some(path);
+        }
+    }
+
+    None
+}
+
+fn detect_opencode_exec_path() -> Option<std::path::PathBuf> {
+    #[cfg(target_os = "macos")]
+    {
+        let candidate = std::path::PathBuf::from("/Applications/OpenCode.app");
+        if candidate.exists() {
+            return Some(candidate);
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let mut candidates: Vec<std::path::PathBuf> = Vec::new();
+        if let Ok(local_appdata) = std::env::var("LOCALAPPDATA") {
+            candidates.push(
+                std::path::PathBuf::from(local_appdata)
+                    .join("Programs")
+                    .join("OpenCode")
+                    .join("OpenCode.exe"),
+            );
+        }
+        if let Ok(program_files) = std::env::var("PROGRAMFILES") {
+            candidates.push(
+                std::path::PathBuf::from(program_files)
+                    .join("OpenCode")
+                    .join("OpenCode.exe"),
+            );
+        }
+        for candidate in candidates {
+            if candidate.exists() {
+                return Some(candidate);
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let candidates = [
+            "/usr/bin/opencode",
+            "/opt/opencode/opencode",
+        ];
+        for candidate in candidates {
+            let path = std::path::PathBuf::from(candidate);
+            if path.exists() {
+                return Some(path);
+            }
+        }
+    }
+
+    None
+}
+
+fn resolve_antigravity_launch_path() -> Result<std::path::PathBuf, String> {
+    if let Some(custom) = normalize_custom_path(Some(&config::get_user_config().antigravity_app_path)) {
+        if let Some(exec) = resolve_macos_exec_path(&custom, "Electron") {
+            return Ok(exec);
+        }
+    }
+
+    if let Some(detected) = detect_antigravity_exec_path() {
+        update_app_path_in_config("antigravity", &detected);
+        return Ok(detected);
+    }
+
+    Err(app_path_missing_error("antigravity"))
+}
+
+fn resolve_codex_launch_path() -> Result<std::path::PathBuf, String> {
+    if let Some(custom) = normalize_custom_path(Some(&config::get_user_config().codex_app_path)) {
+        if let Some(exec) = resolve_macos_exec_path(&custom, "Codex") {
+            return Ok(exec);
+        }
+    }
+
+    if let Some(detected) = detect_codex_exec_path() {
+        update_app_path_in_config("codex", &detected);
+        return Ok(detected);
+    }
+
+    Err(app_path_missing_error("codex"))
+}
+
+pub fn detect_and_save_app_path(app: &str) -> Option<String> {
+    let current = config::get_user_config();
+    match app {
+        "antigravity" => {
+            if !current.antigravity_app_path.trim().is_empty() {
+                return Some(current.antigravity_app_path);
+            }
+            if let Some(detected) = detect_antigravity_exec_path() {
+                update_app_path_in_config("antigravity", &detected);
+                return Some(config::get_user_config().antigravity_app_path);
+            }
+        }
+        "codex" => {
+            if !current.codex_app_path.trim().is_empty() {
+                return Some(current.codex_app_path);
+            }
+            if let Some(detected) = detect_codex_exec_path() {
+                update_app_path_in_config("codex", &detected);
+                return Some(config::get_user_config().codex_app_path);
+            }
+        }
+        "opencode" => {
+            if !current.opencode_app_path.trim().is_empty() {
+                return Some(current.opencode_app_path);
+            }
+            if let Some(detected) = detect_opencode_exec_path() {
+                update_app_path_in_config("opencode", &detected);
+                return Some(config::get_user_config().opencode_app_path);
+            }
+        }
+        _ => {}
+    }
+    None
 }
 
 /// 检查 Antigravity 是否在运行
@@ -139,6 +561,8 @@ pub fn is_pid_running(pid: u32) -> bool {
     system.process(Pid::from(pid as usize)).is_some()
 }
 
+
+#[allow(dead_code)]
 fn extract_user_data_dir(args: &[std::ffi::OsString]) -> Option<String> {
     let tokens: Vec<String> = args.iter().map(|arg| arg.to_string_lossy().to_string()).collect();
     let mut index = 0;
@@ -171,6 +595,8 @@ fn extract_user_data_dir(args: &[std::ffi::OsString]) -> Option<String> {
     None
 }
 
+
+#[allow(dead_code)]
 fn parse_user_data_dir_value(raw: &str) -> Option<String> {
     let rest = raw.trim_start();
     if rest.is_empty() {
@@ -194,6 +620,8 @@ fn parse_user_data_dir_value(raw: &str) -> Option<String> {
     }
 }
 
+
+#[allow(dead_code)]
 fn extract_user_data_dir_from_command_line(command_line: &str) -> Option<String> {
     let tokens = split_command_tokens(command_line);
     let mut index = 0;
@@ -350,6 +778,8 @@ fn extract_env_value(command_line: &str, key: &str) -> Option<String> {
     parse_env_value(rest)
 }
 
+
+#[allow(dead_code)]
 fn normalize_path_for_compare(raw: &str) -> String {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
@@ -370,6 +800,8 @@ fn normalize_path_for_compare(raw: &str) -> String {
 }
 
 #[cfg(target_os = "macos")]
+
+#[allow(dead_code)]
 fn list_user_data_dirs_from_ps() -> Vec<String> {
     let mut result = Vec::new();
     let output = Command::new("ps").args(["-axo", "pid,command"]).output();
@@ -404,6 +836,8 @@ fn list_user_data_dirs_from_ps() -> Vec<String> {
 }
 
 #[cfg(target_os = "macos")]
+
+#[allow(dead_code)]
 fn collect_antigravity_process_entries_macos() -> Vec<(u32, Option<String>)> {
     let mut pids = Vec::new();
     if let Ok(output) = Command::new("pgrep")
@@ -531,6 +965,8 @@ fn list_user_data_dirs_from_proc() -> Vec<String> {
     result
 }
 
+
+#[allow(dead_code)]
 fn collect_antigravity_pids_by_user_data_dir(user_data_dir: &str) -> Vec<u32> {
     let target = normalize_path_for_compare(user_data_dir);
     if target.is_empty() {
@@ -549,7 +985,7 @@ fn collect_antigravity_pids_by_user_data_dir(user_data_dir: &str) -> Vec<u32> {
             continue;
         }
 
-        let name = process.name().to_string_lossy().to_lowercase();
+        let _name = process.name().to_string_lossy().to_lowercase();
         let exe_path = process
             .exe()
             .and_then(|p| p.to_str())
@@ -740,6 +1176,8 @@ pub fn parse_extra_args(raw: &str) -> Vec<String> {
 }
 
 /// 获取正在运行的 Antigravity 实例的 user-data-dir
+
+#[allow(dead_code)]
 pub fn list_antigravity_user_data_dirs() -> Vec<String> {
     let mut system = System::new();
     system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
@@ -753,7 +1191,7 @@ pub fn list_antigravity_user_data_dirs() -> Vec<String> {
             continue;
         }
 
-        let name = process.name().to_string_lossy().to_lowercase();
+        let _name = process.name().to_string_lossy().to_lowercase();
         let exe_path = process
             .exe()
             .and_then(|p| p.to_str())
@@ -766,10 +1204,10 @@ pub fn list_antigravity_user_data_dirs() -> Vec<String> {
         let is_antigravity =
             exe_path.contains("antigravity.app") && !exe_path.contains("antigravity tools.app");
         #[cfg(target_os = "windows")]
-        let is_antigravity = name == "antigravity.exe" || exe_path.ends_with("\\antigravity.exe");
+        let is_antigravity = _name == "antigravity.exe" || exe_path.ends_with("\\antigravity.exe");
         #[cfg(target_os = "linux")]
-        let is_antigravity = (name.contains("antigravity") || exe_path.contains("/antigravity"))
-            && !name.contains("tools")
+        let is_antigravity = (_name.contains("antigravity") || exe_path.contains("/antigravity"))
+            && !_name.contains("tools")
             && !exe_path.contains("tools");
 
         if !is_antigravity {
@@ -986,6 +1424,8 @@ pub fn close_antigravity(timeout_secs: u64) -> Result<(), String> {
 }
 
 /// 关闭指定实例（按 user-data-dir 匹配）
+
+#[allow(dead_code)]
 pub fn close_antigravity_instance(user_data_dir: &str, timeout_secs: u64) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     let _ = timeout_secs;
@@ -1113,6 +1553,8 @@ pub fn force_kill_pid(pid: u32) -> Result<(), String> {
 }
 
 /// 强制关闭指定实例（按 user-data-dir 匹配，直接 SIGKILL / taskkill /F）
+
+#[allow(dead_code)]
 pub fn force_kill_antigravity_instance(user_data_dir: &str) -> Result<(), String> {
     let target = normalize_path_for_compare(user_data_dir);
     if target.is_empty() {
@@ -1158,60 +1600,22 @@ pub fn start_antigravity() -> Result<u32, String> {
 pub fn start_antigravity_with_args(user_data_dir: &str, extra_args: &[String]) -> Result<u32, String> {
     crate::modules::logger::log_info("正在启动 Antigravity...");
 
+    let launch_path = match resolve_antigravity_launch_path() {
+        Ok(path) => Some(path),
+        Err(err) => {
+            #[cfg(target_os = "macos")]
+            {
+                let _ = err;
+            }
+            None
+        }
+    };
+
     #[cfg(target_os = "macos")]
     {
-        if !Path::new(ANTIGRAVITY_APP_PATH).exists() {
-            return Err("未找到 Antigravity 应用，请确保已安装 Antigravity".to_string());
-        }
-        let mut cmd = Command::new(ANTIGRAVITY_APP_PATH);
-        if !user_data_dir.trim().is_empty() {
-            cmd.arg("--user-data-dir");
-            cmd.arg(user_data_dir.trim());
-        }
-        for arg in extra_args {
-            if !arg.trim().is_empty() {
-                cmd.arg(arg);
-            }
-        }
-        let child = spawn_detached_unix(&mut cmd)
-            .map_err(|e| format!("启动 Antigravity 失败: {}", e))?;
-        crate::modules::logger::log_info("Antigravity 启动命令已发送");
-        return Ok(child.id());
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt;
-
-        let mut candidates: Vec<String> = Vec::new();
-        let custom_path = normalize_custom_path(Some(&config::get_user_config().antigravity_app_path));
-        if let Some(custom) = custom_path {
-            candidates.push(custom);
-        }
-
-        if let Ok(local_appdata) = std::env::var("LOCALAPPDATA") {
-            candidates.push(format!("{}/Programs/Antigravity/Antigravity.exe", local_appdata));
-        }
-
-        if let Ok(program_files) = std::env::var("PROGRAMFILES") {
-            candidates.push(format!("{}/Antigravity/Antigravity.exe", program_files));
-        }
-
-        for candidate in candidates {
-            if candidate.contains('/') || candidate.contains('\\') {
-                if !std::path::Path::new(&candidate).exists() {
-                    continue;
-                }
-            }
-            let mut cmd = Command::new(&candidate);
-            if should_detach_child() {
-                cmd.creation_flags(0x08000000 | CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS); // CREATE_NO_WINDOW | detached
-                cmd.stdin(Stdio::null())
-                    .stdout(Stdio::null())
-                    .stderr(Stdio::null());
-            } else {
-                cmd.creation_flags(0x08000000);
-            }
+        let app_root = resolve_macos_app_root_from_config("antigravity");
+        if let Some(path) = launch_path {
+            let mut cmd = Command::new(&path);
             if !user_data_dir.trim().is_empty() {
                 cmd.arg("--user-data-dir");
                 cmd.arg(user_data_dir.trim());
@@ -1221,46 +1625,86 @@ pub fn start_antigravity_with_args(user_data_dir: &str, extra_args: &[String]) -
                     cmd.arg(arg);
                 }
             }
-            let child = cmd
-                .spawn()
-                .map_err(|e| format!("启动 Antigravity 失败: {}", e))?;
-            crate::modules::logger::log_info(&format!("Antigravity 已启动: {}", candidate));
-            return Ok(child.id());
+            match spawn_detached_unix(&mut cmd) {
+                Ok(child) => {
+                    crate::modules::logger::log_info("Antigravity 启动命令已发送");
+                    return Ok(child.id());
+                }
+                Err(e) => {
+                    if let Some(app_root) = app_root {
+                        let mut args: Vec<String> = Vec::new();
+                        if !user_data_dir.trim().is_empty() {
+                            args.push("--user-data-dir".to_string());
+                            args.push(user_data_dir.trim().to_string());
+                        }
+                        for arg in extra_args {
+                            if !arg.trim().is_empty() {
+                                args.push(arg.to_string());
+                            }
+                        }
+                        let pid = spawn_open_app(&app_root, &args)
+                            .map_err(|open_err| format!("启动 Antigravity 失败: {}", open_err))?;
+                        crate::modules::logger::log_info("Antigravity 启动命令已发送");
+                        return Ok(pid);
+                    }
+                    return Err(format!("启动 Antigravity 失败: {}", e));
+                }
+            }
         }
-        return Err("未找到 Antigravity 可执行文件，请在设置中配置启动路径".to_string());
+        if let Some(app_root) = app_root {
+            let mut args: Vec<String> = Vec::new();
+            if !user_data_dir.trim().is_empty() {
+                args.push("--user-data-dir".to_string());
+                args.push(user_data_dir.trim().to_string());
+            }
+            for arg in extra_args {
+                if !arg.trim().is_empty() {
+                    args.push(arg.to_string());
+                }
+            }
+            let pid = spawn_open_app(&app_root, &args)
+                .map_err(|e| format!("启动 Antigravity 失败: {}", e))?;
+            crate::modules::logger::log_info("Antigravity 启动命令已发送");
+            return Ok(pid);
+        }
+        return Err(app_path_missing_error("antigravity"));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+
+        let mut cmd = Command::new(&launch_path);
+        if should_detach_child() {
+            cmd.creation_flags(0x08000000 | CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS); // CREATE_NO_WINDOW | detached
+            cmd.stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null());
+        } else {
+            cmd.creation_flags(0x08000000);
+        }
+        if !user_data_dir.trim().is_empty() {
+            cmd.arg("--user-data-dir");
+            cmd.arg(user_data_dir.trim());
+        }
+        for arg in extra_args {
+            if !arg.trim().is_empty() {
+                cmd.arg(arg);
+            }
+        }
+        let child = cmd
+            .spawn()
+            .map_err(|e| format!("启动 Antigravity 失败: {}", e))?;
+        crate::modules::logger::log_info(&format!(
+            "Antigravity 已启动: {}",
+            launch_path.to_string_lossy()
+        ));
+        return Ok(child.id());
     }
 
     #[cfg(target_os = "linux")]
     {
-        // 尝试常见安装路径
-        let possible_paths = ["/usr/bin/antigravity", "/opt/antigravity/antigravity"];
-
-        for path in possible_paths {
-            if std::path::Path::new(path).exists() {
-                let mut cmd = Command::new(path);
-                if should_detach_child() {
-                    cmd.stdin(Stdio::null())
-                        .stdout(Stdio::null())
-                        .stderr(Stdio::null());
-                }
-                if !user_data_dir.trim().is_empty() {
-                    cmd.arg("--user-data-dir");
-                    cmd.arg(user_data_dir.trim());
-                }
-                for arg in extra_args {
-                    if !arg.trim().is_empty() {
-                        cmd.arg(arg);
-                    }
-                }
-                let child = spawn_detached_unix(&mut cmd)
-                    .map_err(|e| format!("启动 Antigravity 失败: {}", e))?;
-                crate::modules::logger::log_info(&format!("Antigravity 已启动: {}", path));
-                return Ok(child.id());
-            }
-        }
-
-        // 尝试 PATH 中的 antigravity
-        let mut cmd = Command::new("antigravity");
+        let mut cmd = Command::new(&launch_path);
         if should_detach_child() {
             cmd.stdin(Stdio::null())
                 .stdout(Stdio::null())
@@ -1275,12 +1719,13 @@ pub fn start_antigravity_with_args(user_data_dir: &str, extra_args: &[String]) -
                 cmd.arg(arg);
             }
         }
-        if let Ok(child) = spawn_detached_unix(&mut cmd) {
-            crate::modules::logger::log_info("Antigravity 已启动 (从 PATH)");
-            return Ok(child.id());
-        }
-
-        return Err("未找到 Antigravity 可执行文件".to_string());
+        let child = spawn_detached_unix(&mut cmd)
+            .map_err(|e| format!("启动 Antigravity 失败: {}", e))?;
+        crate::modules::logger::log_info(&format!(
+            "Antigravity 已启动: {}",
+            launch_path.to_string_lossy()
+        ));
+        return Ok(child.id());
     }
 
     #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
@@ -1410,6 +1855,8 @@ fn collect_codex_process_entries() -> Vec<(u32, Option<String>)> {
 }
 
 #[cfg(target_os = "macos")]
+
+#[allow(dead_code)]
 fn collect_codex_pids_by_home(target_home: &str, default_home: &str) -> Vec<u32> {
     let target = normalize_path_for_compare(target_home);
     if target.is_empty() {
@@ -1432,6 +1879,8 @@ fn collect_codex_pids_by_home(target_home: &str, default_home: &str) -> Vec<u32>
 }
 
 /// 获取正在运行的 Codex 实例的 CODEX_HOME
+
+#[allow(dead_code)]
 pub fn list_codex_home_dirs(default_home: &str) -> Vec<String> {
     #[cfg(target_os = "macos")]
     {
@@ -1465,24 +1914,74 @@ pub fn list_codex_home_dirs(default_home: &str) -> Vec<String> {
     }
 }
 
+/// 判断 Codex 是否在运行（仅 macOS）
+pub fn is_codex_running() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        !collect_codex_process_entries().is_empty()
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        false
+    }
+}
+
 /// 启动 Codex（支持 CODEX_HOME 与附加参数，仅 macOS）
 pub fn start_codex_with_args(codex_home: &str, extra_args: &[String]) -> Result<u32, String> {
     #[cfg(target_os = "macos")]
     {
-        if !std::path::Path::new(CODEX_APP_PATH).exists() {
-            return Err("未找到 Codex 应用，请确保已安装 Codex".to_string());
-        }
-        let mut cmd = Command::new(CODEX_APP_PATH);
-        cmd.env("CODEX_HOME", codex_home.trim());
-        for arg in extra_args {
-            if !arg.trim().is_empty() {
-                cmd.arg(arg);
+        let app_root = resolve_macos_app_root_from_config("codex");
+        let launch_path = resolve_codex_launch_path().ok();
+        if let Some(path) = launch_path {
+            let mut cmd = Command::new(&path);
+            if !codex_home.trim().is_empty() {
+                cmd.env("CODEX_HOME", codex_home.trim());
+            }
+            for arg in extra_args {
+                if !arg.trim().is_empty() {
+                    cmd.arg(arg);
+                }
+            }
+            match spawn_detached_unix(&mut cmd) {
+                Ok(child) => {
+                    crate::modules::logger::log_info("Codex 启动命令已发送");
+                    return Ok(child.id());
+                }
+                Err(e) => {
+                    if codex_home.trim().is_empty() {
+                        if let Some(app_root) = app_root {
+                            let mut args: Vec<String> = Vec::new();
+                            for arg in extra_args {
+                                if !arg.trim().is_empty() {
+                                    args.push(arg.to_string());
+                                }
+                            }
+                            let pid = spawn_open_app(&app_root, &args)
+                                .map_err(|open_err| format!("启动 Codex 失败: {}", open_err))?;
+                            crate::modules::logger::log_info("Codex 启动命令已发送");
+                            return Ok(pid);
+                        }
+                    }
+                    return Err(format!("启动 Codex 失败: {}", e));
+                }
             }
         }
-        let child = spawn_detached_unix(&mut cmd)
-            .map_err(|e| format!("启动 Codex 失败: {}", e))?;
-        crate::modules::logger::log_info("Codex 启动命令已发送");
-        return Ok(child.id());
+        if codex_home.trim().is_empty() {
+            if let Some(app_root) = app_root {
+                let mut args: Vec<String> = Vec::new();
+                for arg in extra_args {
+                    if !arg.trim().is_empty() {
+                        args.push(arg.to_string());
+                    }
+                }
+                let pid = spawn_open_app(&app_root, &args)
+                    .map_err(|e| format!("启动 Codex 失败: {}", e))?;
+                crate::modules::logger::log_info("Codex 启动命令已发送");
+                return Ok(pid);
+            }
+        }
+        return Err(app_path_missing_error("codex"));
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -1496,14 +1995,32 @@ pub fn start_codex_with_args(codex_home: &str, extra_args: &[String]) -> Result<
 pub fn start_codex_default() -> Result<u32, String> {
     #[cfg(target_os = "macos")]
     {
-        if !std::path::Path::new(CODEX_APP_PATH).exists() {
-            return Err("未找到 Codex 应用，请确保已安装 Codex".to_string());
+        let app_root = resolve_macos_app_root_from_config("codex");
+        if let Ok(launch_path) = resolve_codex_launch_path() {
+            let mut cmd = Command::new(&launch_path);
+            match spawn_detached_unix(&mut cmd) {
+                Ok(child) => {
+                    crate::modules::logger::log_info("Codex 启动命令已发送");
+                    return Ok(child.id());
+                }
+                Err(e) => {
+                    if let Some(app_root) = app_root {
+                        let pid = spawn_open_app(&app_root, &[])
+                            .map_err(|open_err| format!("启动 Codex 失败: {}", open_err))?;
+                        crate::modules::logger::log_info("Codex 启动命令已发送");
+                        return Ok(pid);
+                    }
+                    return Err(format!("启动 Codex 失败: {}", e));
+                }
+            }
         }
-        let mut cmd = Command::new(CODEX_APP_PATH);
-        let child = spawn_detached_unix(&mut cmd)
-            .map_err(|e| format!("启动 Codex 失败: {}", e))?;
-        crate::modules::logger::log_info("Codex 启动命令已发送");
-        return Ok(child.id());
+        if let Some(app_root) = app_root {
+            let pid = spawn_open_app(&app_root, &[])
+                .map_err(|e| format!("启动 Codex 失败: {}", e))?;
+            crate::modules::logger::log_info("Codex 启动命令已发送");
+            return Ok(pid);
+        }
+        return Err(app_path_missing_error("codex"));
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -1553,6 +2070,8 @@ pub fn close_codex(timeout_secs: u64) -> Result<(), String> {
 }
 
 /// 关闭指定 Codex 实例（按 CODEX_HOME 匹配）
+
+#[allow(dead_code)]
 pub fn close_codex_instance(codex_home: &str, timeout_secs: u64) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
@@ -1604,6 +2123,8 @@ pub fn close_codex_instance(codex_home: &str, timeout_secs: u64) -> Result<(), S
 }
 
 /// 强制关闭指定 Codex 实例（按 CODEX_HOME 匹配）
+
+#[allow(dead_code)]
 pub fn force_kill_codex_instance(codex_home: &str) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
