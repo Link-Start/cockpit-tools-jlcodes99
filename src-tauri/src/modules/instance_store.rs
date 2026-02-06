@@ -12,6 +12,7 @@ pub struct CreateInstanceParams {
     pub extra_args: String,
     pub bind_account_id: Option<String>,
     pub copy_source_instance_id: Option<String>,
+    pub init_mode: Option<String>,
 }
 
 #[derive(Debug, Clone)]

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Plus,
@@ -11,16 +12,19 @@ import {
   ChevronDown,
   X,
   Search,
+  ArrowDownWideNarrow,
 } from 'lucide-react';
 import { confirm as confirmDialog, open } from '@tauri-apps/plugin-dialog';
 import md5 from 'blueimp-md5';
-import { InstanceProfile } from '../types/instance';
+import { InstanceInitMode, InstanceProfile } from '../types/instance';
 import { FileCorruptedModal, parseFileCorruptedError, type FileCorruptedError } from './FileCorruptedModal';
 import type { InstanceStoreState } from '../stores/createInstanceStore';
 
 type MessageState = { text: string; tone?: 'error' };
 type RestartStrategy = 'safe' | 'force';
 type AccountLike = { id: string; email: string };
+type InstanceSortField = 'createdAt' | 'lastLaunchedAt';
+type SortDirection = 'asc' | 'desc';
 
 interface InstancesManagerProps<TAccount extends AccountLike> {
   instanceStore: InstanceStoreState;
@@ -78,6 +82,8 @@ export function InstancesManager<TAccount extends AccountLike>({
   const [refreshing, setRefreshing] = useState(false);
   const [openInlineMenuId, setOpenInlineMenuId] = useState<string | null>(null);
   const [runningNoticeInstance, setRunningNoticeInstance] = useState<InstanceProfile | null>(null);
+  const [initGuideInstance, setInitGuideInstance] = useState<InstanceProfile | null>(null);
+  const [deleteConfirmInstance, setDeleteConfirmInstance] = useState<InstanceProfile | null>(null);
   const [showStrategyModal, setShowStrategyModal] = useState(false);
   const [restartStrategy, setRestartStrategy] = useState<RestartStrategy>(() => {
     const saved = localStorage.getItem(restartStrategyStorageKey);
@@ -92,6 +98,7 @@ export function InstancesManager<TAccount extends AccountLike>({
   const [formName, setFormName] = useState('');
   const [formPath, setFormPath] = useState('');
   const [formExtraArgs, setFormExtraArgs] = useState('');
+  const [formInitMode, setFormInitMode] = useState<InstanceInitMode>('copy');
   const [formBindAccountId, setFormBindAccountId] = useState<string>('');
   const [formCopySourceInstanceId, setFormCopySourceInstanceId] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
@@ -100,6 +107,8 @@ export function InstancesManager<TAccount extends AccountLike>({
   const [pathAuto, setPathAuto] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<InstanceSortField>('createdAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const appType = restartStrategyMode === 'codex' ? 'codex' : 'antigravity';
 
   useEffect(() => {
@@ -132,9 +141,11 @@ export function InstancesManager<TAccount extends AccountLike>({
       [...instances].sort((a, b) => {
         if (a.isDefault && !b.isDefault) return -1;
         if (!a.isDefault && b.isDefault) return 1;
-        return (b.createdAt || 0) - (a.createdAt || 0);
+        const av = sortField === 'createdAt' ? (a.createdAt || 0) : (a.lastLaunchedAt || 0);
+        const bv = sortField === 'createdAt' ? (b.createdAt || 0) : (b.lastLaunchedAt || 0);
+        return sortDirection === 'asc' ? av - bv : bv - av;
       }),
-    [instances],
+    [instances, sortDirection, sortField],
   );
 
   const defaultInstanceId = useMemo(() => {
@@ -181,6 +192,7 @@ export function InstancesManager<TAccount extends AccountLike>({
     setFormName('');
     setFormPath(showRoot && defaultRoot ? defaultRoot : '');
     setFormExtraArgs('');
+    setFormInitMode('copy');
     setFormBindAccountId('');
     setFormCopySourceInstanceId(defaultInstanceId);
     setFormError(null);
@@ -200,11 +212,23 @@ export function InstancesManager<TAccount extends AccountLike>({
     }
   }, [defaultInstanceId, editing, formCopySourceInstanceId, showModal]);
 
+  useEffect(() => {
+    if (editing) return;
+    if (formInitMode === 'empty') {
+      setFormBindAccountId('');
+      return;
+    }
+    if (!formCopySourceInstanceId) {
+      setFormCopySourceInstanceId(defaultInstanceId);
+    }
+  }, [defaultInstanceId, editing, formCopySourceInstanceId, formInitMode]);
+
   const openEditModal = (instance: InstanceProfile) => {
     setEditing(instance);
     setFormName(instance.isDefault ? t('instances.defaultName', '默认实例') : instance.name || '');
     setFormPath(instance.userDataDir || '');
     setFormExtraArgs(instance.extraArgs || '');
+    setFormInitMode('copy');
     setFormBindAccountId(instance.bindAccountId || '');
     setFormError(null);
     setPathAuto(false);
@@ -246,6 +270,7 @@ export function InstancesManager<TAccount extends AccountLike>({
     setFormError(null);
     setMessage(null);
     const isEditingDefault = Boolean(editing?.isDefault);
+    const isCreateEmpty = !editing && formInitMode === 'empty';
 
     if (!isEditingDefault) {
       if (!formName.trim()) {
@@ -260,13 +285,13 @@ export function InstancesManager<TAccount extends AccountLike>({
       }
     }
 
-    if (!editing && !formCopySourceInstanceId) {
+    if (!editing && !isCreateEmpty && !formCopySourceInstanceId) {
       setFormError(t('instances.form.copySourceRequired', '请选择复制来源实例'));
       setFormErrorTick((prev) => prev + 1);
       return;
     }
 
-    if (!formBindAccountId) {
+    if (!editing && !isCreateEmpty && !formBindAccountId) {
       setFormError(t('instances.form.bindRequired', '请选择要绑定的账号'));
       setFormErrorTick((prev) => prev + 1);
       return;
@@ -288,8 +313,11 @@ export function InstancesManager<TAccount extends AccountLike>({
         if (!isEditingDefault) {
           updatePayload.name = formName.trim();
         }
-        const nextBindId = formBindAccountId;
-        updatePayload.bindAccountId = nextBindId;
+        const canEditBind = !(editing.initialized === false && !isEditingDefault);
+        if (canEditBind) {
+          const nextBindId = formBindAccountId;
+          updatePayload.bindAccountId = nextBindId;
+        }
         if (isEditingDefault) {
           updatePayload.followLocalAccount = false;
         }
@@ -302,10 +330,15 @@ export function InstancesManager<TAccount extends AccountLike>({
           name: formName.trim(),
           userDataDir: formPath.trim(),
           extraArgs: formExtraArgs,
-          bindAccountId: formBindAccountId,
-          copySourceInstanceId: formCopySourceInstanceId,
+          initMode: formInitMode,
+          bindAccountId: isCreateEmpty ? null : formBindAccountId,
+          copySourceInstanceId: formCopySourceInstanceId || defaultInstanceId,
         });
-        setMessage({ text: t('instances.messages.created', '实例已创建') });
+        setMessage({
+          text: isCreateEmpty
+            ? t('instances.messages.emptyCreated', '空白实例已创建，请先启动一次后再绑定账号')
+            : t('instances.messages.created', '实例已创建'),
+        });
       }
       closeModal();
     } catch (e) {
@@ -315,26 +348,18 @@ export function InstancesManager<TAccount extends AccountLike>({
     }
   };
 
-  const handleDelete = async (instance: InstanceProfile) => {
-    try {
-      const confirmed = await confirmDialog(
-        t('instances.delete.message', '确认删除实例 {{name}}？将移除配置并删除实例目录。', {
-          name: instance.name,
-        }),
-        {
-          title: t('instances.delete.title', '删除实例'),
-          kind: 'warning',
-        },
-      );
-      if (!confirmed) return;
-    } catch {
-      // ignore dialog errors
-    }
+  const handleDelete = (instance: InstanceProfile) => {
+    setDeleteConfirmInstance(instance);
+  };
 
-    setActionLoading(instance.id);
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmInstance) return;
+    const target = deleteConfirmInstance;
+    setActionLoading(target.id);
     try {
-      await deleteInstance(instance.id);
+      await deleteInstance(target.id);
       setMessage({ text: t('instances.messages.deleted', '实例已删除') });
+      setDeleteConfirmInstance(null);
     } catch (e) {
       setMessage({ text: String(e), tone: 'error' });
     } finally {
@@ -356,6 +381,14 @@ export function InstancesManager<TAccount extends AccountLike>({
     return true;
   };
 
+  const triggerDelayedRefreshAfterStart = () => {
+    window.setTimeout(() => {
+      refreshInstances().catch(() => {
+        // ignore delayed refresh errors
+      });
+    }, 2000);
+  };
+
   const handleStart = async (instance: InstanceProfile) => {
     if (instance.running) {
       setRunningNoticeInstance(instance);
@@ -364,6 +397,7 @@ export function InstancesManager<TAccount extends AccountLike>({
     setActionLoading(instance.id);
     try {
       await startInstance(instance.id);
+      triggerDelayedRefreshAfterStart();
       setMessage({ text: t('instances.messages.started', '实例已启动') });
     } catch (e) {
       if (handleMissingPathError(e, instance.id)) {
@@ -423,6 +457,7 @@ export function InstancesManager<TAccount extends AccountLike>({
         await forceStopInstance(target.id);
         await startInstance(target.id);
       }
+      triggerDelayedRefreshAfterStart();
       setMessage({ text: t('instances.messages.started', '实例已启动') });
     } catch (e) {
       if (handleMissingPathError(e, target.id)) {
@@ -514,22 +549,97 @@ export function InstancesManager<TAccount extends AccountLike>({
     return instances.find((item) => item.id === formCopySourceInstanceId) || null;
   }, [defaultInstanceId, formCopySourceInstanceId, instances]);
 
-  type AccountSelectProps = {
+  type BaseAccountSelectProps = {
     value: string | null;
     onChange: (nextId: string | null) => void;
     allowUnbound?: boolean;
     allowFollowCurrent?: boolean;
     isFollowingCurrent?: boolean;
     onFollowCurrent?: () => void;
-    onOpenChange?: (open: boolean) => void;
     disabled?: boolean;
     missing?: boolean;
     placeholder?: string;
+  };
+
+  const renderAccountMenuItems = ({
+    value,
+    isFollowingCurrent = false,
+    allowFollowCurrent = false,
+    allowUnbound = false,
+    onFollowCurrent,
+    onChange,
+    onClose,
+    selectedAccount,
+  }: {
+    value: string | null;
+    isFollowingCurrent?: boolean;
+    allowFollowCurrent?: boolean;
+    allowUnbound?: boolean;
+    onFollowCurrent?: () => void;
+    onChange: (nextId: string | null) => void;
+    onClose: () => void;
+    selectedAccount: TAccount | null;
+  }) => (
+    <>
+      {allowFollowCurrent && (
+        <button
+          type="button"
+          className={`account-select-item ${isFollowingCurrent ? 'active' : ''}`}
+          onClick={() => {
+            if (onFollowCurrent) {
+              onFollowCurrent();
+            } else {
+              onChange(null);
+            }
+            onClose();
+          }}
+        >
+          <span className="account-select-email">
+            {t('instances.form.followCurrent', '跟随当前账号')}
+          </span>
+          {selectedAccount ? renderAccountQuotaPreview(selectedAccount) : null}
+        </button>
+      )}
+      {allowUnbound && (
+        <button
+          type="button"
+          className={`account-select-item ${!value && !isFollowingCurrent ? 'active' : ''}`}
+          onClick={() => {
+            onChange(null);
+            onClose();
+          }}
+        >
+          <span className="account-select-email muted">
+            {t('instances.form.unbound', '不绑定')}
+          </span>
+        </button>
+      )}
+      {accounts.map((account) => (
+        <button
+          type="button"
+          key={account.id}
+          className={`account-select-item ${value === account.id && !isFollowingCurrent ? 'active' : ''}`}
+          onClick={() => {
+            onChange(account.id);
+            onClose();
+          }}
+        >
+          <span className="account-select-email" title={account.email}>
+            {account.email}
+          </span>
+          {renderAccountQuotaPreview(account)}
+        </button>
+      ))}
+    </>
+  );
+
+  type InlineAccountSelectProps = BaseAccountSelectProps & {
+    onOpenChange?: (open: boolean) => void;
     instanceId?: string;
     currentOpenId?: string | null;
   };
 
-  const AccountSelect = ({
+  const InlineAccountSelect = ({
     value,
     onChange,
     allowUnbound = false,
@@ -542,16 +652,31 @@ export function InstancesManager<TAccount extends AccountLike>({
     placeholder,
     instanceId,
     currentOpenId,
-  }: AccountSelectProps) => {
+  }: InlineAccountSelectProps) => {
     const menuRef = useRef<HTMLDivElement | null>(null);
-    
-    // 通过 currentOpenId 控制打开状态
+    const triggerRef = useRef<HTMLButtonElement | null>(null);
+    const portalMenuRef = useRef<HTMLDivElement | null>(null);
     const isOpen = instanceId ? currentOpenId === instanceId : false;
+    const [portalPos, setPortalPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
     useEffect(() => {
       if (!isOpen) return;
+      const updatePortalPos = () => {
+        const rect = triggerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        setPortalPos({
+          top: rect.bottom + 8,
+          left: rect.left,
+          width: rect.width,
+        });
+      };
+      updatePortalPos();
+
       const handleClick = (event: MouseEvent) => {
-        if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        const target = event.target as Node;
+        const inTrigger = Boolean(menuRef.current && menuRef.current.contains(target));
+        const inPortalMenu = Boolean(portalMenuRef.current && portalMenuRef.current.contains(target));
+        if (!inTrigger && !inPortalMenu) {
           onOpenChange?.(false);
         }
       };
@@ -559,9 +684,13 @@ export function InstancesManager<TAccount extends AccountLike>({
       const timer = setTimeout(() => {
         document.addEventListener('click', handleClick);
       }, 0);
+      window.addEventListener('resize', updatePortalPos);
+      window.addEventListener('scroll', updatePortalPos, true);
       return () => {
         clearTimeout(timer);
         document.removeEventListener('click', handleClick);
+        window.removeEventListener('resize', updatePortalPos);
+        window.removeEventListener('scroll', updatePortalPos, true);
       };
     }, [isOpen, onOpenChange]);
 
@@ -584,6 +713,7 @@ export function InstancesManager<TAccount extends AccountLike>({
     return (
       <div className={`account-select ${disabled ? 'disabled' : ''}`} ref={menuRef}>
         <button
+          ref={triggerRef}
           type="button"
           className={`account-select-trigger ${isOpen ? 'open' : ''}`}
           onClick={() => {
@@ -606,57 +736,123 @@ export function InstancesManager<TAccount extends AccountLike>({
             <ChevronDown size={14} />
           </span>
         </button>
-        {isOpen && !disabled && (
+        {isOpen && !disabled && portalPos
+          ? createPortal(
+              <div
+                className="instances-page account-select-portal-root"
+                style={{
+                  position: 'fixed',
+                  top: `${portalPos.top}px`,
+                  left: `${portalPos.left}px`,
+                  width: `${portalPos.width}px`,
+                  zIndex: 9999,
+                }}
+              >
+                <div ref={portalMenuRef} className="account-select-menu">
+                  {renderAccountMenuItems({
+                    value,
+                    isFollowingCurrent,
+                    allowFollowCurrent,
+                    allowUnbound,
+                    onFollowCurrent,
+                    onChange,
+                    onClose: () => onOpenChange?.(false),
+                    selectedAccount,
+                  })}
+                </div>
+              </div>,
+              document.body,
+            )
+          : null}
+      </div>
+    );
+  };
+
+  type FormAccountSelectProps = BaseAccountSelectProps;
+
+  const FormAccountSelect = ({
+    value,
+    onChange,
+    allowUnbound = false,
+    allowFollowCurrent = false,
+    isFollowingCurrent = false,
+    onFollowCurrent,
+    disabled = false,
+    missing = false,
+    placeholder,
+  }: FormAccountSelectProps) => {
+    const menuRef = useRef<HTMLDivElement | null>(null);
+    const [open, setOpen] = useState(false);
+
+    useEffect(() => {
+      if (!open) return;
+      const handleClick = (event: MouseEvent) => {
+        if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+          setOpen(false);
+        }
+      };
+      const timer = setTimeout(() => {
+        document.addEventListener('click', handleClick);
+      }, 0);
+      return () => {
+        clearTimeout(timer);
+        document.removeEventListener('click', handleClick);
+      };
+    }, [open]);
+
+    useEffect(() => {
+      if (disabled && open) {
+        setOpen(false);
+      }
+    }, [disabled, open]);
+
+    const selectedAccount = accounts.find((item) => item.id === value) || null;
+    const basePlaceholder =
+      placeholder || (allowUnbound ? t('instances.form.unbound', '不绑定') : t('instances.form.selectAccount', '选择账号'));
+    const selectedLabel = missing
+      ? t('instances.quota.accountMissing', '账号不存在')
+      : isFollowingCurrent
+        ? selectedAccount?.email || t('instances.form.followCurrent', '跟随当前账号')
+        : selectedAccount?.email || basePlaceholder;
+    const selectedQuota = selectedAccount ? renderAccountQuotaPreview(selectedAccount) : null;
+
+    return (
+      <div className={`account-select ${disabled ? 'disabled' : ''}`} ref={menuRef}>
+        <button
+          type="button"
+          className={`account-select-trigger ${open ? 'open' : ''}`}
+          onClick={() => {
+            if (disabled) return;
+            setOpen((prev) => !prev);
+          }}
+          disabled={disabled}
+        >
+          <span className="account-select-content">
+            <span className="account-select-label" title={selectedLabel}>
+              {selectedLabel}
+            </span>
+            {selectedQuota && (
+              <span className="account-select-meta">
+                {selectedQuota}
+              </span>
+            )}
+          </span>
+          <span className="account-select-arrow">
+            <ChevronDown size={14} />
+          </span>
+        </button>
+        {open && !disabled && (
           <div className="account-select-menu">
-            {allowFollowCurrent && (
-              <button
-                type="button"
-                className={`account-select-item ${isFollowingCurrent ? 'active' : ''}`}
-                onClick={() => {
-                  if (onFollowCurrent) {
-                    onFollowCurrent();
-                  } else {
-                    onChange(null);
-                  }
-                  onOpenChange?.(false);
-                }}
-              >
-                <span className="account-select-email">
-                  {t('instances.form.followCurrent', '跟随当前账号')}
-                </span>
-                {selectedAccount ? renderAccountQuotaPreview(selectedAccount) : null}
-              </button>
-            )}
-            {allowUnbound && (
-              <button
-                type="button"
-                className={`account-select-item ${!value && !isFollowingCurrent ? 'active' : ''}`}
-                onClick={() => {
-                  onChange(null);
-                  onOpenChange?.(false);
-                }}
-              >
-                <span className="account-select-email muted">
-                  {t('instances.form.unbound', '不绑定')}
-                </span>
-              </button>
-            )}
-            {accounts.map((account) => (
-              <button
-                type="button"
-                key={account.id}
-                className={`account-select-item ${value === account.id && !isFollowingCurrent ? 'active' : ''}`}
-                onClick={() => {
-                  onChange(account.id);
-                  onOpenChange?.(false);
-                }}
-              >
-                <span className="account-select-email" title={account.email}>
-                  {account.email}
-                </span>
-                {renderAccountQuotaPreview(account)}
-              </button>
-            ))}
+            {renderAccountMenuItems({
+              value,
+              isFollowingCurrent,
+              allowFollowCurrent,
+              allowUnbound,
+              onFollowCurrent,
+              onChange,
+              onClose: () => setOpen(false),
+              selectedAccount,
+            })}
           </div>
         )}
       </div>
@@ -760,7 +956,31 @@ export function InstancesManager<TAccount extends AccountLike>({
     setFormBindAccountId(nextId ?? '');
   };
 
+  const handleInitGuideStart = async () => {
+    if (!initGuideInstance) return;
+    const target = initGuideInstance;
+    setActionLoading(target.id);
+    try {
+      await startInstance(target.id);
+      triggerDelayedRefreshAfterStart();
+      setInitGuideInstance(null);
+      setOpenInlineMenuId(target.id);
+      setMessage({ text: t('instances.messages.started', '实例已启动') });
+    } catch (e) {
+      if (handleMissingPathError(e, target.id)) {
+        return;
+      }
+      setMessage({ text: String(e), tone: 'error' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleInlineBindChange = async (instance: InstanceProfile, nextId: string | null) => {
+    if (instance.initialized === false) {
+      setInitGuideInstance(instance);
+      return;
+    }
     if (!nextId) return;
     const sameSelection = (instance.bindAccountId || null) === nextId;
     if (sameSelection && !instance.followLocalAccount) return;
@@ -802,6 +1022,29 @@ export function InstancesManager<TAccount extends AccountLike>({
               onChange={(event) => setSearchQuery(event.target.value)}
             />
           </div>
+          <div className="sort-select">
+            <ArrowDownWideNarrow size={14} className="sort-icon" />
+            <select
+              value={sortField}
+              onChange={(event) => setSortField(event.target.value as InstanceSortField)}
+              aria-label={t('instances.sort.label', '排序')}
+            >
+              <option value="createdAt">{t('instances.sort.createdAt', '按创建时间')}</option>
+              <option value="lastLaunchedAt">{t('instances.sort.lastLaunchedAt', '按启动时间')}</option>
+            </select>
+          </div>
+          <button
+            className="sort-direction-btn"
+            onClick={() => setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+            title={
+              sortDirection === 'asc'
+                ? t('instances.sort.ascTooltip', '当前：正序，点击切换为倒序')
+                : t('instances.sort.descTooltip', '当前：倒序，点击切换为正序')
+            }
+            aria-label={t('instances.sort.toggleDirection', '切换排序方向')}
+          >
+            {sortDirection === 'asc' ? '⬆' : '⬇'}
+          </button>
         </div>
         <div className="toolbar-right">
           <button className="btn btn-primary" onClick={openCreateModal} title={t('instances.actions.create', '新建实例')}>
@@ -858,12 +1101,14 @@ export function InstancesManager<TAccount extends AccountLike>({
           <div className="instances-list-header">
             <div></div>
             <div>{t('instances.columns.instance', '实例')}</div>
+            <div></div>
             <div>{t('instances.columns.email', '账号')}</div>
             <div>PID</div>
             <div>{t('instances.columns.actions', '操作')}</div>
           </div>
           {filteredInstances.map((instance) => {
             const { missing: accountMissing } = resolveAccount(instance);
+            const accountDisabledByInit = !instance.isDefault && instance.initialized === false;
             return (
               <div
                 className={`instance-item ${openInlineMenuId === instance.id ? 'dropdown-open' : ''}`}
@@ -877,17 +1122,6 @@ export function InstancesManager<TAccount extends AccountLike>({
                     <span className="instance-name">
                       {instance.isDefault ? t('instances.defaultName', '默认实例') : instance.name}
                     </span>
-                    <span
-                      className={`instance-status ${
-                        restartingAll ? 'restarting' : instance.running ? 'running' : 'stopped'
-                      }`}
-                    >
-                      {restartingAll
-                        ? t('instances.status.restarting', '重启中')
-                        : instance.running
-                          ? t('instances.status.running', '运行中')
-                          : t('instances.status.stopped', '未运行')}
-                    </span>
                   </div>
                   {instance.extraArgs?.trim() && (
                     <div className="instance-sub-info">
@@ -899,23 +1133,47 @@ export function InstancesManager<TAccount extends AccountLike>({
                   )}
                 </div>
 
+                <div className="instance-status-cell">
+                  <span
+                    className={`instance-status ${
+                      restartingAll ? 'restarting' : instance.running ? 'running' : 'stopped'
+                    }`}
+                  >
+                    {restartingAll
+                      ? t('instances.status.restarting', '重启中')
+                      : instance.running
+                        ? t('instances.status.running', '运行中')
+                        : t('instances.status.stopped', '未运行')}
+                  </span>
+                </div>
+
                 <div className="instance-account">
-                  <AccountSelect
-                    value={instance.bindAccountId || null}
-                    onChange={(nextId) => handleInlineBindChange(instance, nextId)}
-                    disabled={actionLoading === instance.id}
-                    missing={accountMissing}
-                    placeholder={t('instances.labels.unbound', '未绑定')}
-                    instanceId={instance.id}
-                    currentOpenId={openInlineMenuId}
-                    onOpenChange={(open) => {
-                      setOpenInlineMenuId(open ? instance.id : null);
-                    }}
-                  />
+                  {accountDisabledByInit ? (
+                    <button
+                      type="button"
+                      className="instance-account-disabled"
+                      onClick={() => setInitGuideInstance(instance)}
+                    >
+                      {t('instances.labels.pendingInit', '待初始化（先启动一次）')}
+                    </button>
+                  ) : (
+                    <InlineAccountSelect
+                      value={instance.bindAccountId || null}
+                      onChange={(nextId) => handleInlineBindChange(instance, nextId)}
+                      disabled={actionLoading === instance.id}
+                      missing={accountMissing}
+                      placeholder={t('instances.labels.unbound', '未绑定')}
+                      instanceId={instance.id}
+                      currentOpenId={openInlineMenuId}
+                      onOpenChange={(open) => {
+                        setOpenInlineMenuId(open ? instance.id : null);
+                      }}
+                    />
+                  )}
                 </div>
 
                 <div className="instance-pid">
-                  <span className="pid-value">{instance.lastPid ?? '-'}</span>
+                  {instance.running ? <span className="pid-value">{instance.lastPid ?? '-'}</span> : null}
                 </div>
 
                 <div className="instance-actions">
@@ -955,6 +1213,89 @@ export function InstancesManager<TAccount extends AccountLike>({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {initGuideInstance && (
+        <div className="modal-overlay" onClick={() => setInitGuideInstance(null)}>
+          <div className="modal instance-init-guide-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{t('instances.initGuide.title', '实例尚未初始化')}</h2>
+              <button
+                className="modal-close"
+                onClick={() => setInitGuideInstance(null)}
+                aria-label={t('common.close', '关闭')}
+              >
+                <X />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="form-hint">
+                {t(
+                  'instances.initGuide.desc',
+                  '该实例为“空白实例”，当前仅创建了目录，尚未生成实例数据。',
+                )}
+              </p>
+              <div className="instance-init-guide-box">
+                {t(
+                  'instances.initGuide.tip',
+                  '请先启动一次实例，初始化完成后即可绑定账号。',
+                )}
+              </div>
+              <div className="form-group">
+                <label>{t('instances.runningDialog.pathLabel', '实例目录')}</label>
+                <input className="form-input" value={initGuideInstance.userDataDir} disabled />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setInitGuideInstance(null)}>
+                {t('common.cancel', '取消')}
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleInitGuideStart}
+                disabled={actionLoading === initGuideInstance.id}
+              >
+                {t('instances.initGuide.startNow', '立即启动')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirmInstance && (
+        <div className="modal-overlay" onClick={() => setDeleteConfirmInstance(null)}>
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{t('instances.delete.title', '删除实例')}</h2>
+              <button
+                className="modal-close"
+                onClick={() => setDeleteConfirmInstance(null)}
+                aria-label={t('common.close', '关闭')}
+              >
+                <X />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="form-hint">
+                {t('instances.delete.message', '确认删除实例 {{name}}？将移除配置并删除实例目录。', {
+                  name: deleteConfirmInstance.name,
+                })}
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setDeleteConfirmInstance(null)}>
+                {t('common.cancel', '取消')}
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={handleConfirmDelete}
+                disabled={actionLoading === deleteConfirmInstance.id}
+              >
+                {t('common.delete', '删除')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1217,6 +1558,40 @@ export function InstancesManager<TAccount extends AccountLike>({
 
               {!editing && (
                 <div className="form-group">
+                  <label>{t('instances.form.initMode', '初始化方式')}</label>
+                  <div className="instance-init-mode-group">
+                    <label className={`instance-init-mode-option ${formInitMode === 'copy' ? 'active' : ''}`}>
+                      <input
+                        type="radio"
+                        name="instance-init-mode"
+                        checked={formInitMode === 'copy'}
+                        onChange={() => setFormInitMode('copy')}
+                      />
+                      <span>{t('instances.form.initModeCopy', '复制来源实例（默认）')}</span>
+                    </label>
+                    <label className={`instance-init-mode-option ${formInitMode === 'empty' ? 'active' : ''}`}>
+                      <input
+                        type="radio"
+                        name="instance-init-mode"
+                        checked={formInitMode === 'empty'}
+                        onChange={() => setFormInitMode('empty')}
+                      />
+                      <span>{t('instances.form.initModeEmpty', '空白实例（不复制）')}</span>
+                    </label>
+                  </div>
+                  {formInitMode === 'empty' && (
+                    <div className="instance-init-note">
+                      {t(
+                        'instances.form.emptyInitHint',
+                        '选择无需复制实例，只会创建空白目录。需要启动一次后，才可以进行账号绑定。',
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!editing && formInitMode === 'copy' && (
+                <div className="form-group">
                   <label>{t('instances.form.copySource', '复制来源实例')}</label>
                   <InstanceSelect
                     value={formCopySourceInstanceId}
@@ -1237,18 +1612,52 @@ export function InstancesManager<TAccount extends AccountLike>({
               {!editing ? (
                 <div className="form-group">
                   <label>{t('instances.form.bindInject', '绑定账号')}</label>
-                  <AccountSelect value={formBindAccountId || null} onChange={handleFormAccountChange} />
+                  {formInitMode === 'empty' ? (
+                    <>
+                      <FormAccountSelect
+                        value={null}
+                        onChange={() => {}}
+                        disabled
+                        placeholder={t('instances.form.bindAfterInit', '初始化后可绑定')}
+                      />
+                      <p className="form-hint">
+                        {t(
+                          'instances.form.bindDisabledHint',
+                          '空白实例需先启动一次生成实例数据后，才可绑定账号。',
+                        )}
+                      </p>
+                    </>
+                  ) : (
+                    <FormAccountSelect value={formBindAccountId || null} onChange={handleFormAccountChange} />
+                  )}
                 </div>
               ) : (
                 <div className="form-group">
                   <label>{t('instances.form.bindAccount', '绑定账号')}</label>
-                  <AccountSelect
-                    value={formBindAccountId || null}
-                    onChange={handleFormAccountChange}
-                    missing={Boolean(
-                      formBindAccountId && !accounts.find((item) => item.id === formBindAccountId),
-                    )}
-                  />
+                  {editing?.initialized === false && !editing.isDefault ? (
+                    <>
+                      <FormAccountSelect
+                        value={null}
+                        onChange={() => {}}
+                        disabled
+                        placeholder={t('instances.form.bindAfterInit', '初始化后可绑定')}
+                      />
+                      <p className="form-hint">
+                        {t(
+                          'instances.form.bindDisabledHint',
+                          '空白实例需先启动一次生成实例数据后，才可绑定账号。',
+                        )}
+                      </p>
+                    </>
+                  ) : (
+                    <FormAccountSelect
+                      value={formBindAccountId || null}
+                      onChange={handleFormAccountChange}
+                      missing={Boolean(
+                        formBindAccountId && !accounts.find((item) => item.id === formBindAccountId),
+                      )}
+                    />
+                  )}
                 </div>
               )}
 

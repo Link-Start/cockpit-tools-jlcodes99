@@ -839,7 +839,8 @@
       "bindAccount": "Gekoppeltes Konto",
       "unbound": "Nicht gekoppelt",
       "quota": "Quota",
-      "lastLaunched": "Zuletzt gestartet"
+      "lastLaunched": "Zuletzt gestartet",
+      "pendingInit": "Warten auf Initialisierung (zuerst einmal starten)"
     },
     "columns": {
       "instance": "Instanz",
@@ -875,7 +876,13 @@
       "extraArgsDesc": "Argumente durch Leerzeichen trennen, Anführungszeichen werden unterstützt",
       "nameRequired": "Bitte geben Sie einen Instanznamen ein",
       "pathRequired": "Bitte wählen Sie ein Instanzverzeichnis aus",
-      "bindRequired": "Bitte wählen Sie ein Konto zum Koppeln aus"
+      "bindRequired": "Bitte wählen Sie ein Konto zum Koppeln aus",
+      "initMode": "Initialisierungsmodus",
+      "initModeCopy": "Von Quellinstanz kopieren (Standard)",
+      "initModeEmpty": "Leere Instanz (ohne Kopieren)",
+      "emptyInitHint": "Bei Auswahl ohne Kopieren wird nur ein leeres Verzeichnis erstellt. Starten Sie die Instanz einmal, bevor Sie ein Konto binden.",
+      "bindAfterInit": "Nach Initialisierung bindbar",
+      "bindDisabledHint": "Bei einer leeren Instanz zuerst einmal starten, damit Instanzdaten erstellt werden, danach Konto binden."
     },
     "quota": {
       "unbound": "Nicht gekoppelt",
@@ -892,7 +899,8 @@
       "restartedAll": "Laufende Instanzen neu gestartet",
       "closedAll": "Alle Instanzen gestoppt",
       "allAlreadyRunning": "Alle Instanzen laufen bereits",
-      "noneRunning": "Keine laufenden Instanzen gefunden"
+      "noneRunning": "Keine laufenden Instanzen gefunden",
+      "emptyCreated": "Leere Instanz erstellt. Bitte einmal starten, bevor Sie ein Konto binden."
     },
     "runningDialog": {
       "title": "Instanz läuft bereits",
@@ -941,6 +949,20 @@
     "modal": {
       "createTitle": "Neue Instanz",
       "editTitle": "Instanz bearbeiten"
+    },
+    "sort": {
+      "label": "Sortierung",
+      "createdAt": "Nach Erstellungszeit",
+      "lastLaunchedAt": "Nach Startzeit",
+      "ascTooltip": "Aktuell: aufsteigend, klicken zum Umschalten auf absteigend",
+      "descTooltip": "Aktuell: absteigend, klicken zum Umschalten auf aufsteigend",
+      "toggleDirection": "Sortierrichtung wechseln"
+    },
+    "initGuide": {
+      "title": "Instanz noch nicht initialisiert",
+      "desc": "Dies ist eine leere Instanz. Aktuell wurde nur das Verzeichnis erstellt, Instanzdaten wurden noch nicht erzeugt.",
+      "tip": "Bitte starten Sie die Instanz einmal. Nach Abschluss der Initialisierung können Sie ein Konto binden.",
+      "startNow": "Jetzt starten"
     }
   },
   "appPath": {

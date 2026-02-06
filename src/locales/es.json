@@ -839,7 +839,8 @@
       "bindAccount": "Cuenta vinculada",
       "unbound": "No vinculada",
       "quota": "Cuota",
-      "lastLaunched": "Último inicio"
+      "lastLaunched": "Último inicio",
+      "pendingInit": "Pendiente de inicialización (iníciala una vez primero)"
     },
     "columns": {
       "instance": "Instancia",
@@ -875,7 +876,13 @@
       "extraArgsDesc": "Separar argumentos con espacios, se admiten comillas",
       "nameRequired": "Ingrese un nombre de instancia",
       "pathRequired": "Seleccione un directorio de instancia",
-      "bindRequired": "Seleccione una cuenta para vincular"
+      "bindRequired": "Seleccione una cuenta para vincular",
+      "initMode": "Modo de inicialización",
+      "initModeCopy": "Copiar instancia de origen (predeterminado)",
+      "initModeEmpty": "Instancia en blanco (sin copiar)",
+      "emptyInitHint": "Si eliges no copiar, solo se creará un directorio vacío. Debes iniciarla una vez antes de vincular una cuenta.",
+      "bindAfterInit": "Se puede vincular después de inicializar",
+      "bindDisabledHint": "En una instancia en blanco, iníciala una vez para generar datos y luego vincula la cuenta."
     },
     "quota": {
       "unbound": "Cuenta no vinculada",
@@ -892,7 +899,8 @@
       "restartedAll": "Se reiniciaron las instancias en ejecución",
       "closedAll": "Se detuvieron todas las instancias",
       "allAlreadyRunning": "Todas las instancias ya están en ejecución",
-      "noneRunning": "No se encontraron instancias en ejecución"
+      "noneRunning": "No se encontraron instancias en ejecución",
+      "emptyCreated": "Se creó una instancia en blanco. Iníciala una vez antes de vincular una cuenta."
     },
     "runningDialog": {
       "title": "La instancia ya está en ejecución",
@@ -941,6 +949,20 @@
     "modal": {
       "createTitle": "Nueva instancia",
       "editTitle": "Editar instancia"
+    },
+    "sort": {
+      "label": "Ordenar",
+      "createdAt": "Por fecha de creación",
+      "lastLaunchedAt": "Por fecha de inicio",
+      "ascTooltip": "Actual: ascendente, haz clic para cambiar a descendente",
+      "descTooltip": "Actual: descendente, haz clic para cambiar a ascendente",
+      "toggleDirection": "Cambiar dirección de orden"
+    },
+    "initGuide": {
+      "title": "La instancia aún no está inicializada",
+      "desc": "Esta es una instancia en blanco. Actualmente solo se creó el directorio y aún no se generaron los datos de la instancia.",
+      "tip": "Inicia la instancia una vez primero. Cuando termine la inicialización, podrás vincular una cuenta.",
+      "startNow": "Iniciar ahora"
     }
   },
   "appPath": {

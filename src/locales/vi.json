@@ -839,7 +839,8 @@
       "bindAccount": "Tài khoản liên kết",
       "unbound": "Chưa liên kết",
       "quota": "Hạn ngạch",
-      "lastLaunched": "Lần chạy cuối"
+      "lastLaunched": "Lần chạy cuối",
+      "pendingInit": "Chờ khởi tạo (hãy chạy một lần trước)"
     },
     "columns": {
       "instance": "Phiên bản",
@@ -875,7 +876,13 @@
       "extraArgsDesc": "Phân cách các đối số bằng khoảng trắng, hỗ trợ dấu ngoặc kép",
       "nameRequired": "Vui lòng nhập tên phiên bản",
       "pathRequired": "Vui lòng chọn thư mục phiên bản",
-      "bindRequired": "Vui lòng chọn một tài khoản để liên kết"
+      "bindRequired": "Vui lòng chọn một tài khoản để liên kết",
+      "initMode": "Chế độ khởi tạo",
+      "initModeCopy": "Sao chép từ phiên bản nguồn (mặc định)",
+      "initModeEmpty": "Phiên bản trống (không sao chép)",
+      "emptyInitHint": "Khi chọn không sao chép, chỉ tạo thư mục trống. Cần khởi chạy một lần trước khi liên kết tài khoản.",
+      "bindAfterInit": "Có thể liên kết sau khi khởi tạo",
+      "bindDisabledHint": "Với phiên bản trống, hãy khởi chạy một lần để tạo dữ liệu rồi mới liên kết tài khoản."
     },
     "quota": {
       "unbound": "Tài khoản chưa liên kết",
@@ -892,7 +899,8 @@
       "restartedAll": "Các phiên bản đang chạy đã được khởi động lại",
       "closedAll": "Tất cả các phiên bản đã được dừng",
       "allAlreadyRunning": "Tất cả các phiên bản đã đang chạy",
-      "noneRunning": "Không tìm thấy phiên bản nào đang chạy"
+      "noneRunning": "Không tìm thấy phiên bản nào đang chạy",
+      "emptyCreated": "Đã tạo phiên bản trống. Hãy khởi chạy một lần trước khi liên kết tài khoản."
     },
     "runningDialog": {
       "title": "Phiên bản đã đang chạy",
@@ -941,6 +949,20 @@
     "modal": {
       "createTitle": "Tạo phiên bản mới",
       "editTitle": "Chỉnh sửa phiên bản"
+    },
+    "sort": {
+      "label": "Sắp xếp",
+      "createdAt": "Theo thời gian tạo",
+      "lastLaunchedAt": "Theo thời gian khởi chạy",
+      "ascTooltip": "Hiện tại: tăng dần, bấm để chuyển sang giảm dần",
+      "descTooltip": "Hiện tại: giảm dần, bấm để chuyển sang tăng dần",
+      "toggleDirection": "Chuyển hướng sắp xếp"
+    },
+    "initGuide": {
+      "title": "Phiên bản chưa được khởi tạo",
+      "desc": "Đây là \"phiên bản trống\". Hiện tại chỉ mới tạo thư mục, dữ liệu phiên bản vẫn chưa được tạo.",
+      "tip": "Vui lòng khởi chạy phiên bản một lần trước. Sau khi khởi tạo xong, bạn có thể liên kết tài khoản.",
+      "startNow": "Khởi chạy ngay"
     }
   },
   "appPath": {

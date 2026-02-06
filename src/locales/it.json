@@ -839,7 +839,8 @@
       "bindAccount": "Account collegato",
       "unbound": "Non collegato",
       "quota": "Quota",
-      "lastLaunched": "Ultimo avvio"
+      "lastLaunched": "Ultimo avvio",
+      "pendingInit": "In attesa di inizializzazione (avvia prima una volta)"
     },
     "columns": {
       "instance": "Istanza",
@@ -875,7 +876,13 @@
       "extraArgsDesc": "Separa gli argomenti con spazi, le virgolette sono supportate",
       "nameRequired": "Inserisci un nome istanza",
       "pathRequired": "Seleziona una directory istanza",
-      "bindRequired": "Seleziona un account da collegare"
+      "bindRequired": "Seleziona un account da collegare",
+      "initMode": "Modalità di inizializzazione",
+      "initModeCopy": "Copia dall'istanza sorgente (predefinito)",
+      "initModeEmpty": "Istanza vuota (senza copia)",
+      "emptyInitHint": "Se scegli senza copia, verrà creata solo una cartella vuota. Avvia una volta prima di collegare un account.",
+      "bindAfterInit": "Collegabile dopo l'inizializzazione",
+      "bindDisabledHint": "Per un'istanza vuota, avviala una volta per generare i dati e poi collega l'account."
     },
     "quota": {
       "unbound": "Account non collegato",
@@ -892,7 +899,8 @@
       "restartedAll": "Istanze in esecuzione riavviate",
       "closedAll": "Tutte le istanze sono state fermate",
       "allAlreadyRunning": "Tutte le istanze sono già in esecuzione",
-      "noneRunning": "Nessuna istanza in esecuzione trovata"
+      "noneRunning": "Nessuna istanza in esecuzione trovata",
+      "emptyCreated": "Istanza vuota creata. Avviala una volta prima di collegare un account."
     },
     "runningDialog": {
       "title": "L'istanza è già in esecuzione",
@@ -941,6 +949,20 @@
     "modal": {
       "createTitle": "Nuova istanza",
       "editTitle": "Modifica istanza"
+    },
+    "sort": {
+      "label": "Ordinamento",
+      "createdAt": "Per data di creazione",
+      "lastLaunchedAt": "Per data di avvio",
+      "ascTooltip": "Attuale: crescente, fai clic per passare a decrescente",
+      "descTooltip": "Attuale: decrescente, fai clic per passare a crescente",
+      "toggleDirection": "Cambia direzione ordinamento"
+    },
+    "initGuide": {
+      "title": "Istanza non ancora inizializzata",
+      "desc": "Questa è un'istanza vuota. Al momento è stata creata solo la cartella e i dati dell'istanza non sono ancora stati generati.",
+      "tip": "Avvia prima l'istanza una volta. Al termine dell'inizializzazione potrai collegare un account.",
+      "startNow": "Avvia ora"
     }
   },
   "appPath": {

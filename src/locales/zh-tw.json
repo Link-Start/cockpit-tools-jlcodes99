@@ -839,7 +839,8 @@
       "bindAccount": "綁定帳號",
       "unbound": "未綁定",
       "quota": "額度狀態",
-      "lastLaunched": "最近啟動"
+      "lastLaunched": "最近啟動",
+      "pendingInit": "待初始化（請先啟動一次）"
     },
     "columns": {
       "instance": "實例",
@@ -875,7 +876,13 @@
       "extraArgsDesc": "多個參數請用空格分隔，支持引號",
       "nameRequired": "請輸入實例名稱",
       "pathRequired": "請選擇實例目錄",
-      "bindRequired": "請選擇要綁定的帳號"
+      "bindRequired": "請選擇要綁定的帳號",
+      "initMode": "初始化方式",
+      "initModeCopy": "複製來源實例（預設）",
+      "initModeEmpty": "空白實例（不複製）",
+      "emptyInitHint": "選擇不複製實例時，只會建立空白目錄。需先啟動一次後，才可綁定帳號。",
+      "bindAfterInit": "初始化後可綁定",
+      "bindDisabledHint": "空白實例需先啟動一次產生資料後，才可綁定帳號。"
     },
     "quota": {
       "unbound": "未綁定帳號",
@@ -892,7 +899,8 @@
       "restartedAll": "已重啟運行中的實例",
       "closedAll": "已停止所有實例",
       "allAlreadyRunning": "所有實例均已在運行中",
-      "noneRunning": "未找到正在運行的實例"
+      "noneRunning": "未找到正在運行的實例",
+      "emptyCreated": "空白實例已建立，請先啟動一次後再綁定帳號"
     },
     "runningDialog": {
       "title": "實例已在運行",
@@ -941,6 +949,20 @@
     "modal": {
       "createTitle": "新增實例",
       "editTitle": "編輯實例"
+    },
+    "sort": {
+      "label": "排序",
+      "createdAt": "按建立時間",
+      "lastLaunchedAt": "按啟動時間",
+      "ascTooltip": "目前：正序，點擊切換為倒序",
+      "descTooltip": "目前：倒序，點擊切換為正序",
+      "toggleDirection": "切換排序方向"
+    },
+    "initGuide": {
+      "title": "實例尚未初始化",
+      "desc": "此實例為「空白實例」，目前僅建立目錄，尚未產生實例資料。",
+      "tip": "請先啟動一次實例，初始化完成後即可綁定帳號。",
+      "startNow": "立即啟動"
     }
   },
   "appPath": {

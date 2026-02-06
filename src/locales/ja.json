@@ -839,7 +839,8 @@
       "bindAccount": "紐付けアカウント",
       "unbound": "未紐付け",
       "quota": "クォータ",
-      "lastLaunched": "最終起動"
+      "lastLaunched": "最終起動",
+      "pendingInit": "初期化待ち（先に一度起動してください）"
     },
     "columns": {
       "instance": "インスタンス",
@@ -875,7 +876,13 @@
       "extraArgsDesc": "引数をスペースで区切ります。引用符もサポートされています",
       "nameRequired": "インスタンス名を入力してください",
       "pathRequired": "インスタンスディレクトリを選択してください",
-      "bindRequired": "紐付けるアカウントを選択してください"
+      "bindRequired": "紐付けるアカウントを選択してください",
+      "initMode": "初期化方式",
+      "initModeCopy": "元インスタンスをコピー（デフォルト）",
+      "initModeEmpty": "空のインスタンス（コピーしない）",
+      "emptyInitHint": "コピーしないを選ぶと空のディレクトリのみ作成されます。アカウントを紐付ける前に一度起動してください。",
+      "bindAfterInit": "初期化後に紐付け可能",
+      "bindDisabledHint": "空のインスタンスは、データ生成のために先に一度起動してからアカウントを紐付けてください。"
     },
     "quota": {
       "unbound": "紐付けアカウントなし",
@@ -892,7 +899,8 @@
       "restartedAll": "実行中のインスタンスを再起動しました",
       "closedAll": "すべてのインスタンスを閉じました",
       "allAlreadyRunning": "すべてのインスタンスが既に実行中です",
-      "noneRunning": "実行中のインスタンスが見つかりません"
+      "noneRunning": "実行中のインスタンスが見つかりません",
+      "emptyCreated": "空のインスタンスを作成しました。アカウントを紐付ける前に一度起動してください。"
     },
     "runningDialog": {
       "title": "インスタンスは既に実行中です",
@@ -941,6 +949,20 @@
     "modal": {
       "createTitle": "新規インスタンス",
       "editTitle": "インスタンスを編集"
+    },
+    "sort": {
+      "label": "並び替え",
+      "createdAt": "作成日時順",
+      "lastLaunchedAt": "起動日時順",
+      "ascTooltip": "現在: 昇順、クリックで降順に切り替え",
+      "descTooltip": "現在: 降順、クリックで昇順に切り替え",
+      "toggleDirection": "並び順の方向を切り替え"
+    },
+    "initGuide": {
+      "title": "インスタンスは未初期化です",
+      "desc": "このインスタンスは「空のインスタンス」です。現在はディレクトリのみ作成され、インスタンスデータはまだ生成されていません。",
+      "tip": "先にインスタンスを一度起動してください。初期化完了後にアカウントを紐付けできます。",
+      "startNow": "今すぐ起動"
     }
   },
   "appPath": {

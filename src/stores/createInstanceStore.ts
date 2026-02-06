@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { InstanceDefaults, InstanceProfile } from '../types/instance';
+import { InstanceDefaults, InstanceInitMode, InstanceProfile } from '../types/instance';
 
 export type InstanceStoreState = {
   instances: InstanceProfile[];
@@ -15,6 +15,7 @@ export type InstanceStoreState = {
     extraArgs?: string;
     bindAccountId?: string | null;
     copySourceInstanceId: string;
+    initMode?: InstanceInitMode;
   }) => Promise<InstanceProfile>;
   updateInstance: (payload: {
     instanceId: string;
@@ -40,6 +41,7 @@ type InstanceService = {
     extraArgs?: string;
     bindAccountId?: string | null;
     copySourceInstanceId: string;
+    initMode?: InstanceInitMode;
   }) => Promise<InstanceProfile>;
   updateInstance: (payload: {
     instanceId: string;

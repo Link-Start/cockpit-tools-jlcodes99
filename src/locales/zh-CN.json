@@ -37,6 +37,14 @@
     "subtitle": "多实例独立配置，多账号并行运行。",
     "defaultName": "默认实例",
     "search": "搜索实例",
+    "sort": {
+      "label": "排序",
+      "createdAt": "按创建时间",
+      "lastLaunchedAt": "按启动时间",
+      "ascTooltip": "当前：正序，点击切换为倒序",
+      "descTooltip": "当前：倒序，点击切换为正序",
+      "toggleDirection": "切换排序方向"
+    },
     "actions": {
       "create": "新建实例",
       "refresh": "刷新",
@@ -66,6 +74,7 @@
       "argsEmpty": "无",
       "bindAccount": "绑定账号",
       "unbound": "未绑定",
+      "pendingInit": "待初始化（先启动一次）",
       "quota": "配额",
       "lastLaunched": "上次启动"
     },
@@ -92,12 +101,18 @@
       "pathAutoHint": "修改名称时自动更新路径，也可手动选择",
       "copyLogin": "复制当前登录状态",
       "copyLoginDesc": "从默认目录复制配置与登录信息",
+      "initMode": "初始化方式",
+      "initModeCopy": "复制来源实例（默认）",
+      "initModeEmpty": "空白实例（不复制）",
+      "emptyInitHint": "选择无需复制实例，只会创建空白目录。需要启动一次后，才可以进行账号绑定。",
       "copySource": "复制来源实例",
       "copySourceDesc": "从指定实例复制配置与登录信息",
       "copySourcePlaceholder": "选择来源实例",
       "copySourceRequired": "请选择复制来源实例",
       "copySourceRunningHint": "该实例正在运行，建议先关闭以避免数据不一致",
       "bindInject": "绑定账号",
+      "bindAfterInit": "初始化后可绑定",
+      "bindDisabledHint": "空白实例需先启动一次生成实例数据后，才可绑定账号。",
       "followCurrent": "跟随当前账号",
       "selectAccount": "选择账号",
       "bindAccount": "绑定账号",
@@ -116,6 +131,7 @@
     },
     "messages": {
       "created": "实例已创建",
+      "emptyCreated": "空白实例已创建，请先启动一次后再绑定账号",
       "updated": "实例已更新",
       "deleted": "实例已删除",
       "started": "实例已启动",
@@ -133,6 +149,12 @@
       "pathLabel": "实例目录",
       "go": "立马前往",
       "restart": "关闭并重启"
+    },
+    "initGuide": {
+      "title": "实例尚未初始化",
+      "desc": "该实例为“空白实例”，当前仅创建了目录，尚未生成实例数据。",
+      "tip": "请先启动一次实例，初始化完成后即可绑定账号。",
+      "startNow": "立即启动"
     },
     "restartStrategy": {
       "button": "重启策略",

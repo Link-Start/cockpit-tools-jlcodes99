@@ -112,47 +112,70 @@ pub fn create_instance(params: CreateInstanceParams) -> Result<InstanceProfile, 
     instance_store::ensure_unique(&store, &name, &user_data_dir, None)?;
 
     let user_dir_path = PathBuf::from(&user_data_dir);
-    let source_dir = match params.copy_source_instance_id.as_deref() {
-        Some("__default__") | None => get_default_codex_home()?,
-        Some(source_id) => {
-            let source_instance = store
-                .instances
-                .iter()
-                .find(|item| item.id == source_id)
-                .ok_or("复制来源实例不存在")?;
-            PathBuf::from(&source_instance.user_data_dir)
-        }
-    };
+    let init_mode = params
+        .init_mode
+        .as_deref()
+        .unwrap_or("copy")
+        .to_ascii_lowercase();
+    let create_empty = init_mode == "empty";
 
-    if user_dir_path.exists() {
-        let mut has_entries = false;
-        if let Ok(mut iter) = fs::read_dir(&user_dir_path) {
-            if iter.next().is_some() {
-                has_entries = true;
+    if create_empty {
+        if user_dir_path.exists() {
+            let mut has_entries = false;
+            if let Ok(mut iter) = fs::read_dir(&user_dir_path) {
+                if iter.next().is_some() {
+                    has_entries = true;
+                }
+            }
+            if has_entries {
+                let resolved_path = instance_store::display_path(&user_dir_path);
+                return Err(format!("空白实例需要目标目录为空: {}", resolved_path));
             }
         }
-        if has_entries {
-            let resolved_path = instance_store::display_path(&user_dir_path);
-            modules::logger::log_info(&format!(
-                "[Codex Instance] 复制来源实例需要空目录，但目标已存在: {}",
-                resolved_path
-            ));
-            return Err(format!("复制来源实例需要目标目录为空: {}", resolved_path));
+        fs::create_dir_all(&user_dir_path).map_err(|e| format!("创建实例目录失败: {}", e))?;
+    } else {
+        let source_dir = match params.copy_source_instance_id.as_deref() {
+            Some("__default__") | None => get_default_codex_home()?,
+            Some(source_id) => {
+                let source_instance = store
+                    .instances
+                    .iter()
+                    .find(|item| item.id == source_id)
+                    .ok_or("复制来源实例不存在")?;
+                PathBuf::from(&source_instance.user_data_dir)
+            }
+        };
+
+        if user_dir_path.exists() {
+            let mut has_entries = false;
+            if let Ok(mut iter) = fs::read_dir(&user_dir_path) {
+                if iter.next().is_some() {
+                    has_entries = true;
+                }
+            }
+            if has_entries {
+                let resolved_path = instance_store::display_path(&user_dir_path);
+                modules::logger::log_info(&format!(
+                    "[Codex Instance] 复制来源实例需要空目录，但目标已存在: {}",
+                    resolved_path
+                ));
+                return Err(format!("复制来源实例需要目标目录为空: {}", resolved_path));
+            }
         }
-    }
 
-    if !source_dir.exists() {
-        return Err("未找到复制来源目录，请先确保来源实例已初始化".to_string());
-    }
+        if !source_dir.exists() {
+            return Err("未找到复制来源目录，请先确保来源实例已初始化".to_string());
+        }
 
-    instance_store::copy_dir_recursive(&source_dir, &user_dir_path)?;
+        instance_store::copy_dir_recursive(&source_dir, &user_dir_path)?;
+    }
 
     let instance = InstanceProfile {
         id: Uuid::new_v4().to_string(),
         name,
         user_data_dir,
         extra_args: params.extra_args.trim().to_string(),
-        bind_account_id: params.bind_account_id,
+        bind_account_id: if create_empty { None } else { params.bind_account_id },
         created_at: Utc::now().timestamp_millis(),
         last_launched_at: None,
         last_pid: None,

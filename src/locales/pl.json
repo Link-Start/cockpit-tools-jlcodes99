@@ -839,7 +839,8 @@
       "bindAccount": "Powiązane konto",
       "unbound": "Brak powiązania",
       "quota": "Limit",
-      "lastLaunched": "Ostatnie uruchomienie"
+      "lastLaunched": "Ostatnie uruchomienie",
+      "pendingInit": "Oczekuje na inicjalizację (najpierw uruchom raz)"
     },
     "columns": {
       "instance": "Instancja",
@@ -875,7 +876,13 @@
       "extraArgsDesc": "Oddzielaj argumenty spacjami, cudzysłowy są obsługiwane",
       "nameRequired": "Proszę podać nazwę instancji",
       "pathRequired": "Proszę wybrać katalog instancji",
-      "bindRequired": "Proszę wybrać konto do powiązania"
+      "bindRequired": "Proszę wybrać konto do powiązania",
+      "initMode": "Tryb inicjalizacji",
+      "initModeCopy": "Kopiuj z instancji źródłowej (domyślne)",
+      "initModeEmpty": "Pusta instancja (bez kopiowania)",
+      "emptyInitHint": "Po wybraniu opcji bez kopiowania zostanie utworzony tylko pusty katalog. Przed powiązaniem konta uruchom instancję raz.",
+      "bindAfterInit": "Można powiązać po inicjalizacji",
+      "bindDisabledHint": "Dla pustej instancji uruchom ją raz, aby utworzyć dane, a następnie powiąż konto."
     },
     "quota": {
       "unbound": "Konto niepowiązane",
@@ -892,7 +899,8 @@
       "restartedAll": "Restartowano uruchomione instancje",
       "closedAll": "Wszystkie instancje zostały zatrzymane",
       "allAlreadyRunning": "Wszystkie instancje są już uruchomione",
-      "noneRunning": "Nie znaleziono uruchomionych instancji"
+      "noneRunning": "Nie znaleziono uruchomionych instancji",
+      "emptyCreated": "Utworzono pustą instancję. Przed powiązaniem konta uruchom ją raz."
     },
     "runningDialog": {
       "title": "Instancja jest już uruchomiona",
@@ -941,6 +949,20 @@
     "modal": {
       "createTitle": "Nowa instancja",
       "editTitle": "Edytuj instancję"
+    },
+    "sort": {
+      "label": "Sortowanie",
+      "createdAt": "Według czasu utworzenia",
+      "lastLaunchedAt": "Według czasu uruchomienia",
+      "ascTooltip": "Obecnie: rosnąco, kliknij aby przełączyć na malejąco",
+      "descTooltip": "Obecnie: malejąco, kliknij aby przełączyć na rosnąco",
+      "toggleDirection": "Przełącz kierunek sortowania"
+    },
+    "initGuide": {
+      "title": "Instancja nie jest jeszcze zainicjalizowana",
+      "desc": "To jest pusta instancja. Obecnie utworzono tylko katalog, a dane instancji nie zostały jeszcze wygenerowane.",
+      "tip": "Najpierw uruchom instancję raz. Po zakończeniu inicjalizacji będzie można powiązać konto.",
+      "startNow": "Uruchom teraz"
     }
   },
   "appPath": {

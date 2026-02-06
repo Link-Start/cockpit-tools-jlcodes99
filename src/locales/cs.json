@@ -839,7 +839,8 @@
       "bindAccount": "Propojený účet",
       "unbound": "Nepropojeno",
       "quota": "Kvóta",
-      "lastLaunched": "Poslední spuštění"
+      "lastLaunched": "Poslední spuštění",
+      "pendingInit": "Čeká na inicializaci (nejprve jednou spusťte)"
     },
     "columns": {
       "instance": "Instance",
@@ -875,7 +876,13 @@
       "extraArgsDesc": "Argumenty oddělujte mezerami, uvozovky jsou podporovány",
       "nameRequired": "Zadejte prosím název instance",
       "pathRequired": "Vyberte prosím adresář instance",
-      "bindRequired": "Vyberte prosím účet k propojení"
+      "bindRequired": "Vyberte prosím účet k propojení",
+      "initMode": "Režim inicializace",
+      "initModeCopy": "Kopírovat ze zdrojové instance (výchozí)",
+      "initModeEmpty": "Prázdná instance (bez kopírování)",
+      "emptyInitHint": "Při volbě bez kopírování se vytvoří pouze prázdná složka. Před svázáním účtu je nutné instanci jednou spustit.",
+      "bindAfterInit": "Lze svázat po inicializaci",
+      "bindDisabledHint": "U prázdné instance ji nejprve jednou spusťte pro vytvoření dat a poté účet svažte."
     },
     "quota": {
       "unbound": "Účet není propojen",
@@ -892,7 +899,8 @@
       "restartedAll": "Běžící instance byly restartovány",
       "closedAll": "Všechny instance byly zastaveny",
       "allAlreadyRunning": "Všechny instance již běží",
-      "noneRunning": "Nebyly nalezeny žádné běžící instance"
+      "noneRunning": "Nebyly nalezeny žádné běžící instance",
+      "emptyCreated": "Prázdná instance byla vytvořena. Před svázáním účtu ji nejprve jednou spusťte."
     },
     "runningDialog": {
       "title": "Instance již běží",
@@ -941,6 +949,20 @@
     "modal": {
       "createTitle": "Nová instance",
       "editTitle": "Upravit instanci"
+    },
+    "sort": {
+      "label": "Řazení",
+      "createdAt": "Podle času vytvoření",
+      "lastLaunchedAt": "Podle času spuštění",
+      "ascTooltip": "Aktuálně: vzestupně, kliknutím přepnete na sestupně",
+      "descTooltip": "Aktuálně: sestupně, kliknutím přepnete na vzestupně",
+      "toggleDirection": "Přepnout směr řazení"
+    },
+    "initGuide": {
+      "title": "Instance ještě není inicializovaná",
+      "desc": "Toto je prázdná instance. Zatím byl vytvořen pouze adresář a data instance ještě nebyla vygenerována.",
+      "tip": "Nejprve instanci jednou spusťte. Po dokončení inicializace můžete svázat účet.",
+      "startNow": "Spustit nyní"
     }
   },
   "appPath": {

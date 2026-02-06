@@ -15,6 +15,7 @@ export async function createInstance(payload: {
   extraArgs?: string;
   bindAccountId?: string | null;
   copySourceInstanceId: string;
+  initMode?: 'copy' | 'empty';
 }): Promise<InstanceProfile> {
   return await invoke('codex_create_instance', {
     name: payload.name,
@@ -22,6 +23,7 @@ export async function createInstance(payload: {
     extraArgs: payload.extraArgs ?? '',
     bindAccountId: payload.bindAccountId ?? null,
     copySourceInstanceId: payload.copySourceInstanceId,
+    initMode: payload.initMode ?? 'copy',
   });
 }
 

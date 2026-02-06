@@ -839,7 +839,8 @@
       "bindAccount": "Conta vinculada",
       "unbound": "Não vinculada",
       "quota": "Cota",
-      "lastLaunched": "Última execução"
+      "lastLaunched": "Última execução",
+      "pendingInit": "Aguardando inicialização (inicie uma vez primeiro)"
     },
     "columns": {
       "instance": "Instância",
@@ -875,7 +876,13 @@
       "extraArgsDesc": "Separar argumentos com espaços, aspas são suportadas",
       "nameRequired": "Insira um nome para a instância",
       "pathRequired": "Selecione um diretório para a instância",
-      "bindRequired": "Selecione uma conta para vincular"
+      "bindRequired": "Selecione uma conta para vincular",
+      "initMode": "Modo de inicialização",
+      "initModeCopy": "Copiar instância de origem (padrão)",
+      "initModeEmpty": "Instância em branco (sem copiar)",
+      "emptyInitHint": "Ao escolher sem cópia, apenas um diretório em branco será criado. Inicie uma vez antes de vincular a conta.",
+      "bindAfterInit": "Pode vincular após inicialização",
+      "bindDisabledHint": "Para instância em branco, inicie uma vez para gerar dados e depois vincule a conta."
     },
     "quota": {
       "unbound": "Conta não vinculada",
@@ -892,7 +899,8 @@
       "restartedAll": "Instâncias em execução reiniciadas",
       "closedAll": "Todas as instâncias foram paradas",
       "allAlreadyRunning": "Todas as instâncias já estão em execução",
-      "noneRunning": "Nenhuma instância em execução encontrada"
+      "noneRunning": "Nenhuma instância em execução encontrada",
+      "emptyCreated": "Instância em branco criada. Inicie uma vez antes de vincular a conta."
     },
     "runningDialog": {
       "title": "A instância já está em execução",
@@ -941,6 +949,20 @@
     "modal": {
       "createTitle": "Nova instância",
       "editTitle": "Editar instância"
+    },
+    "sort": {
+      "label": "Ordenação",
+      "createdAt": "Por data de criação",
+      "lastLaunchedAt": "Por data de inicialização",
+      "ascTooltip": "Atual: crescente, clique para alternar para decrescente",
+      "descTooltip": "Atual: decrescente, clique para alternar para crescente",
+      "toggleDirection": "Alternar direção da ordenação"
+    },
+    "initGuide": {
+      "title": "A instância ainda não foi inicializada",
+      "desc": "Esta é uma instância em branco. No momento, apenas o diretório foi criado e os dados da instância ainda não foram gerados.",
+      "tip": "Inicie a instância uma vez primeiro. Após concluir a inicialização, você poderá vincular uma conta.",
+      "startNow": "Iniciar agora"
     }
   },
   "appPath": {

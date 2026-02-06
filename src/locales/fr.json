@@ -839,7 +839,8 @@
       "bindAccount": "Compte lié",
       "unbound": "Non lié",
       "quota": "Quota",
-      "lastLaunched": "Dernier lancement"
+      "lastLaunched": "Dernier lancement",
+      "pendingInit": "En attente d'initialisation (démarrez une fois d'abord)"
     },
     "columns": {
       "instance": "Instance",
@@ -875,7 +876,13 @@
       "extraArgsDesc": "Séparer les arguments par des espaces, les guillemets sont pris en charge",
       "nameRequired": "Veuillez saisir un nom d'instance",
       "pathRequired": "Veuillez choisir un répertoire d'instance",
-      "bindRequired": "Veuillez choisir un compte à lier"
+      "bindRequired": "Veuillez choisir un compte à lier",
+      "initMode": "Mode d'initialisation",
+      "initModeCopy": "Copier depuis l'instance source (par défaut)",
+      "initModeEmpty": "Instance vide (sans copie)",
+      "emptyInitHint": "Si vous choisissez sans copie, seul un dossier vide sera créé. Démarrez une fois avant de lier un compte.",
+      "bindAfterInit": "Liaison possible après initialisation",
+      "bindDisabledHint": "Pour une instance vide, démarrez-la une fois pour générer les données, puis liez le compte."
     },
     "quota": {
       "unbound": "Compte non lié",
@@ -892,7 +899,8 @@
       "restartedAll": "Instances en cours redémarrées",
       "closedAll": "Toutes les instances ont été arrêtées",
       "allAlreadyRunning": "Toutes les instances sont déjà en cours d'exécution",
-      "noneRunning": "Aucune instance en cours d'exécution trouvée"
+      "noneRunning": "Aucune instance en cours d'exécution trouvée",
+      "emptyCreated": "Instance vide créée. Démarrez-la une fois avant de lier un compte."
     },
     "runningDialog": {
       "title": "L'instance est déjà en cours d'exécution",
@@ -941,6 +949,20 @@
     "modal": {
       "createTitle": "Nouvelle instance",
       "editTitle": "Modifier l’instance"
+    },
+    "sort": {
+      "label": "Tri",
+      "createdAt": "Par date de création",
+      "lastLaunchedAt": "Par date de lancement",
+      "ascTooltip": "Actuel : croissant, cliquez pour passer en décroissant",
+      "descTooltip": "Actuel : décroissant, cliquez pour passer en croissant",
+      "toggleDirection": "Changer le sens du tri"
+    },
+    "initGuide": {
+      "title": "Instance non initialisée",
+      "desc": "Cette instance est une « instance vide ». Seul le dossier a été créé, les données d'instance ne sont pas encore générées.",
+      "tip": "Veuillez démarrer l'instance une fois. Une fois l'initialisation terminée, vous pourrez lier un compte.",
+      "startNow": "Démarrer maintenant"
     }
   },
   "appPath": {

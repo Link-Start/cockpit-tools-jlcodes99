@@ -37,6 +37,14 @@
     "subtitle": "Isolated profiles for multi-account parallel runs.",
     "defaultName": "Default Instance",
     "search": "Search instances",
+    "sort": {
+      "label": "Sort",
+      "createdAt": "By creation time",
+      "lastLaunchedAt": "By launch time",
+      "ascTooltip": "Current: ascending, click to switch to descending",
+      "descTooltip": "Current: descending, click to switch to ascending",
+      "toggleDirection": "Toggle sort direction"
+    },
     "actions": {
       "create": "New Instance",
       "refresh": "Refresh",
@@ -66,6 +74,7 @@
       "argsEmpty": "None",
       "bindAccount": "Bound Account",
       "unbound": "Unbound",
+      "pendingInit": "Pending initialization (start once)",
       "quota": "Quota",
       "lastLaunched": "Last Launched"
     },
@@ -92,12 +101,18 @@
       "pathAutoHint": "Path auto-updates when name changes, or select manually",
       "copyLogin": "Copy current login state",
       "copyLoginDesc": "Copy settings and login data from the default directory",
+      "initMode": "Initialization Mode",
+      "initModeCopy": "Copy source instance (default)",
+      "initModeEmpty": "Blank instance (no copy)",
+      "emptyInitHint": "Choosing no-copy will create an empty directory only. Start once before binding an account.",
       "copySource": "Copy source instance",
       "copySourceDesc": "Copy configuration and login data from the selected instance",
       "copySourcePlaceholder": "Select a source instance",
       "copySourceRequired": "Please select a source instance",
       "copySourceRunningHint": "The source instance is running. It's recommended to close it first to avoid inconsistent data.",
       "bindInject": "Bind account",
+      "bindAfterInit": "Bindable after initialization",
+      "bindDisabledHint": "For blank instances, start once to generate data before binding an account.",
       "followCurrent": "Follow current account",
       "selectAccount": "Select account",
       "bindAccount": "Bind account",
@@ -116,6 +131,7 @@
     },
     "messages": {
       "created": "Instance created",
+      "emptyCreated": "Blank instance created. Start it once before binding an account.",
       "updated": "Instance updated",
       "deleted": "Instance deleted",
       "started": "Instance started",
@@ -133,6 +149,12 @@
       "pathLabel": "Instance directory",
       "go": "Go now",
       "restart": "Close & restart"
+    },
+    "initGuide": {
+      "title": "Instance not initialized",
+      "desc": "This is a blank instance. Only the directory exists and instance data has not been generated yet.",
+      "tip": "Please start this instance once. You can bind an account after initialization is complete.",
+      "startNow": "Start now"
     },
     "restartStrategy": {
       "button": "Restart strategy",

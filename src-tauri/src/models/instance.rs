@@ -71,12 +71,13 @@ pub struct InstanceProfileView {
     pub last_launched_at: Option<i64>,
     pub last_pid: Option<u32>,
     pub running: bool,
+    pub initialized: bool,
     pub is_default: bool,
     pub follow_local_account: bool,
 }
 
 impl InstanceProfileView {
-    pub fn from_profile(profile: InstanceProfile, running: bool) -> Self {
+    pub fn from_profile(profile: InstanceProfile, running: bool, initialized: bool) -> Self {
         Self {
             id: profile.id,
             name: profile.name,
@@ -87,6 +88,7 @@ impl InstanceProfileView {
             last_launched_at: profile.last_launched_at,
             last_pid: profile.last_pid,
             running,
+            initialized,
             is_default: false,
             follow_local_account: false,
         }

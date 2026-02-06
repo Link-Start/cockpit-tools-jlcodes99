@@ -839,7 +839,8 @@
       "bindAccount": "Bağlı hesap",
       "unbound": "Bağlı değil",
       "quota": "Kota",
-      "lastLaunched": "Son başlatma"
+      "lastLaunched": "Son başlatma",
+      "pendingInit": "Başlatma bekleniyor (önce bir kez çalıştırın)"
     },
     "columns": {
       "instance": "Oturum",
@@ -875,7 +876,13 @@
       "extraArgsDesc": "Parametreleri boşlukla ayırın, tırnak işaretleri desteklenir",
       "nameRequired": "Lütfen bir oturum adı girin",
       "pathRequired": "Lütfen bir oturum dizini seçin",
-      "bindRequired": "Lütfen bağlanacak bir hesap seçin"
+      "bindRequired": "Lütfen bağlanacak bir hesap seçin",
+      "initMode": "Başlatma modu",
+      "initModeCopy": "Kaynak örnekten kopyala (varsayılan)",
+      "initModeEmpty": "Boş örnek (kopyalama yok)",
+      "emptyInitHint": "Kopyalama olmadan seçildiğinde yalnızca boş bir dizin oluşturulur. Hesap bağlamadan önce bir kez başlatmanız gerekir.",
+      "bindAfterInit": "Başlatmadan sonra bağlanabilir",
+      "bindDisabledHint": "Boş örnekte önce bir kez çalıştırarak verileri oluşturun, ardından hesabı bağlayın."
     },
     "quota": {
       "unbound": "Hesap bağlı değil",
@@ -892,7 +899,8 @@
       "restartedAll": "Çalışan oturumlar yeniden başlatıldı",
       "closedAll": "Tüm oturumlar durduruldu",
       "allAlreadyRunning": "Tüm oturumlar zaten çalışıyor",
-      "noneRunning": "Çalışan oturum bulunamadı"
+      "noneRunning": "Çalışan oturum bulunamadı",
+      "emptyCreated": "Boş örnek oluşturuldu. Hesap bağlamadan önce bir kez başlatın."
     },
     "runningDialog": {
       "title": "Oturum zaten çalışıyor",
@@ -941,6 +949,20 @@
     "modal": {
       "createTitle": "Yeni örnek",
       "editTitle": "Örneği düzenle"
+    },
+    "sort": {
+      "label": "Sıralama",
+      "createdAt": "Oluşturma zamanına göre",
+      "lastLaunchedAt": "Başlatma zamanına göre",
+      "ascTooltip": "Mevcut: artan, azalana geçmek için tıklayın",
+      "descTooltip": "Mevcut: azalan, artana geçmek için tıklayın",
+      "toggleDirection": "Sıralama yönünü değiştir"
+    },
+    "initGuide": {
+      "title": "Örnek henüz başlatılmadı",
+      "desc": "Bu bir \"boş örnek\". Şu anda yalnızca dizin oluşturuldu, örnek verileri henüz üretilmedi.",
+      "tip": "Lütfen önce örneği bir kez başlatın. Başlatma tamamlandıktan sonra hesap bağlayabilirsiniz.",
+      "startNow": "Hemen başlat"
     }
   },
   "appPath": {

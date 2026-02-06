@@ -1,10 +1,15 @@
 use base64::{engine::general_purpose, Engine as _};
 use rusqlite::Connection;
+use std::path::Path;
 
 use crate::models::{DefaultInstanceSettings, InstanceProfileView};
 use crate::modules;
 
 const DEFAULT_INSTANCE_ID: &str = "__default__";
+
+fn is_profile_initialized(user_data_dir: &str) -> bool {
+    modules::instance::is_profile_initialized(Path::new(user_data_dir))
+}
 
 fn resolve_default_account_id(settings: &DefaultInstanceSettings) -> Option<String> {
     if settings.follow_local_account {
@@ -55,7 +60,8 @@ pub async fn list_instances() -> Result<Vec<InstanceProfileView>, String> {
                 .last_pid
                 .map(modules::process::is_pid_running)
                 .unwrap_or(false);
-            InstanceProfileView::from_profile(instance, running)
+            let initialized = is_profile_initialized(&instance.user_data_dir);
+            InstanceProfileView::from_profile(instance, running, initialized)
         })
         .collect();
 
@@ -76,6 +82,7 @@ pub async fn list_instances() -> Result<Vec<InstanceProfileView>, String> {
         last_launched_at: None,
         last_pid: default_settings.last_pid,
         running: default_running,
+        initialized: modules::instance::is_profile_initialized(&default_dir),
         is_default: true,
         follow_local_account: default_settings.follow_local_account,
     });
@@ -90,6 +97,7 @@ pub async fn create_instance(
     extra_args: Option<String>,
     bind_account_id: Option<String>,
     copy_source_instance_id: Option<String>,
+    init_mode: Option<String>,
 ) -> Result<InstanceProfileView, String> {
     let instance = modules::instance::create_instance(modules::instance::CreateInstanceParams {
         name,
@@ -97,9 +105,11 @@ pub async fn create_instance(
         extra_args: extra_args.unwrap_or_default(),
         bind_account_id,
         copy_source_instance_id,
+        init_mode,
     })?;
 
-    Ok(InstanceProfileView::from_profile(instance, false))
+    let initialized = is_profile_initialized(&instance.user_data_dir);
+    Ok(InstanceProfileView::from_profile(instance, false, initialized))
 }
 
 #[tauri::command]
@@ -133,9 +143,25 @@ pub async fn update_instance(
             last_launched_at: None,
             last_pid: updated.last_pid,
             running,
+            initialized: modules::instance::is_profile_initialized(&default_dir),
             is_default: true,
             follow_local_account: updated.follow_local_account,
         });
+    }
+
+    let wants_bind = bind_account_id
+        .as_ref()
+        .and_then(|next| next.as_ref())
+        .is_some();
+    if wants_bind {
+        let store = modules::instance::load_instance_store()?;
+        if let Some(target) = store.instances.iter().find(|item| item.id == instance_id) {
+            if !is_profile_initialized(&target.user_data_dir) {
+                return Err(
+                    "INSTANCE_NOT_INITIALIZED:请先启动一次实例创建数据后，再进行账号绑定".to_string(),
+                );
+            }
+        }
     }
 
     let instance = modules::instance::update_instance(modules::instance::UpdateInstanceParams {
@@ -149,7 +175,8 @@ pub async fn update_instance(
         .last_pid
         .map(modules::process::is_pid_running)
         .unwrap_or(false);
-    Ok(InstanceProfileView::from_profile(instance, running))
+    let initialized = is_profile_initialized(&instance.user_data_dir);
+    Ok(InstanceProfileView::from_profile(instance, running, initialized))
 }
 
 #[tauri::command]
@@ -184,6 +211,7 @@ pub async fn start_instance(instance_id: String) -> Result<InstanceProfileView, 
             last_launched_at: None,
             last_pid: Some(pid),
             running,
+            initialized: modules::instance::is_profile_initialized(&default_dir),
             is_default: true,
             follow_local_account: default_settings.follow_local_account,
         });
@@ -206,7 +234,8 @@ pub async fn start_instance(instance_id: String) -> Result<InstanceProfileView, 
     let pid = modules::process::start_antigravity_with_args(&instance.user_data_dir, &extra_args)?;
     let updated = modules::instance::update_instance_after_start(&instance.id, pid)?;
     let running = modules::process::is_pid_running(pid);
-    Ok(InstanceProfileView::from_profile(updated, running))
+    let initialized = is_profile_initialized(&updated.user_data_dir);
+    Ok(InstanceProfileView::from_profile(updated, running, initialized))
 }
 
 #[tauri::command]
@@ -231,6 +260,7 @@ pub async fn stop_instance(instance_id: String) -> Result<InstanceProfileView, S
             last_launched_at: None,
             last_pid: None,
             running,
+            initialized: modules::instance::is_profile_initialized(&default_dir),
             is_default: true,
             follow_local_account: default_settings.follow_local_account,
         });
@@ -247,7 +277,8 @@ pub async fn stop_instance(instance_id: String) -> Result<InstanceProfileView, S
         modules::process::close_pid(pid, 20)?;
     }
     let updated = modules::instance::update_instance_pid(&instance.id, None)?;
-    Ok(InstanceProfileView::from_profile(updated, false))
+    let initialized = is_profile_initialized(&updated.user_data_dir);
+    Ok(InstanceProfileView::from_profile(updated, false, initialized))
 }
 
 #[tauri::command]
@@ -272,6 +303,7 @@ pub async fn force_stop_instance(instance_id: String) -> Result<InstanceProfileV
             last_launched_at: None,
             last_pid: None,
             running,
+            initialized: modules::instance::is_profile_initialized(&default_dir),
             is_default: true,
             follow_local_account: default_settings.follow_local_account,
         });
@@ -288,7 +320,8 @@ pub async fn force_stop_instance(instance_id: String) -> Result<InstanceProfileV
         modules::process::force_kill_pid(pid)?;
     }
     let updated = modules::instance::update_instance_pid(&instance.id, None)?;
-    Ok(InstanceProfileView::from_profile(updated, false))
+    let initialized = is_profile_initialized(&updated.user_data_dir);
+    Ok(InstanceProfileView::from_profile(updated, false, initialized))
 }
 
 #[tauri::command]

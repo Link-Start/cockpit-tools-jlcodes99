@@ -7,6 +7,27 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [0.5.3] - 2026-02-06
+
+### Added
+- **Blank instance initialization mode**: Added a new initialization option when creating instances (`Copy source instance` / `Blank instance`) so users can create an empty directory without copying profile data.
+- **Uninitialized-instance guide modal**: Clicking account binding on an uninitialized blank instance now opens a guide modal with a **Start now** action.
+- **Instance sorting controls**: Added sort field selection (`Creation time` / `Launch time`) and ascending/descending toggle in the multi-instance toolbar.
+- **In-app delete confirmation modal**: Instance deletion now uses an internal modal (with top-right close action) instead of relying on the system dialog.
+
+### Changed
+- **Instance status model**: Added `initialized` to Antigravity/Codex instance view payloads and wired it through frontend state.
+- **Binding safety checks**: Binding is now blocked for uninitialized instances (disabled UI + backend validation with explicit error).
+- **Instance list layout**: Status is shown in a dedicated column next to instance name; actions column is now sticky/opaque so it stays visible on narrow windows without content bleed-through.
+- **Dropdown rendering split**: Inline list account dropdown renders via portal (outside container), while modal dropdown keeps in-container rendering to avoid clipping and style conflicts.
+- **PID visibility rule**: PID is hidden when an instance is not running.
+- **Post-start delayed refresh**: Added delayed refresh (~2s) after start to reduce stale `pending initialization` state after first boot.
+- **i18n alignment**: Added and synchronized new instance-flow keys across all 17 locale files.
+
+### Fixed
+- **Delete-confirm freeze**: Fixed a scenario where delete confirmation actions could become unresponsive.
+
+---
 ## [0.5.2] - 2026-02-06
 
 ### Changed
