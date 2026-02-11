@@ -17,8 +17,6 @@ import {
   List,
   Search,
   ArrowDownWideNarrow,
-  Clock,
-  Calendar,
   Tag,
   ChevronDown,
   Play,
@@ -31,8 +29,8 @@ import * as windsurfService from '../services/windsurfService';
 import { TagEditModal } from '../components/TagEditModal';
 import {
   getWindsurfPlanDisplayName,
+  getWindsurfCreditsSummary,
   getWindsurfQuotaClass,
-  formatWindsurfResetTime,
 } from '../types/windsurf';
 
 import { save } from '@tauri-apps/plugin-dialog';
@@ -82,7 +80,7 @@ export function WindsurfAccountsPage() {
   const [groupByTag, setGroupByTag] = useState(false);
   const [showTagFilter, setShowTagFilter] = useState(false);
   const [showTagModal, setShowTagModal] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<'weekly' | 'hourly' | 'created_at' | 'weekly_reset' | 'hourly_reset'>('created_at');
+  const [sortBy, setSortBy] = useState<'credits' | 'plan_end' | 'created_at'>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [exporting, setExporting] = useState(false);
   const [addMessage, setAddMessage] = useState<string | null>(null);
@@ -221,7 +219,7 @@ export function WindsurfAccountsPage() {
     setOauthPolling(false);
     oauthCompletingRef.current = false;
     oauthActiveRef.current = false;
-    oauthLog('Device Flow 授权失败', { loginId: oauthLoginIdRef.current, error: msg });
+    oauthLog('Windsurf OAuth 授权失败', { loginId: oauthLoginIdRef.current, error: msg });
   }, [oauthLog]);
 
   const prepareOauthUrl = useCallback(() => {
@@ -237,7 +235,7 @@ export function WindsurfAccountsPage() {
     setOauthUserCodeCopied(false);
     setOauthMeta(null);
     setOauthUserCode(null);
-    oauthLog('开始准备 Windsurf Device Flow 授权信息');
+    oauthLog('开始准备 Windsurf OAuth 授权信息');
 
     let started = false;
 
@@ -338,7 +336,7 @@ export function WindsurfAccountsPage() {
     setMessage(null);
     setInjecting(accountId);
     const account = accounts.find((item) => item.id === accountId);
-    const displayEmail = account?.email ?? account?.github_email ?? account?.github_login ?? accountId;
+    const displayEmail = account?.email || account?.github_email || account?.github_login || accountId;
     try {
       await windsurfService.injectWindsurfToVSCode(accountId);
       setCurrentAccountId(accountId);
@@ -439,6 +437,37 @@ export function WindsurfAccountsPage() {
       );
     }
 
+    setImporting(false);
+  };
+
+  const handleImportFromLocalClient = async () => {
+    setImporting(true);
+    setAddStatus('loading');
+    setAddMessage(t('windsurf.import.importing', '正在导入...'));
+    try {
+      const imported = await windsurfService.importWindsurfFromLocal();
+      await fetchAccounts();
+      setAddStatus('success');
+      setAddMessage(
+        t('windsurf.token.importSuccessMsg', {
+          count: imported.length,
+          defaultValue: '成功导入 {{count}} 个账号',
+        })
+      );
+      setTimeout(() => {
+        setShowAddModal(false);
+        resetAddModalState();
+      }, 1200);
+    } catch (e) {
+      setAddStatus('error');
+      const errorMsg = String(e).replace(/^Error:\s*/, '');
+      setAddMessage(
+        t('windsurf.import.failedMsg', {
+          error: errorMsg,
+          defaultValue: '导入失败: {{error}}',
+        })
+      );
+    }
     setImporting(false);
   };
 
@@ -602,6 +631,64 @@ export function WindsurfAccountsPage() {
     );
   };
 
+  const formatCycleDate = useCallback(
+    (timestamp: number | null | undefined) => {
+      if (!timestamp) return '';
+      const d = new Date(timestamp * 1000);
+      if (Number.isNaN(d.getTime())) return '';
+      return d.toLocaleDateString(locale, { year: 'numeric', month: '2-digit', day: '2-digit' });
+    },
+    [locale],
+  );
+
+  const resolveCycleDisplay = useCallback(
+    (credits: ReturnType<typeof getWindsurfCreditsSummary>) => {
+      const end = credits.planEndsAt ?? null;
+      const start = credits.planStartsAt ?? null;
+
+      if (!end) {
+        const summary = t('windsurf.credits.planEndsUnknown', '配额周期时间未知');
+        return {
+          summary,
+          detail: '',
+          title: summary,
+        };
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+      const secondsLeft = end - now;
+      const days = secondsLeft <= 0 ? 0 : Math.floor(secondsLeft / 86400);
+      const summary = t('windsurf.credits.planEndsIn', {
+        days,
+        defaultValue: '配额周期剩余 {{days}} 天',
+      });
+
+      const startText = formatCycleDate(start);
+      const endText = formatCycleDate(end);
+      let detail = '';
+      if (startText && endText) {
+        detail = t('windsurf.credits.periodRange', {
+          start: startText,
+          end: endText,
+          defaultValue: '周期：{{start}} - {{end}}',
+        });
+      } else if (endText) {
+        detail = t('windsurf.credits.periodEndOnly', {
+          end: endText,
+          defaultValue: '周期结束：{{end}}',
+        });
+      }
+
+      const title = detail ? `${summary} · ${detail}` : summary;
+      return {
+        summary,
+        detail,
+        title,
+      };
+    },
+    [formatCycleDate, t],
+  );
+
   const toggleSelect = (id: string) => {
     const next = new Set(selected);
     if (next.has(id)) next.delete(id);
@@ -614,8 +701,6 @@ export function WindsurfAccountsPage() {
     const allSelected = selected.size === allIds.length && allIds.length > 0;
     setSelected(allSelected ? new Set() : new Set(allIds));
   };
-
-  const normalizePlan = (planType?: string) => getWindsurfPlanDisplayName(planType);
 
   const normalizeTag = (tag: string) => tag.trim().toLowerCase();
 
@@ -630,6 +715,89 @@ export function WindsurfAccountsPage() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [accounts]);
 
+  const creditsSummaryById = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof getWindsurfCreditsSummary>>();
+    accounts.forEach((account) => {
+      map.set(account.id, getWindsurfCreditsSummary(account));
+    });
+    return map;
+  }, [accounts]);
+
+  const resolveCreditsSummary = useCallback(
+    (account: (typeof accounts)[number]) =>
+      creditsSummaryById.get(account.id) ?? getWindsurfCreditsSummary(account),
+    [creditsSummaryById],
+  );
+
+  const resolvePlanKey = useCallback(
+    (account: (typeof accounts)[number]) => {
+      const credits = resolveCreditsSummary(account);
+      const rawAccountPlan = account.plan_type?.trim();
+      const accountPlan =
+        rawAccountPlan && rawAccountPlan.toUpperCase() !== 'UNKNOWN' ? rawAccountPlan : null;
+      return getWindsurfPlanDisplayName(
+        accountPlan ?? credits.planName ?? account.copilot_plan ?? account.plan_type ?? null,
+      );
+    },
+    [resolveCreditsSummary],
+  );
+
+  const formatCreditsNumber = useCallback((value: number | null | undefined) => {
+    const n = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+    return n.toFixed(2);
+  }, []);
+
+  const buildCreditMetrics = useCallback(
+    (leftInput: number | null | undefined, usedInput: number | null | undefined, totalInput: number | null | undefined) => {
+      const left = leftInput ?? null;
+      let total = totalInput ?? null;
+      let used = usedInput ?? null;
+
+      if (total == null && left != null) total = left;
+      if (total != null && left != null && total < left) total = left;
+      if (used == null && total != null && left != null) used = Math.max(0, total - left);
+      if (used == null && left != null) used = 0;
+
+      const usedPercent = total != null && total > 0 && used != null
+        ? Math.max(0, Math.min(100, Math.round((used / total) * 100)))
+        : 0;
+
+      return { left, used, total, usedPercent };
+    },
+    [],
+  );
+
+  const resolvePromptMetrics = useCallback(
+    (credits: ReturnType<typeof getWindsurfCreditsSummary>) =>
+      buildCreditMetrics(credits.promptCreditsLeft, credits.promptCreditsUsed, credits.promptCreditsTotal),
+    [buildCreditMetrics],
+  );
+
+  const resolveAddOnMetrics = useCallback(
+    (credits: ReturnType<typeof getWindsurfCreditsSummary>) =>
+      buildCreditMetrics(credits.addOnCredits, credits.addOnCreditsUsed, credits.addOnCreditsTotal),
+    [buildCreditMetrics],
+  );
+
+  const formatUsedLine = useCallback(
+    (used: number | null | undefined, total: number | null | undefined) =>
+      t('windsurf.credits.usedLine', {
+        used: formatCreditsNumber(used),
+        total: formatCreditsNumber(total),
+        defaultValue: '{{used}} / {{total}} used',
+      }),
+    [formatCreditsNumber, t],
+  );
+
+  const formatLeftLine = useCallback(
+    (left: number | null | undefined) =>
+      t('windsurf.credits.leftInline', {
+        left: formatCreditsNumber(left),
+        defaultValue: '{{left}} left',
+      }),
+    [formatCreditsNumber, t],
+  );
+
   const tierCounts = useMemo(() => {
     const counts = {
       all: accounts.length,
@@ -640,13 +808,13 @@ export function WindsurfAccountsPage() {
       ENTERPRISE: 0,
     };
     accounts.forEach((account) => {
-      const tier = normalizePlan(account.plan_type);
+      const tier = resolvePlanKey(account);
       if (tier in counts) {
         counts[tier as keyof typeof counts] += 1;
       }
     });
     return counts;
-  }, [accounts]);
+  }, [accounts, resolvePlanKey]);
 
   const filteredAccounts = useMemo(() => {
     let result = [...accounts];
@@ -654,13 +822,13 @@ export function WindsurfAccountsPage() {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter((account) => {
-        const email = account.email ?? account.github_email ?? account.github_login;
+        const email = account.email || account.github_email || account.github_login;
         return email.toLowerCase().includes(query);
       });
     }
 
     if (filterType !== 'all') {
-      result = result.filter((account) => normalizePlan(account.plan_type) === filterType);
+      result = result.filter((account) => resolvePlanKey(account) === filterType);
     }
 
     if (tagFilter.length > 0) {
@@ -677,30 +845,24 @@ export function WindsurfAccountsPage() {
         return sortDirection === 'desc' ? diff : -diff;
       }
 
-      if (sortBy === 'weekly_reset' || sortBy === 'hourly_reset') {
-        const aReset =
-          sortBy === 'weekly_reset'
-            ? a.quota?.weekly_reset_time ?? null
-            : a.quota?.hourly_reset_time ?? null;
-        const bReset =
-          sortBy === 'weekly_reset'
-            ? b.quota?.weekly_reset_time ?? null
-            : b.quota?.hourly_reset_time ?? null;
-        if (aReset === null && bReset === null) return 0;
-        if (aReset === null) return 1;
-        if (bReset === null) return -1;
+      if (sortBy === 'plan_end') {
+        const aReset = resolveCreditsSummary(a).planEndsAt ?? null;
+        const bReset = resolveCreditsSummary(b).planEndsAt ?? null;
+        if (aReset == null && bReset == null) return 0;
+        if (aReset == null) return 1;
+        if (bReset == null) return -1;
         const diff = bReset - aReset;
         return sortDirection === 'desc' ? diff : -diff;
       }
 
-      const aValue = sortBy === 'weekly' ? a.quota?.weekly_percentage ?? -1 : a.quota?.hourly_percentage ?? -1;
-      const bValue = sortBy === 'weekly' ? b.quota?.weekly_percentage ?? -1 : b.quota?.hourly_percentage ?? -1;
+      const aValue = resolveCreditsSummary(a).creditsLeft ?? -1;
+      const bValue = resolveCreditsSummary(b).creditsLeft ?? -1;
       const diff = bValue - aValue;
       return sortDirection === 'desc' ? diff : -diff;
     });
 
     return result;
-  }, [accounts, filterType, searchQuery, sortBy, sortDirection, tagFilter]);
+  }, [accounts, filterType, resolveCreditsSummary, resolvePlanKey, searchQuery, sortBy, sortDirection, tagFilter]);
 
   const groupedAccounts = useMemo(() => {
     if (!groupByTag) return [] as Array<[string, typeof filteredAccounts]>;
@@ -791,11 +953,24 @@ export function WindsurfAccountsPage() {
   const resolveGroupLabel = (groupKey: string) =>
     groupKey === untaggedKey ? t('accounts.defaultGroup', '默认分组') : groupKey;
 
+  const resolveDisplayEmail = useCallback((account: (typeof accounts)[number]) => {
+    const candidates = [account.email, account.github_email];
+    for (const value of candidates) {
+      const trimmed = value?.trim();
+      if (trimmed && trimmed.includes('@')) return trimmed;
+    }
+    return '';
+  }, []);
+
   const renderGridCards = (items: typeof filteredAccounts, groupKey?: string) =>
     items.map((account) => {
-      const displayEmail = account.email ?? account.github_email ?? account.github_login;
-      const maskedDisplayEmail = maskAccountText(displayEmail);
-      const planKey = getWindsurfPlanDisplayName(account.plan_type);
+      const displayEmail = resolveDisplayEmail(account);
+      const emailText = displayEmail || '-';
+      const credits = resolveCreditsSummary(account);
+      const cycleDisplay = resolveCycleDisplay(credits);
+      const promptMetrics = resolvePromptMetrics(credits);
+      const addOnMetrics = resolveAddOnMetrics(credits);
+      const planKey = resolvePlanKey(account);
       const planLabel = t(`windsurf.plan.${planKey.toLowerCase()}`, planKey);
       const isSelected = selected.has(account.id);
       const isCurrent = currentAccountId === account.id;
@@ -813,8 +988,8 @@ export function WindsurfAccountsPage() {
                 onChange={() => toggleSelect(account.id)}
               />
             </div>
-            <span className="account-email" title={maskedDisplayEmail}>
-              {maskedDisplayEmail}
+            <span className="account-email" title={maskAccountText(emailText)}>
+              {maskAccountText(emailText)}
             </span>
             {isCurrent && (
               <span className="current-tag">
@@ -825,51 +1000,50 @@ export function WindsurfAccountsPage() {
           </div>
 
           <div className="ghcp-quota-section">
-            <div className="quota-item">
+            <div className="quota-item windsurf-credit-item">
               <div className="quota-header">
-                <Clock size={14} />
-                <span className="quota-label">{t('windsurf.quota.hourly', 'Inline Suggestions')}</span>
-                <span className={`quota-pct ${getWindsurfQuotaClass(account.quota?.hourly_percentage ?? 100)}`}>
-                  {account.quota?.hourly_percentage ?? 100}%
+                <span className="quota-label">{t('windsurf.columns.promptCredits', 'User Prompt credits')}</span>
+                <span className={`quota-pct ${getWindsurfQuotaClass(promptMetrics.usedPercent)}`}>
+                  {promptMetrics.usedPercent}%
                 </span>
+              </div>
+              <div className="windsurf-credit-meta-row">
+                <span className="windsurf-credit-used">{formatUsedLine(promptMetrics.used, promptMetrics.total)}</span>
+                <span className="windsurf-credit-left">{formatLeftLine(promptMetrics.left)}</span>
               </div>
               <div className="quota-bar-track">
                 <div
-                  className={`quota-bar ${getWindsurfQuotaClass(account.quota?.hourly_percentage ?? 100)}`}
-                  style={{ width: `${account.quota?.hourly_percentage ?? 100}%` }}
+                  className={`quota-bar ${getWindsurfQuotaClass(promptMetrics.usedPercent)}`}
+                  style={{ width: `${promptMetrics.usedPercent}%` }}
                 />
               </div>
-              {account.quota?.hourly_reset_time && (
-                <span className="quota-reset">
-                  {formatWindsurfResetTime(account.quota.hourly_reset_time, t)}
-                </span>
-              )}
             </div>
 
-            <div className="quota-item">
+            <div className="quota-item windsurf-credit-item">
               <div className="quota-header">
-                <Calendar size={14} />
-                <span className="quota-label">{t('windsurf.quota.weekly', 'Chat messages')}</span>
-                <span className={`quota-pct ${getWindsurfQuotaClass(account.quota?.weekly_percentage ?? 100)}`}>
-                  {account.quota?.weekly_percentage ?? 100}%
+                <span className="quota-label">{t('windsurf.columns.addOnPromptCredits', 'Add-on prompt credits')}</span>
+                <span className={`quota-pct ${getWindsurfQuotaClass(addOnMetrics.usedPercent)}`}>
+                  {addOnMetrics.usedPercent}%
                 </span>
+              </div>
+              <div className="windsurf-credit-meta-row">
+                <span className="windsurf-credit-used">{formatUsedLine(addOnMetrics.used, addOnMetrics.total)}</span>
+                <span className="windsurf-credit-left">{formatLeftLine(addOnMetrics.left)}</span>
               </div>
               <div className="quota-bar-track">
                 <div
-                  className={`quota-bar ${getWindsurfQuotaClass(account.quota?.weekly_percentage ?? 100)}`}
-                  style={{ width: `${account.quota?.weekly_percentage ?? 100}%` }}
+                  className={`quota-bar ${getWindsurfQuotaClass(addOnMetrics.usedPercent)}`}
+                  style={{ width: `${addOnMetrics.usedPercent}%` }}
                 />
               </div>
-              {account.quota?.weekly_reset_time && (
-                <span className="quota-reset">
-                  {formatWindsurfResetTime(account.quota.weekly_reset_time, t)}
-                </span>
-              )}
             </div>
+          </div>
 
-            {!account.quota && (
-              <div className="quota-empty">{t('windsurf.quota.noData', '暂无配额数据')}</div>
-            )}
+          <div className="windsurf-plan-cycle" title={cycleDisplay.title}>
+            <span className="windsurf-plan-cycle-summary">{cycleDisplay.summary}</span>
+            {cycleDisplay.detail ? (
+              <span className="windsurf-plan-cycle-detail">{cycleDisplay.detail}</span>
+            ) : null}
           </div>
 
           <div className="card-footer">
@@ -879,7 +1053,7 @@ export function WindsurfAccountsPage() {
                 className="card-action-btn success"
                 onClick={() => handleInjectToVSCode(account.id)}
                 disabled={!!injecting}
-                title={t('windsurf.injectToVSCode', 'Switch to VS Code')}
+                title={t('windsurf.injectToVSCode', '切换到 Windsurf')}
               >
                 {injecting === account.id ? (
                   <RefreshCw size={14} className="loading-spinner" />
@@ -920,9 +1094,13 @@ export function WindsurfAccountsPage() {
 
   const renderTableRows = (items: typeof filteredAccounts, groupKey?: string) =>
     items.map((account) => {
-      const displayEmail = account.email ?? account.github_email ?? account.github_login;
-      const maskedDisplayEmail = maskAccountText(displayEmail);
-      const planKey = getWindsurfPlanDisplayName(account.plan_type);
+      const displayEmail = resolveDisplayEmail(account);
+      const emailText = displayEmail || '-';
+      const credits = resolveCreditsSummary(account);
+      const cycleDisplay = resolveCycleDisplay(credits);
+      const promptMetrics = resolvePromptMetrics(credits);
+      const addOnMetrics = resolveAddOnMetrics(credits);
+      const planKey = resolvePlanKey(account);
       const planLabel = t(`windsurf.plan.${planKey.toLowerCase()}`, planKey);
       const isCurrent = currentAccountId === account.id;
       return (
@@ -937,10 +1115,13 @@ export function WindsurfAccountsPage() {
           <td>
             <div className="account-cell">
               <div className="account-main-line">
-                <span className="account-email-text" title={maskedDisplayEmail}>
-                  {maskedDisplayEmail}
+                <span className="account-email-text" title={maskAccountText(emailText)}>
+                  {maskAccountText(emailText)}
                 </span>
                 {isCurrent && <span className="mini-tag current">{t('accounts.status.current')}</span>}
+              </div>
+              <div className="account-sub-line windsurf-cycle-line" title={cycleDisplay.title}>
+                <span className="windsurf-cycle-text">{cycleDisplay.summary}</span>
               </div>
             </div>
           </td>
@@ -948,49 +1129,43 @@ export function WindsurfAccountsPage() {
             <span className={`tier-badge ${planKey.toLowerCase()}`}>{planLabel}</span>
           </td>
           <td>
-            <div className="quota-item">
+            <div className="quota-item windsurf-table-credit-item">
               <div className="quota-header">
-                <span className="quota-name">{t('windsurf.quota.hourly', 'Inline Suggestions')}</span>
-                <span className={`quota-value ${getWindsurfQuotaClass(account.quota?.hourly_percentage ?? 100)}`}>
-                  {account.quota?.hourly_percentage ?? 100}%
+                <span className="quota-name">{t('windsurf.columns.promptCredits', 'User Prompt credits')}</span>
+                <span className={`quota-value ${getWindsurfQuotaClass(promptMetrics.usedPercent)}`}>
+                  {promptMetrics.usedPercent}%
                 </span>
+              </div>
+              <div className="windsurf-credit-meta-row table">
+                <span className="windsurf-credit-used">{formatUsedLine(promptMetrics.used, promptMetrics.total)}</span>
+                <span className="windsurf-credit-left">{formatLeftLine(promptMetrics.left)}</span>
               </div>
               <div className="quota-progress-track">
                 <div
-                  className={`quota-progress-bar ${getWindsurfQuotaClass(account.quota?.hourly_percentage ?? 100)}`}
-                  style={{ width: `${account.quota?.hourly_percentage ?? 100}%` }}
+                  className={`quota-progress-bar ${getWindsurfQuotaClass(promptMetrics.usedPercent)}`}
+                  style={{ width: `${promptMetrics.usedPercent}%` }}
                 />
               </div>
-              {account.quota?.hourly_reset_time && (
-                <div className="quota-footer">
-                  <span className="quota-reset">
-                    {formatWindsurfResetTime(account.quota.hourly_reset_time, t)}
-                  </span>
-                </div>
-              )}
             </div>
           </td>
           <td>
-            <div className="quota-item">
+            <div className="quota-item windsurf-table-credit-item">
               <div className="quota-header">
-                <span className="quota-name">{t('windsurf.quota.weekly', 'Chat messages')}</span>
-                <span className={`quota-value ${getWindsurfQuotaClass(account.quota?.weekly_percentage ?? 100)}`}>
-                  {account.quota?.weekly_percentage ?? 100}%
+                <span className="quota-name">{t('windsurf.columns.addOnPromptCredits', 'Add-on prompt credits')}</span>
+                <span className={`quota-value ${getWindsurfQuotaClass(addOnMetrics.usedPercent)}`}>
+                  {addOnMetrics.usedPercent}%
                 </span>
+              </div>
+              <div className="windsurf-credit-meta-row table">
+                <span className="windsurf-credit-used">{formatUsedLine(addOnMetrics.used, addOnMetrics.total)}</span>
+                <span className="windsurf-credit-left">{formatLeftLine(addOnMetrics.left)}</span>
               </div>
               <div className="quota-progress-track">
                 <div
-                  className={`quota-progress-bar ${getWindsurfQuotaClass(account.quota?.weekly_percentage ?? 100)}`}
-                  style={{ width: `${account.quota?.weekly_percentage ?? 100}%` }}
+                  className={`quota-progress-bar ${getWindsurfQuotaClass(addOnMetrics.usedPercent)}`}
+                  style={{ width: `${addOnMetrics.usedPercent}%` }}
                 />
               </div>
-              {account.quota?.weekly_reset_time && (
-                <div className="quota-footer">
-                  <span className="quota-reset">
-                    {formatWindsurfResetTime(account.quota.weekly_reset_time, t)}
-                  </span>
-                </div>
-              )}
             </div>
           </td>
           <td className="sticky-action-cell table-action-cell">
@@ -999,7 +1174,7 @@ export function WindsurfAccountsPage() {
                 className="action-btn success"
                 onClick={() => handleInjectToVSCode(account.id)}
                 disabled={!!injecting}
-                title={t('windsurf.injectToVSCode', 'Switch to VS Code')}
+                title={t('windsurf.injectToVSCode', '切换到 Windsurf')}
               >
                 {injecting === account.id ? <RefreshCw size={14} className="loading-spinner" /> : <Play size={14} />}
               </button>
@@ -1219,10 +1394,8 @@ export function WindsurfAccountsPage() {
               aria-label={t('windsurf.sortLabel', '排序')}
             >
               <option value="created_at">{t('windsurf.sort.createdAt', '按创建时间')}</option>
-              <option value="weekly">{t('windsurf.sort.weekly', '按 Chat messages 使用量')}</option>
-              <option value="hourly">{t('windsurf.sort.hourly', '按 Inline Suggestions 使用量')}</option>
-              <option value="weekly_reset">{t('windsurf.sort.weeklyReset', '按 Chat messages 重置时间')}</option>
-              <option value="hourly_reset">{t('windsurf.sort.hourlyReset', '按 Inline Suggestions 重置时间')}</option>
+              <option value="credits">{t('windsurf.sort.credits', '按剩余 Credits')}</option>
+              <option value="plan_end">{t('windsurf.sort.planEnd', '按配额周期结束时间')}</option>
             </select>
           </div>
 
@@ -1357,10 +1530,10 @@ export function WindsurfAccountsPage() {
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th style={{ width: 260 }}>{t('windsurf.columns.email', '账号')}</th>
-                <th style={{ width: 140 }}>{t('windsurf.columns.plan', '订阅')}</th>
-                <th>{t('windsurf.columns.hourly', 'Inline Suggestions')}</th>
-                <th>{t('windsurf.columns.weekly', 'Chat messages')}</th>
+                <th style={{ width: 240 }}>{t('windsurf.columns.email', '邮箱')}</th>
+                <th style={{ width: 120 }}>{t('windsurf.columns.plan', '标签')}</th>
+                <th>{t('windsurf.columns.promptCredits', 'User Prompt credits')}</th>
+                <th>{t('windsurf.columns.addOnPromptCredits', 'Add-on prompt credits')}</th>
                 <th className="sticky-action-header table-action-header">{t('windsurf.columns.actions', '操作')}</th>
               </tr>
             </thead>
@@ -1393,10 +1566,10 @@ export function WindsurfAccountsPage() {
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th style={{ width: 260 }}>{t('windsurf.columns.email', '账号')}</th>
-                <th style={{ width: 140 }}>{t('windsurf.columns.plan', '订阅')}</th>
-                <th>{t('windsurf.columns.hourly', 'Inline Suggestions')}</th>
-                <th>{t('windsurf.columns.weekly', 'Chat messages')}</th>
+                <th style={{ width: 240 }}>{t('windsurf.columns.email', '邮箱')}</th>
+                <th style={{ width: 120 }}>{t('windsurf.columns.plan', '标签')}</th>
+                <th>{t('windsurf.columns.promptCredits', 'User Prompt credits')}</th>
+                <th>{t('windsurf.columns.addOnPromptCredits', 'Add-on prompt credits')}</th>
                 <th className="sticky-action-header table-action-header">{t('windsurf.columns.actions', '操作')}</th>
               </tr>
             </thead>
@@ -1542,8 +1715,15 @@ export function WindsurfAccountsPage() {
               {addTab === 'import' && (
                 <div className="add-section">
                   <p className="section-desc">
-                    {t('windsurf.import.localDesc', '从 JSON 文件导入 Windsurf 账号数据。')}
+                    {t('windsurf.import.localDesc', '支持从本机 Windsurf 客户端或 JSON 文件导入账号数据。')}
                   </p>
+                  <button className="btn btn-secondary btn-full" onClick={handleImportFromLocalClient} disabled={importing}>
+                    {importing ? <RefreshCw size={16} className="loading-spinner" /> : <Database size={16} />}
+                    {t('windsurf.import.localClient', '从本机 Windsurf 导入')}
+                  </button>
+                  <div className="oauth-hint" style={{ margin: '8px 0 4px' }}>
+                    {t('windsurf.import.orJson', '或从 JSON 文件导入')}
+                  </div>
                   <input
                     ref={importFileInputRef}
                     type="file"

@@ -21,6 +21,12 @@ export interface WindsurfAccount {
   copilot_quota_reset_date?: string | null;
   copilot_limited_user_quotas?: unknown;
   copilot_limited_user_reset_date?: number | null;
+  windsurf_api_key?: string | null;
+  windsurf_api_server_url?: string | null;
+  windsurf_auth_token?: string | null;
+  windsurf_user_status?: unknown;
+  windsurf_plan_status?: unknown;
+  windsurf_auth_status_raw?: unknown;
 
   created_at: number;
   last_used: number;
@@ -51,6 +57,7 @@ function resolvePlanFromSku(sku: string): WindsurfPlanBadge | null {
   const lower = sku.toLowerCase();
   if (!lower) return null;
   if (lower.includes('free_limited') || lower.includes('no_auth_limited')) return 'FREE';
+  if (lower === 'free' || lower === 'windsurf') return 'FREE';
   if (lower.includes('enterprise')) return 'ENTERPRISE';
   if (lower.includes('business')) return 'BUSINESS';
   if (lower.includes('individual_pro') || lower === 'pro' || lower.includes('_pro')) return 'PRO';
@@ -58,12 +65,8 @@ function resolvePlanFromSku(sku: string): WindsurfPlanBadge | null {
   return null;
 }
 
-export function getWindsurfPlanBadge(account: WindsurfAccount): WindsurfPlanBadge {
-  const tokenMap = parseTokenMap(account.copilot_token || '');
-  const skuBadge = resolvePlanFromSku(tokenMap['sku'] || '');
-  if (skuBadge) return skuBadge;
-
-  const normalizedPlan = getWindsurfPlanDisplayName(account.copilot_plan);
+function mapPlanNameToBadge(planName?: string | null): WindsurfPlanBadge {
+  const normalizedPlan = getWindsurfPlanDisplayName(planName);
   switch (normalizedPlan) {
     case 'FREE':
       return 'FREE';
@@ -80,6 +83,130 @@ export function getWindsurfPlanBadge(account: WindsurfAccount): WindsurfPlanBadg
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function getPathValue(root: unknown, path: string[]): unknown {
+  let current: unknown = root;
+  for (const key of path) {
+    if (!isRecord(current)) return null;
+    current = current[key];
+  }
+  return current;
+}
+
+function getString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function getStringFromPaths(root: unknown, paths: string[][]): string | null {
+  for (const path of paths) {
+    const value = getString(getPathValue(root, path));
+    if (value) return value;
+  }
+  return null;
+}
+
+function getNumberFromPaths(root: unknown, paths: string[][]): number | null {
+  for (const path of paths) {
+    const value = getNumber(getPathValue(root, path));
+    if (value != null) return value;
+  }
+  return null;
+}
+
+function getNormalizedNumberFromPaths(root: unknown, paths: string[][]): number | null {
+  return normalizeProtoCreditsValue(getNumberFromPaths(root, paths));
+}
+
+function firstRecord(values: unknown[]): Record<string, unknown> | null {
+  for (const value of values) {
+    if (isRecord(value)) return value;
+  }
+  return null;
+}
+
+function parseTimestampSeconds(value: unknown): number | null {
+  if (value == null) return null;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const normalized = value > 1e12 ? Math.floor(value / 1000) : Math.floor(value);
+    return normalized > 0 ? normalized : null;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const numeric = Number(trimmed);
+    if (Number.isFinite(numeric)) return parseTimestampSeconds(numeric);
+    const parsed = Date.parse(trimmed);
+    if (Number.isFinite(parsed)) return Math.floor(parsed / 1000);
+    return null;
+  }
+  if (!isRecord(value)) return null;
+  const candidates = ['seconds', 'unixSeconds', 'unix', 'timestamp', 'value'];
+  for (const key of candidates) {
+    const parsed = parseTimestampSeconds(value[key]);
+    if (parsed != null) return parsed;
+  }
+  return null;
+}
+
+function resolveWindsurfPlanStatus(account: WindsurfAccount): Record<string, unknown> | null {
+  return firstRecord([
+    getPathValue(account.windsurf_plan_status, ['planStatus']),
+    account.windsurf_plan_status,
+    getPathValue(account.copilot_quota_snapshots, ['windsurfPlanStatus', 'planStatus']),
+    getPathValue(account.copilot_quota_snapshots, ['windsurfPlanStatus']),
+    getPathValue(account.windsurf_user_status, ['userStatus', 'planStatus']),
+    getPathValue(account.windsurf_user_status, ['planStatus']),
+    getPathValue(account.copilot_quota_snapshots, ['windsurfUserStatus', 'userStatus', 'planStatus']),
+    getPathValue(account.copilot_quota_snapshots, ['windsurfUserStatus', 'planStatus']),
+  ]);
+}
+
+function resolveWindsurfPlanInfo(
+  account: WindsurfAccount,
+  planStatus: Record<string, unknown> | null,
+): Record<string, unknown> | null {
+  return firstRecord([
+    getPathValue(planStatus, ['planInfo']),
+    getPathValue(account.windsurf_plan_status, ['planStatus', 'planInfo']),
+    getPathValue(account.windsurf_plan_status, ['planInfo']),
+    getPathValue(account.copilot_quota_snapshots, ['windsurfPlanInfo']),
+    getPathValue(account.copilot_quota_snapshots, ['windsurfPlanStatus', 'planStatus', 'planInfo']),
+    getPathValue(account.copilot_quota_snapshots, ['windsurfPlanStatus', 'planInfo']),
+    getPathValue(account.windsurf_user_status, ['userStatus', 'planInfo']),
+    getPathValue(account.windsurf_user_status, ['planInfo']),
+    getPathValue(account.copilot_quota_snapshots, ['windsurfUserStatus', 'userStatus', 'planInfo']),
+  ]);
+}
+
+function resolveWindsurfRemotePlanName(account: WindsurfAccount): string | null {
+  const planStatus = resolveWindsurfPlanStatus(account);
+  const planInfo = resolveWindsurfPlanInfo(account, planStatus);
+  return (
+    getStringFromPaths(planInfo, [['planName'], ['plan_name'], ['teamsTier'], ['teams_tier'], ['name']]) ??
+    getStringFromPaths(planStatus, [['planName'], ['plan_name'], ['teamsTier'], ['teams_tier']]) ??
+    null
+  );
+}
+
+export function getWindsurfPlanBadge(account: WindsurfAccount): WindsurfPlanBadge {
+  const tokenMap = parseTokenMap(account.copilot_token || '');
+  const skuBadge = resolvePlanFromSku(tokenMap['sku'] || '');
+  if (skuBadge) return skuBadge;
+
+  const directPlanBadge = mapPlanNameToBadge(account.copilot_plan);
+  if (directPlanBadge !== 'UNKNOWN') return directPlanBadge;
+
+  const remotePlanBadge = mapPlanNameToBadge(resolveWindsurfRemotePlanName(account));
+  if (remotePlanBadge !== 'UNKNOWN') return remotePlanBadge;
+
+  return 'UNKNOWN';
+}
+
 export function getWindsurfQuotaClass(percentage: number): WindsurfQuotaClass {
   // Windsurf 页面展示的是“使用量”：使用越高，风险颜色越高。
   if (percentage <= 20) return 'high';
@@ -89,7 +216,23 @@ export function getWindsurfQuotaClass(percentage: number): WindsurfQuotaClass {
 }
 
 export function getWindsurfAccountDisplayEmail(account: WindsurfAccount): string {
-  return account.github_email?.trim() || account.github_login;
+  const githubEmail = account.github_email?.trim();
+  if (githubEmail) return githubEmail;
+
+  const protoSummary = parseWindsurfProtoSummary(account);
+  const protoEmail = protoSummary?.email?.trim();
+  if (protoEmail) return protoEmail;
+
+  const remoteEmail =
+    getStringFromPaths(account.windsurf_user_status, [['userStatus', 'email'], ['email']]) ??
+    getStringFromPaths(account.windsurf_auth_status_raw, [['email']]) ??
+    getStringFromPaths(account.copilot_quota_snapshots, [
+      ['windsurfCurrentUser', 'email'],
+      ['windsurfUserStatus', 'userStatus', 'email'],
+      ['windsurfUserStatus', 'email'],
+    ]);
+
+  return remoteEmail || account.github_login;
 }
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
@@ -102,6 +245,19 @@ export type WindsurfUsage = {
   remainingChat?: number | null;
   totalCompletions?: number | null;
   totalChat?: number | null;
+};
+
+export type WindsurfCreditsSummary = {
+  planName: string | null;
+  creditsLeft: number | null;
+  promptCreditsLeft: number | null;
+  promptCreditsUsed: number | null;
+  promptCreditsTotal: number | null;
+  addOnCredits: number | null;
+  addOnCreditsUsed: number | null;
+  addOnCreditsTotal: number | null;
+  planStartsAt: number | null;
+  planEndsAt: number | null;
 };
 
 /** 兼容 Codex 风格的 quota 结构（用于复用 UI 组件/样式） */
@@ -157,6 +313,329 @@ function getNumber(value: unknown): number | null {
     return Number.isFinite(n) ? n : null;
   }
   return null;
+}
+
+type WindsurfProtoSummary = {
+  name: string | null;
+  email: string | null;
+  planName: string | null;
+  planStartsAt: number | null;
+  planEndsAt: number | null;
+  promptCreditsLeft: number | null;
+  promptCreditsUsed: number | null;
+  promptCreditsTotal: number | null;
+  addOnCreditsLeft: number | null;
+  addOnCreditsUsed: number | null;
+  addOnCreditsTotal: number | null;
+};
+
+function decodeBase64ToBytes(value: string): Uint8Array | null {
+  if (!value) return null;
+  try {
+    if (typeof atob === 'function') {
+      const binary = atob(value);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
+    }
+  } catch {
+    // fallback below
+  }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const maybeBuffer = (globalThis as any)?.Buffer;
+    if (maybeBuffer?.from) {
+      return Uint8Array.from(maybeBuffer.from(value, 'base64'));
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+function decodeUtf8(bytes: Uint8Array): string | null {
+  try {
+    return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+  } catch {
+    try {
+      return String.fromCharCode(...Array.from(bytes));
+    } catch {
+      return null;
+    }
+  }
+}
+
+function readProtoVarint(
+  bytes: Uint8Array,
+  offset: number,
+): { value: number; nextOffset: number } | null {
+  let result = 0;
+  let shift = 0;
+  let pos = offset;
+  while (pos < bytes.length && shift < 53) {
+    const byte = bytes[pos];
+    result += (byte & 0x7f) * 2 ** shift;
+    pos += 1;
+    if ((byte & 0x80) === 0) {
+      return { value: result, nextOffset: pos };
+    }
+    shift += 7;
+  }
+  return null;
+}
+
+function readProtoLengthDelimited(
+  bytes: Uint8Array,
+  offset: number,
+): { value: Uint8Array; nextOffset: number } | null {
+  const lengthInfo = readProtoVarint(bytes, offset);
+  if (!lengthInfo) return null;
+  const length = Math.max(0, Math.floor(lengthInfo.value));
+  const start = lengthInfo.nextOffset;
+  const end = start + length;
+  if (end > bytes.length) return null;
+  return {
+    value: bytes.slice(start, end),
+    nextOffset: end,
+  };
+}
+
+function skipProtoField(bytes: Uint8Array, wireType: number, offset: number): number | null {
+  if (wireType === 0) {
+    return readProtoVarint(bytes, offset)?.nextOffset ?? null;
+  }
+  if (wireType === 1) {
+    const next = offset + 8;
+    return next <= bytes.length ? next : null;
+  }
+  if (wireType === 2) {
+    return readProtoLengthDelimited(bytes, offset)?.nextOffset ?? null;
+  }
+  if (wireType === 5) {
+    const next = offset + 4;
+    return next <= bytes.length ? next : null;
+  }
+  return null;
+}
+
+function parseProtoTimestampSecondsFromMessage(bytes: Uint8Array): number | null {
+  let offset = 0;
+  while (offset < bytes.length) {
+    const tagInfo = readProtoVarint(bytes, offset);
+    if (!tagInfo) break;
+    const fieldNo = Math.floor(tagInfo.value / 8);
+    const wireType = tagInfo.value & 0x7;
+    if (fieldNo === 1 && wireType === 0) {
+      const value = readProtoVarint(bytes, tagInfo.nextOffset);
+      if (!value) return null;
+      return Math.floor(value.value);
+    }
+    const nextOffset = skipProtoField(bytes, wireType, tagInfo.nextOffset);
+    if (nextOffset == null) break;
+    offset = nextOffset;
+  }
+  return null;
+}
+
+function normalizeProtoCreditsValue(value: number | null): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  if (value >= 1000) return value / 100;
+  if (value >= 100 && value % 100 === 0) return value / 100;
+  return value;
+}
+
+function parseWindsurfProtoSummary(account: WindsurfAccount): WindsurfProtoSummary | null {
+  const base64Value = getStringFromPaths(account.windsurf_auth_status_raw, [
+    ['userStatusProtoBinaryBase64'],
+    ['userStatusProtoBinary'],
+  ]);
+  if (!base64Value) return null;
+
+  const bytes = decodeBase64ToBytes(base64Value);
+  if (!bytes || bytes.length === 0) return null;
+
+  let name: string | null = null;
+  let email: string | null = null;
+  let planStatusBytes: Uint8Array | null = null;
+
+  let offset = 0;
+  while (offset < bytes.length) {
+    const tagInfo = readProtoVarint(bytes, offset);
+    if (!tagInfo) break;
+    const fieldNo = Math.floor(tagInfo.value / 8);
+    const wireType = tagInfo.value & 0x7;
+    if (wireType === 2) {
+      const valueInfo = readProtoLengthDelimited(bytes, tagInfo.nextOffset);
+      if (!valueInfo) break;
+      if (fieldNo === 3) {
+        name = decodeUtf8(valueInfo.value)?.trim() || null;
+      } else if (fieldNo === 7) {
+        email = decodeUtf8(valueInfo.value)?.trim() || null;
+      } else if (fieldNo === 13) {
+        planStatusBytes = valueInfo.value;
+      }
+      offset = valueInfo.nextOffset;
+      continue;
+    }
+    const nextOffset = skipProtoField(bytes, wireType, tagInfo.nextOffset);
+    if (nextOffset == null) break;
+    offset = nextOffset;
+  }
+
+  let planName: string | null = null;
+  let planStartsAt: number | null = null;
+  let planEndsAt: number | null = null;
+  let promptCreditsLeft: number | null = null;
+  let promptCreditsUsed: number | null = null;
+  let promptCreditsTotal: number | null = null;
+  let addOnCreditsLeft: number | null = null;
+  let addOnCreditsUsed: number | null = null;
+  let addOnCreditsTotal: number | null = null;
+
+  if (planStatusBytes) {
+    let planInfoBytes: Uint8Array | null = null;
+    let promptAvailableFromPlanStatus: number | null = null;
+    let promptUsedFromPlanStatus: number | null = null;
+    let flexAvailableFromPlanStatus: number | null = null;
+    let flexUsedFromPlanStatus: number | null = null;
+
+    let planStatusOffset = 0;
+    while (planStatusOffset < planStatusBytes.length) {
+      const tagInfo = readProtoVarint(planStatusBytes, planStatusOffset);
+      if (!tagInfo) break;
+      const fieldNo = Math.floor(tagInfo.value / 8);
+      const wireType = tagInfo.value & 0x7;
+
+      if (fieldNo === 8 && wireType === 0) {
+        const valueInfo = readProtoVarint(planStatusBytes, tagInfo.nextOffset);
+        if (!valueInfo) break;
+        promptAvailableFromPlanStatus = valueInfo.value;
+        planStatusOffset = valueInfo.nextOffset;
+        continue;
+      }
+      if (fieldNo === 6 && wireType === 0) {
+        const valueInfo = readProtoVarint(planStatusBytes, tagInfo.nextOffset);
+        if (!valueInfo) break;
+        promptUsedFromPlanStatus = valueInfo.value;
+        planStatusOffset = valueInfo.nextOffset;
+        continue;
+      }
+      if (fieldNo === 4 && wireType === 0) {
+        const valueInfo = readProtoVarint(planStatusBytes, tagInfo.nextOffset);
+        if (!valueInfo) break;
+        flexAvailableFromPlanStatus = valueInfo.value;
+        planStatusOffset = valueInfo.nextOffset;
+        continue;
+      }
+      if (fieldNo === 7 && wireType === 0) {
+        const valueInfo = readProtoVarint(planStatusBytes, tagInfo.nextOffset);
+        if (!valueInfo) break;
+        flexUsedFromPlanStatus = valueInfo.value;
+        planStatusOffset = valueInfo.nextOffset;
+        continue;
+      }
+      if (fieldNo === 3 && wireType === 2) {
+        const valueInfo = readProtoLengthDelimited(planStatusBytes, tagInfo.nextOffset);
+        if (!valueInfo) break;
+        planEndsAt = parseProtoTimestampSecondsFromMessage(valueInfo.value);
+        planStatusOffset = valueInfo.nextOffset;
+        continue;
+      }
+      if (fieldNo === 2 && wireType === 2) {
+        const valueInfo = readProtoLengthDelimited(planStatusBytes, tagInfo.nextOffset);
+        if (!valueInfo) break;
+        planStartsAt = parseProtoTimestampSecondsFromMessage(valueInfo.value);
+        planStatusOffset = valueInfo.nextOffset;
+        continue;
+      }
+      if (fieldNo === 1 && wireType === 2) {
+        const valueInfo = readProtoLengthDelimited(planStatusBytes, tagInfo.nextOffset);
+        if (!valueInfo) break;
+        planInfoBytes = valueInfo.value;
+        planStatusOffset = valueInfo.nextOffset;
+        continue;
+      }
+
+      const nextOffset = skipProtoField(planStatusBytes, wireType, tagInfo.nextOffset);
+      if (nextOffset == null) break;
+      planStatusOffset = nextOffset;
+    }
+
+    let monthlyPromptCreditsFromPlanInfo: number | null = null;
+    let monthlyFlexCreditsFromPlanInfo: number | null = null;
+    if (planInfoBytes) {
+      let planInfoOffset = 0;
+      while (planInfoOffset < planInfoBytes.length) {
+        const tagInfo = readProtoVarint(planInfoBytes, planInfoOffset);
+        if (!tagInfo) break;
+        const fieldNo = Math.floor(tagInfo.value / 8);
+        const wireType = tagInfo.value & 0x7;
+
+        if (wireType === 2 && fieldNo === 2) {
+          const valueInfo = readProtoLengthDelimited(planInfoBytes, tagInfo.nextOffset);
+          if (!valueInfo) break;
+          planName = decodeUtf8(valueInfo.value)?.trim() || null;
+          planInfoOffset = valueInfo.nextOffset;
+          continue;
+        }
+        if (wireType === 0 && fieldNo === 12) {
+          const valueInfo = readProtoVarint(planInfoBytes, tagInfo.nextOffset);
+          if (!valueInfo) break;
+          monthlyPromptCreditsFromPlanInfo = valueInfo.value;
+          planInfoOffset = valueInfo.nextOffset;
+          continue;
+        }
+        if (wireType === 0 && fieldNo === 14) {
+          const valueInfo = readProtoVarint(planInfoBytes, tagInfo.nextOffset);
+          if (!valueInfo) break;
+          monthlyFlexCreditsFromPlanInfo = valueInfo.value;
+          planInfoOffset = valueInfo.nextOffset;
+          continue;
+        }
+
+        const nextOffset = skipProtoField(planInfoBytes, wireType, tagInfo.nextOffset);
+        if (nextOffset == null) break;
+        planInfoOffset = nextOffset;
+      }
+    }
+
+    promptCreditsLeft = normalizeProtoCreditsValue(
+      promptAvailableFromPlanStatus ?? monthlyPromptCreditsFromPlanInfo,
+    );
+    promptCreditsUsed = normalizeProtoCreditsValue(promptUsedFromPlanStatus);
+    if (promptCreditsLeft != null && promptCreditsUsed != null) {
+      promptCreditsTotal = Math.max(0, promptCreditsLeft + promptCreditsUsed);
+    } else {
+      promptCreditsTotal = normalizeProtoCreditsValue(monthlyPromptCreditsFromPlanInfo);
+    }
+
+    addOnCreditsLeft = normalizeProtoCreditsValue(
+      flexAvailableFromPlanStatus ?? monthlyFlexCreditsFromPlanInfo,
+    );
+    addOnCreditsUsed = normalizeProtoCreditsValue(flexUsedFromPlanStatus);
+    if (addOnCreditsLeft != null && addOnCreditsUsed != null) {
+      addOnCreditsTotal = Math.max(0, addOnCreditsLeft + addOnCreditsUsed);
+    } else {
+      addOnCreditsTotal = normalizeProtoCreditsValue(monthlyFlexCreditsFromPlanInfo);
+    }
+  }
+
+  return {
+    name,
+    email,
+    planName,
+    planStartsAt,
+    planEndsAt,
+    promptCreditsLeft,
+    promptCreditsUsed,
+    promptCreditsTotal,
+    addOnCreditsLeft,
+    addOnCreditsUsed,
+    addOnCreditsTotal,
+  };
 }
 
 function getLimitedQuota(account: WindsurfAccount, key: 'chat' | 'completions'): number | null {
@@ -270,6 +749,134 @@ export function getWindsurfUsage(account: WindsurfAccount): WindsurfUsage {
     remainingChat,
     totalCompletions,
     totalChat,
+  };
+}
+
+export function getWindsurfCreditsSummary(account: WindsurfAccount): WindsurfCreditsSummary {
+  const usage = getWindsurfUsage(account);
+  const planStatus = resolveWindsurfPlanStatus(account);
+  const planInfo = resolveWindsurfPlanInfo(account, planStatus);
+  const protoSummary = parseWindsurfProtoSummary(account);
+
+  const promptCreditsLeft =
+    getNormalizedNumberFromPaths(planStatus, [['availablePromptCredits'], ['available_prompt_credits']]) ??
+    protoSummary?.promptCreditsLeft ??
+    normalizeProtoCreditsValue(usage.remainingCompletions ?? null) ??
+    null;
+  const usedPromptCredits =
+    getNormalizedNumberFromPaths(planStatus, [['usedPromptCredits'], ['used_prompt_credits']]) ??
+    protoSummary?.promptCreditsUsed;
+
+  const promptCreditsMonthlyTotal =
+    getNormalizedNumberFromPaths(planInfo, [['monthlyPromptCredits'], ['monthly_prompt_credits']]) ??
+    protoSummary?.promptCreditsTotal;
+
+  let promptCreditsTotal =
+    promptCreditsLeft != null && usedPromptCredits != null
+      ? Math.max(0, promptCreditsLeft + usedPromptCredits)
+      : promptCreditsMonthlyTotal ??
+        normalizeProtoCreditsValue(usage.totalCompletions ?? null) ??
+        (promptCreditsLeft ?? null);
+  if (promptCreditsTotal == null && promptCreditsLeft != null) {
+    promptCreditsTotal = promptCreditsLeft;
+  }
+  if (promptCreditsTotal != null && promptCreditsLeft != null && promptCreditsTotal < promptCreditsLeft) {
+    promptCreditsTotal = promptCreditsLeft;
+  }
+  const promptCreditsUsed =
+    usedPromptCredits ??
+    (promptCreditsTotal != null && promptCreditsLeft != null
+      ? Math.max(0, promptCreditsTotal - promptCreditsLeft)
+      : promptCreditsLeft != null
+      ? 0
+      : null);
+
+  const addOnCredits =
+    getNormalizedNumberFromPaths(planStatus, [
+      ['availableFlexCredits'],
+      ['available_flex_credits'],
+      ['flexCreditsAvailable'],
+      ['flex_credits_available'],
+      ['availableAddOnCredits'],
+      ['available_add_on_credits'],
+      ['addOnCreditsAvailable'],
+      ['add_on_credits_available'],
+      ['availableTopUpCredits'],
+      ['available_top_up_credits'],
+      ['topUpCreditsAvailable'],
+      ['top_up_credits_available'],
+    ]) ??
+    protoSummary?.addOnCreditsLeft ??
+    0;
+
+  const usedAddOnCredits =
+    getNormalizedNumberFromPaths(planStatus, [
+      ['usedFlexCredits'],
+      ['used_flex_credits'],
+      ['usedAddOnCredits'],
+      ['used_add_on_credits'],
+      ['usedTopUpCredits'],
+      ['used_top_up_credits'],
+    ]) ?? protoSummary?.addOnCreditsUsed;
+
+  const addOnCreditsMonthlyTotal =
+    getNormalizedNumberFromPaths(planInfo, [
+      ['monthlyFlexCreditPurchaseAmount'],
+      ['monthly_flex_credit_purchase_amount'],
+      ['monthlyAddOnCredits'],
+      ['monthly_add_on_credits'],
+      ['monthlyTopUpCredits'],
+      ['monthly_top_up_credits'],
+    ]) ?? protoSummary?.addOnCreditsTotal;
+
+  let addOnCreditsTotal =
+    addOnCredits != null && usedAddOnCredits != null
+      ? Math.max(0, addOnCredits + usedAddOnCredits)
+      : addOnCreditsMonthlyTotal ?? (addOnCredits ?? null);
+  if (addOnCreditsTotal != null && addOnCredits != null && addOnCreditsTotal < addOnCredits) {
+    addOnCreditsTotal = addOnCredits;
+  }
+  const addOnCreditsUsed =
+    usedAddOnCredits ??
+    (addOnCreditsTotal != null && addOnCredits != null
+      ? Math.max(0, addOnCreditsTotal - addOnCredits)
+      : addOnCredits != null
+      ? 0
+      : null);
+
+  const planStartsAt =
+    parseTimestampSeconds(getPathValue(planStatus, ['planStart'])) ??
+    parseTimestampSeconds(getPathValue(planStatus, ['plan_start'])) ??
+    parseTimestampSeconds(getPathValue(planStatus, ['currentPeriodStart'])) ??
+    parseTimestampSeconds(getPathValue(planStatus, ['current_period_start'])) ??
+    protoSummary?.planStartsAt ??
+    null;
+
+  const planEndsAt =
+    parseTimestampSeconds(getPathValue(planStatus, ['planEnd'])) ??
+    parseTimestampSeconds(getPathValue(planStatus, ['plan_end'])) ??
+    parseTimestampSeconds(getPathValue(planStatus, ['currentPeriodEnd'])) ??
+    parseTimestampSeconds(getPathValue(planStatus, ['current_period_end'])) ??
+    protoSummary?.planEndsAt ??
+    parseTimestampSeconds(account.copilot_limited_user_reset_date) ??
+    parseTimestampSeconds(account.copilot_quota_reset_date);
+
+  return {
+    planName:
+      resolveWindsurfRemotePlanName(account) ??
+      protoSummary?.planName ??
+      account.copilot_plan ??
+      account.plan_type ??
+      null,
+    creditsLeft: promptCreditsLeft,
+    promptCreditsLeft,
+    promptCreditsUsed,
+    promptCreditsTotal,
+    addOnCredits,
+    addOnCreditsUsed,
+    addOnCreditsTotal,
+    planStartsAt,
+    planEndsAt,
   };
 }
 

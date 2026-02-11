@@ -33,10 +33,11 @@ interface GeneralConfig extends GeneralConfigTheme {
   antigravity_app_path: string;
   codex_app_path: string;
   vscode_app_path: string;
+  windsurf_app_path: string;
 }
 
 type AppPathMissingDetail = {
-  app: 'antigravity' | 'codex' | 'vscode';
+  app: 'antigravity' | 'codex' | 'vscode' | 'windsurf';
   retry?: { kind: 'default' | 'instance'; instanceId?: string };
 };
 
@@ -133,6 +134,7 @@ function App() {
       try {
         await invoke('detect_app_path', { app: 'antigravity' });
         await invoke('detect_app_path', { app: 'vscode' });
+        await invoke('detect_app_path', { app: 'windsurf' });
         const userAgent = navigator.userAgent.toLowerCase();
         if (userAgent.includes('mac')) {
           await invoke('detect_app_path', { app: 'codex' });
@@ -278,7 +280,7 @@ function App() {
     const handlePayload = (payload: unknown) => {
       if (!payload || typeof payload !== 'object') return;
       const detail = payload as AppPathMissingDetail;
-      if (detail.app !== 'antigravity' && detail.app !== 'codex' && detail.app !== 'vscode') return;
+      if (detail.app !== 'antigravity' && detail.app !== 'codex' && detail.app !== 'vscode' && detail.app !== 'windsurf') return;
       setAppPathMissing(detail);
     };
 
@@ -316,6 +318,8 @@ function App() {
             ? config.codex_app_path
             : appPathMissing.app === 'vscode'
               ? config.vscode_app_path
+              : appPathMissing.app === 'windsurf'
+                ? config.windsurf_app_path
               : config.antigravity_app_path;
         if (active) {
           setAppPathDraft(currentPath || '');
@@ -361,6 +365,8 @@ function App() {
           await invoke('codex_start_instance', { instanceId: retry.instanceId });
         } else if (app === 'vscode') {
           await invoke('github_copilot_start_instance', { instanceId: retry.instanceId });
+        } else if (app === 'windsurf') {
+          await invoke('windsurf_start_instance', { instanceId: retry.instanceId });
         } else {
           await invoke('start_instance', { instanceId: retry.instanceId });
         }
@@ -369,6 +375,8 @@ function App() {
           await invoke('codex_start_instance', { instanceId: '__default__' });
         } else if (app === 'vscode') {
           await invoke('github_copilot_start_instance', { instanceId: '__default__' });
+        } else if (app === 'windsurf') {
+          await invoke('windsurf_start_instance', { instanceId: '__default__' });
         } else {
           await invoke('start_instance', { instanceId: '__default__' });
         }
@@ -455,6 +463,8 @@ function App() {
                       ? 'Codex'
                       : appPathMissing.app === 'vscode'
                         ? 'VS Code'
+                        : appPathMissing.app === 'windsurf'
+                          ? 'Windsurf'
                         : 'Antigravity',
                 })}
               </p>

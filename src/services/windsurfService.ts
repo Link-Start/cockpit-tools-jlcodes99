@@ -8,6 +8,7 @@ export interface WindsurfOAuthLoginStartResponse {
   verificationUriComplete?: string | null;
   expiresIn: number;
   intervalSeconds: number;
+  callbackUrl?: string | null;
 }
 
 /** 列出所有 Windsurf 账号 */
@@ -30,6 +31,11 @@ export async function importWindsurfFromJson(jsonContent: string): Promise<Winds
   return await invoke('import_windsurf_from_json', { jsonContent });
 }
 
+/** 从本机 Windsurf 客户端导入当前登录账号 */
+export async function importWindsurfFromLocal(): Promise<WindsurfAccount[]> {
+  return await invoke('import_windsurf_from_local');
+}
+
 /** 导出 Windsurf 账号 */
 export async function exportWindsurfAccounts(accountIds: string[]): Promise<string> {
   return await invoke('export_windsurf_accounts', { accountIds });
@@ -45,17 +51,17 @@ export async function refreshAllWindsurfTokens(): Promise<number> {
   return await invoke('refresh_all_windsurf_tokens');
 }
 
-/** Device Flow：开始登录 */
+/** Windsurf OAuth：开始登录（浏览器授权 + 本地回调） */
 export async function startWindsurfOAuthLogin(): Promise<WindsurfOAuthLoginStartResponse> {
   return await invoke('windsurf_oauth_login_start');
 }
 
-/** Device Flow：完成登录（会轮询，直到成功/失败/超时） */
+/** Windsurf OAuth：完成登录（等待本地回调，直到成功/失败/超时） */
 export async function completeWindsurfOAuthLogin(loginId: string): Promise<WindsurfAccount> {
   return await invoke('windsurf_oauth_login_complete', { loginId });
 }
 
-/** Device Flow：取消登录 */
+/** Windsurf OAuth：取消登录 */
 export async function cancelWindsurfOAuthLogin(loginId?: string): Promise<void> {
   return await invoke('windsurf_oauth_login_cancel', { loginId: loginId ?? null });
 }

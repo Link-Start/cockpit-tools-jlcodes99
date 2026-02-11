@@ -84,7 +84,7 @@ export function WindsurfInstancesContent() {
         fetchAccounts={fetchAccounts}
         renderAccountQuotaPreview={renderWindsurfQuotaPreview}
         getAccountSearchText={(account) => account.email}
-        appType="vscode"
+        appType="windsurf"
       />
     </div>
   );

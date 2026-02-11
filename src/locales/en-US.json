@@ -266,7 +266,15 @@
       "codexSettingsTitle": "Codex Settings",
       "githubCopilotSettingsTitle": "GitHub Copilot Settings",
       "ghcpAutoRefresh": "GitHub Copilot Auto Refresh Quota",
-      "ghcpAutoRefreshDesc": "Background update frequency"
+      "ghcpAutoRefreshDesc": "Background update frequency",
+      "windsurfSettingsTitle": "Windsurf Settings",
+      "windsurfAutoRefresh": "Windsurf Auto Refresh Quota",
+      "windsurfAutoRefreshDesc": "Background update frequency",
+      "windsurfAppPath": "Windsurf App Path",
+      "windsurfAppPathDesc": "Leave empty to use default path",
+      "windsurfAppPathPlaceholder": "Default path",
+      "windsurfPathSelect": "Select",
+      "windsurfPathReset": "Reset to default"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API",
@@ -1083,7 +1091,7 @@
       "inject": "One-click switching: This tool reads local VS Code encryption material (DPAPI/Keychain/Secret Service), decrypts the auth session in state.vscdb, replaces the GitHub Copilot token, and re-encrypts it — all locally on your machine.",
       "alternative": "Multi-instance isolation: use different --user-data-dir profiles and log in once per instance to switch account environments quickly.",
       "reason": "Permission scope: read VS Code auth database (state.vscdb) and call system credential capability (Windows DPAPI / macOS Keychain / Linux Secret Service) for decrypt/write-back.",
-      "storage": "Data scope: only GitHub auth-session related entries are read/updated; system secrets are not modified and no key/token is uploaded."
+      "storage": "Data scope: only GitHub auth-session related entries are read/updated; all processes run locally."
     }
   },
   "dashboard": {
@@ -1176,7 +1184,7 @@
     "inputPercent": "Enter percentage",
     "windsurf": {
       "title": "Windsurf Settings",
-      "appPath": "VS Code Path"
+      "appPath": "Windsurf Path"
     },
     "windsurfRefreshInterval": "Quota Auto Refresh"
   },
@@ -1239,6 +1247,8 @@
     "import": {
       "label": "Import",
       "localDesc": "Import Windsurf account data from a JSON file.",
+      "localClient": "Import from local Windsurf",
+      "orJson": "Or import from JSON file",
       "importing": "Importing...",
       "failedMsg": "Import failed: {{error}}",
       "pickFile": "Select JSON file to import"
@@ -1248,6 +1258,22 @@
       "weekly": "Chat messages",
       "noData": "No quota data",
       "resetDone": "Reset"
+    },
+    "credits": {
+      "title": "Plan",
+      "renewMonthly": "Credits renew every month",
+      "planEndsIn": "Cycle resets in {{days}} days",
+      "planEndsUnknown": "Cycle timing unavailable",
+      "periodRange": "Cycle: {{start}} - {{end}}",
+      "periodEndOnly": "Cycle end: {{end}}",
+      "left": "{{count}} credits left",
+      "leftUnknown": "Credits left -",
+      "promptLeft": "{{remaining}}/{{total}} prompt credits left",
+      "promptLeftNoTotal": "{{remaining}} prompt credits left",
+      "promptLeftUnknown": "Prompt credits left -",
+      "addOnAvailable": "{{count}} add-on credits available",
+      "usedLine": "{{used}} / {{total}} used",
+      "leftInline": "{{left}} left"
     },
     "usage": {
       "resetUnknown": "Allowance resets -",
@@ -1279,33 +1305,32 @@
     "sortLabel": "Sort",
     "sort": {
       "createdAt": "Created time",
-      "weekly": "By Chat messages usage",
-      "hourly": "By Inline Suggestions usage",
-      "weeklyReset": "By Chat messages reset time",
-      "hourlyReset": "By Inline Suggestions reset time",
+      "credits": "By remaining credits",
+      "planEnd": "By cycle end time",
       "descTooltip": "Current: Descending. Click to switch to ascending",
       "ascTooltip": "Current: Ascending. Click to switch to descending",
       "toggleDirection": "Toggle sort direction"
     },
     "columns": {
-      "email": "Account",
-      "plan": "Plan",
-      "hourly": "Inline Suggestions",
-      "weekly": "Chat messages",
+      "email": "Email",
+      "plan": "Tag",
+      "promptCredits": "User Prompt credits",
+      "addOnPromptCredits": "Add-on prompt credits",
+      "credits": "Credits",
       "actions": "Actions"
     },
     "export": "Export",
-    "injectToVSCode": "Switch to VS Code",
+    "injectToVSCode": "Switch to Windsurf",
     "injecting": "Injecting...",
-    "injectSuccess": "Token injected to VS Code successfully. VS Code is launching.",
-    "injectRequireClose": "Please close VS Code before injecting.",
+    "injectSuccess": "Switch completed. Windsurf is launching.",
+    "injectRequireClose": "Please close Windsurf before switching.",
     "flowNotice": {
       "title": "Windsurf account guide (click to expand/collapse)",
-      "desc": "Switching accounts requires reading VS Code local auth storage and using the system credential service for decrypt/write-back. Data is processed locally only.",
-      "inject": "One-click switching: This tool reads local VS Code encryption material (DPAPI/Keychain/Secret Service), decrypts the auth session in state.vscdb, replaces the Windsurf token, and re-encrypts it — all locally on your machine.",
+      "desc": "Switching accounts requires reading Windsurf local auth storage and, with client-compatible rules, using system credential/encryption capabilities for decrypt/write-back. Data is processed locally only.",
+      "inject": "One-click switching: This tool reads local Windsurf encryption material (DPAPI/Keychain/Secret Service), processes the auth session in state.vscdb, writes back the Windsurf token, and keeps everything local on your machine.",
       "alternative": "Multi-instance isolation: use different --user-data-dir profiles and log in once per instance to switch account environments quickly.",
-      "reason": "Permission scope: read VS Code auth database (state.vscdb) and call system credential capability (Windows DPAPI / macOS Keychain / Linux Secret Service) for decrypt/write-back.",
-      "storage": "Data scope: only Windsurf auth-session related entries are read/updated; system secrets are not modified and no key/token is uploaded."
+      "reason": "Permission scope: read Windsurf auth database (state.vscdb) and use system encryption capabilities (Windows DPAPI / macOS Keychain / Linux Secret Service) to decrypt and write back auth-session data.",
+      "storage": "Data scope: only Windsurf auth-session related entries are read/updated; all processes run locally."
     }
   }
 }

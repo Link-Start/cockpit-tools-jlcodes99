@@ -143,21 +143,22 @@ pub async fn inject_github_copilot_to_vscode(account_id: String) -> Result<Strin
         ));
     }
 
-    let launch_warning = match crate::commands::github_copilot_instance::github_copilot_start_instance(
-        "__default__".to_string(),
-    )
-    .await
-    {
-        Ok(_) => None,
-        Err(e) => {
-            if e.starts_with("APP_PATH_NOT_FOUND:") || e.contains("启动 VS Code 失败") {
-                logger::log_warn(&format!("GitHub Copilot 默认实例启动失败: {}", e));
-                Some(e)
-            } else {
-                return Err(e);
+    let launch_warning =
+        match crate::commands::github_copilot_instance::github_copilot_start_instance(
+            "__default__".to_string(),
+        )
+        .await
+        {
+            Ok(_) => None,
+            Err(e) => {
+                if e.starts_with("APP_PATH_NOT_FOUND:") || e.contains("启动 VS Code 失败") {
+                    logger::log_warn(&format!("GitHub Copilot 默认实例启动失败: {}", e));
+                    Some(e)
+                } else {
+                    return Err(e);
+                }
             }
-        }
-    };
+        };
 
     logger::log_info(&format!(
         "GitHub Copilot 账号切换完成: {}",
