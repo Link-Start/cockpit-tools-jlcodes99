@@ -154,7 +154,8 @@
     "instances": "Multi-Istanza",
     "githubCopilot": "Copilota GitHub",
     "windsurf": "Windsurf",
-    "morePlatforms": "Altre piattaforme"
+    "morePlatforms": "Altre piattaforme",
+    "cursor": "Account Cursor"
   },
   "settings": {
     "title": "Impostazioni App",
@@ -1197,7 +1198,12 @@
       "title": "Impostazioni Kiro",
       "appPath": "Sentiero Kiro"
     },
-    "kiroRefreshInterval": "Quota di aggiornamento automatico"
+    "kiroRefreshInterval": "Quota di aggiornamento automatico",
+    "cursor": {
+      "title": "Impostazioni Cursor",
+      "appPath": "Sentiero Cursor"
+    },
+    "cursorRefreshInterval": "Quota di aggiornamento automatico"
   },
   "quotaAlert": {
     "bannerText": "Avviso quota per {{email}} (soglia {{threshold}}%, minimo {{lowest}}%, modelli: {{models}})",
@@ -1376,5 +1382,65 @@
       "localClient": "Importazione da Kiro locale"
     },
     "injectToVSCode": "Passa a Kiro"
+  },
+  "cursor": {
+    "account": {
+      "signedInWith": "Accedi con {{provider}}",
+      "providerUnknown": "Sconosciuto",
+      "userId": "ID utente"
+    },
+    "credits": {
+      "estimatedResetOn": "L'utilizzo stimato viene ripristinato il {{date}}",
+      "bonusUsageLine": "{{used}} usato / {{total}} totale",
+      "planUsageCoveredLine": "{{used}} usato / {{total}} coperto nel piano",
+      "expiryDays": "{{days}} giorni",
+      "expiryUnknown": "—",
+      "resetNow": "Ripristina presto",
+      "resetInHours": "Si ripristina tra {{hours}}h",
+      "resetInMinutes": "Si ripristina tra {{minutes}}m"
+    },
+    "columns": {
+      "bonusCredits": "Crediti bonus",
+      "estimatedUsage": "Utilizzo stimato",
+      "expiry": "Scadenza",
+      "estUsage": "Est. Utilizzo"
+    },
+    "plan": {
+      "free": "Cursor Libero",
+      "individual": "Cursor Individuale",
+      "pro": "Cursor Pro",
+      "business": "Cursor Affari",
+      "enterprise": "Cursor impresa",
+      "unknown": "Sconosciuto"
+    },
+    "flowNotice": {
+      "title": "Guida account Cursor (clicca per espandere/comprimere)",
+      "desc": "Il cambio account legge e scrive i file di autenticazione locali di Cursor e le impostazioni dell’istanza su questo dispositivo; il login OAuth e l’aggiornamento quota chiamano le API ufficiali di Cursor.",
+      "reason": "I percorsi elaborati includono ~/.aws/sso/cache/cursor-auth-token.json, il profile.json dell’istanza e la voce cursor.cursorAgent in state.vscdb.",
+      "storage": "I dati elaborati includono informazioni su sessione e quota Cursor; le richieste alle API ufficiali di Cursor inviano i campi di autenticazione necessari (come code, refreshToken, accessToken e profileArn)."
+    },
+    "title": "Gestione dell'account Cursor",
+    "instances": {
+      "unsupported": {
+        "descPlatform": "Cursor multiistanza è disponibile solo su macOS, Windows e Linux."
+      }
+    },
+    "empty": {
+      "description": "Fai clic su \"Aggiungi account\" per iniziare a gestire i tuoi account Cursor"
+    },
+    "addModal": {
+      "title": "Aggiungi l'account Cursor"
+    },
+    "oauth": {
+      "desc": "Fai clic sul pulsante in basso e completa l'autorizzazione Cursor nel tuo browser."
+    },
+    "token": {
+      "desc": "Incolla il token di accesso Cursor o i dati JSON esportati."
+    },
+    "import": {
+      "localDesc": "Importa i dati dell'account Cursor dal client Cursor locale o da un file JSON.",
+      "localClient": "Importazione da Cursor locale"
+    },
+    "injectToVSCode": "Passa a Cursor"
   }
 }

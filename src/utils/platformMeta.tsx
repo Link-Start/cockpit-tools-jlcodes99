@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Github } from 'lucide-react';
+import { Github, MousePointer2 } from 'lucide-react';
 import { TFunction } from 'i18next';
 import { PlatformId } from '../types/platform';
 import { RobotIcon } from '../components/icons/RobotIcon';
@@ -13,6 +13,8 @@ export function getPlatformLabel(platformId: PlatformId, _t: TFunction): string 
       return 'Antigravity';
     case 'codex':
       return 'Codex';
+    case 'cursor':
+      return 'Cursor';
     case 'github-copilot':
       return 'GitHub Copilot';
     case 'windsurf':
@@ -30,6 +32,8 @@ export function renderPlatformIcon(platformId: PlatformId, size = 20): ReactNode
       return <RobotIcon style={{ width: size, height: size }} />;
     case 'codex':
       return <CodexIcon size={size} />;
+    case 'cursor':
+      return <MousePointer2 size={size} />;
     case 'github-copilot':
       return <Github size={size} />;
     case 'windsurf':

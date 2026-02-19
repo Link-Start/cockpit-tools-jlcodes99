@@ -154,7 +154,8 @@
     "githubCopilot": "GitHub 副驾驶",
     "windsurf": "风帆冲浪",
     "morePlatforms": "更多平台",
-    "instances": "多开实例"
+    "instances": "多开实例",
+    "cursor": "Cursor 账号"
   },
   "breakout": {
     "gameOver": "本局结束",
@@ -1245,7 +1246,12 @@
       "title": "Kiro 设置",
       "appPath": "Kiro 路径"
     },
-    "kiroRefreshInterval": "配额自动刷新"
+    "kiroRefreshInterval": "配额自动刷新",
+    "cursor": {
+      "title": "Cursor 设置",
+      "appPath": "Cursor 路径"
+    },
+    "cursorRefreshInterval": "配额自动刷新"
   },
   "quotaAlert": {
     "bannerText": "账号 {{email}} 触发配额预警（阈值 {{threshold}}%，最低 {{lowest}}%，模型：{{models}}）",
@@ -1376,5 +1382,65 @@
       "localClient": "从本机 Kiro 导入"
     },
     "injectToVSCode": "切换到 Kiro"
+  },
+  "cursor": {
+    "account": {
+      "signedInWith": "使用 {{provider}} 登录",
+      "providerUnknown": "未知方式",
+      "userId": "用户 ID"
+    },
+    "credits": {
+      "estimatedResetOn": "Estimated Usage 在 {{date}} 重置",
+      "bonusUsageLine": "使用 {{used}} / 总共 {{total}}",
+      "planUsageCoveredLine": "{{used}} 已使用 / {{total}} 包含在计划中",
+      "expiryDays": "{{days}} 天",
+      "expiryUnknown": "—",
+      "resetNow": "即将重置",
+      "resetInHours": "{{hours}} 小时后重置",
+      "resetInMinutes": "{{minutes}} 分钟后重置"
+    },
+    "columns": {
+      "bonusCredits": "奖励积分",
+      "estimatedUsage": "预计使用量",
+      "expiry": "到期日",
+      "estUsage": "预计。用法"
+    },
+    "plan": {
+      "free": "基罗自由",
+      "individual": "基罗个人赛",
+      "pro": "基罗专业版",
+      "business": "基罗商务",
+      "enterprise": "基罗企业",
+      "unknown": "未知"
+    },
+    "flowNotice": {
+      "title": "Cursor 账号管理说明（点击展开/收起）",
+      "desc": "账号切换会在本机读写 Cursor 登录文件与实例配置；OAuth 登录与配额刷新会调用 Cursor 官方接口。",
+      "reason": "处理路径包括 Cursor 本地登录缓存、实例目录 profile.json，以及 state.vscdb 中 cursor 相关条目。",
+      "storage": "处理数据包括 Cursor 登录会话与配额信息；请求 Cursor 官方接口时会发送必要认证字段。"
+    },
+    "title": "Cursor 账号管理",
+    "instances": {
+      "unsupported": {
+        "descPlatform": "Cursor 多开实例仅支持 macOS、Windows 和 Linux。"
+      }
+    },
+    "empty": {
+      "description": "点击\"添加账号\"开始管理您的 Cursor 账号"
+    },
+    "addModal": {
+      "title": "添加 Cursor 账号"
+    },
+    "oauth": {
+      "desc": "点击下方按钮，在浏览器中完成 Cursor 授权登录。"
+    },
+    "token": {
+      "desc": "粘贴您的 Cursor Access Token 或导出的 JSON 数据。"
+    },
+    "import": {
+      "localDesc": "支持从本机 Cursor 客户端或 JSON 文件导入账号数据。",
+      "localClient": "从本机 Cursor 导入"
+    },
+    "injectToVSCode": "切换到 Cursor"
   }
 }

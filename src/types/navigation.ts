@@ -2,6 +2,7 @@ export type Page =
   | 'dashboard'
   | 'overview'
   | 'codex'
+  | 'cursor'
   | 'github-copilot'
   | 'windsurf'
   | 'kiro'

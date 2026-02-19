@@ -5,6 +5,7 @@ import { useCodexAccountStore } from '../stores/useCodexAccountStore';
 import { useGitHubCopilotAccountStore } from '../stores/useGitHubCopilotAccountStore';
 import { useWindsurfAccountStore } from '../stores/useWindsurfAccountStore';
 import { useKiroAccountStore } from '../stores/useKiroAccountStore';
+import { useCursorAccountStore } from '../stores/useCursorAccountStore';
 import { usePlatformLayoutStore } from '../stores/usePlatformLayoutStore';
 import { Page } from '../types/navigation';
 import { Users, CheckCircle2, Sparkles, RotateCw, Play, Github } from 'lucide-react';
@@ -34,6 +35,16 @@ import {
   getKiroQuotaClass,
   formatKiroResetTime,
 } from '../types/kiro';
+import {
+  CursorAccount,
+  formatCursorResetTime,
+  getCursorAccountDisplayEmail,
+  getCursorCreditsSummary,
+  getCursorPlanBadgeClass,
+  getCursorPlanDisplayName,
+  getCursorQuotaClass,
+  getCursorUsage,
+} from '../types/cursor';
 import './DashboardPage.css';
 import { RobotIcon } from '../components/icons/RobotIcon';
 import { CodexIcon } from '../components/icons/CodexIcon';
@@ -52,6 +63,7 @@ interface DashboardPageProps {
 const GHCP_CURRENT_ACCOUNT_ID_KEY = 'agtools.github_copilot.current_account_id';
 const WINDSURF_CURRENT_ACCOUNT_ID_KEY = 'agtools.windsurf.current_account_id';
 const KIRO_CURRENT_ACCOUNT_ID_KEY = 'agtools.kiro.current_account_id';
+const CURSOR_CURRENT_ACCOUNT_ID_KEY = 'agtools.cursor.current_account_id';
 
 function toFiniteNumber(value: number | null | undefined): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
@@ -170,6 +182,11 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     fetchAccounts: fetchKiroAccounts,
     switchAccount: switchKiroAccount,
   } = useKiroAccountStore();
+  const {
+    accounts: cursorAccounts,
+    fetchAccounts: fetchCursorAccounts,
+    switchAccount: switchCursorAccount,
+  } = useCursorAccountStore();
 
   const agCurrentId = agCurrent?.id;
   const codexCurrentId = codexCurrent?.id;
@@ -192,6 +209,7 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     fetchGitHubCopilotAccounts();
     fetchWindsurfAccounts();
     fetchKiroAccounts();
+    fetchCursorAccounts();
   }, []);
 
   // Statistics
@@ -202,14 +220,16 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
         codexAccounts.length +
         githubCopilotAccounts.length +
         windsurfAccounts.length +
-        kiroAccounts.length,
+        kiroAccounts.length +
+        cursorAccounts.length,
       antigravity: agAccounts.length,
       codex: codexAccounts.length,
       githubCopilot: githubCopilotAccounts.length,
       windsurf: windsurfAccounts.length,
       kiro: kiroAccounts.length,
+      cursor: cursorAccounts.length,
     };
-  }, [agAccounts, codexAccounts, githubCopilotAccounts, windsurfAccounts, kiroAccounts]);
+  }, [agAccounts, codexAccounts, githubCopilotAccounts, windsurfAccounts, kiroAccounts, cursorAccounts]);
 
   // Refresh States
   const [refreshing, setRefreshing] = React.useState<Set<string>>(new Set());
@@ -235,18 +255,27 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
       return null;
     }
   });
+  const [cursorCurrentId, setCursorCurrentId] = React.useState<string | null>(() => {
+    try {
+      return localStorage.getItem(CURSOR_CURRENT_ACCOUNT_ID_KEY);
+    } catch {
+      return null;
+    }
+  });
   const [cardRefreshing, setCardRefreshing] = React.useState<{
     ag: boolean;
     codex: boolean;
     githubCopilot: boolean;
     windsurf: boolean;
     kiro: boolean;
+    cursor: boolean;
   }>({
     ag: false,
     codex: false,
     githubCopilot: false,
     windsurf: false,
     kiro: false,
+    cursor: false,
   });
 
   // Refresh Handlers
@@ -319,6 +348,22 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     setRefreshing((prev) => new Set(prev).add(accountId));
     try {
       await useKiroAccountStore.getState().refreshToken(accountId);
+    } catch (error) {
+      console.error('Refresh failed:', error);
+    } finally {
+      setRefreshing((prev) => {
+        const next = new Set(prev);
+        next.delete(accountId);
+        return next;
+      });
+    }
+  };
+
+  const handleRefreshCursor = async (accountId: string) => {
+    if (refreshing.has(accountId)) return;
+    setRefreshing((prev) => new Set(prev).add(accountId));
+    try {
+      await useCursorAccountStore.getState().refreshToken(accountId);
     } catch (error) {
       console.error('Refresh failed:', error);
     } finally {
@@ -405,6 +450,21 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     }
   };
 
+  const handleRefreshCursorCard = async () => {
+    if (cardRefreshing.cursor) return;
+    setCardRefreshing((prev) => ({ ...prev, cursor: true }));
+    const idsToRefresh = [cursorCurrent?.id, cursorRecommended?.id].filter(Boolean) as string[];
+    try {
+      for (const id of idsToRefresh) {
+        await useCursorAccountStore.getState().refreshToken(id);
+      }
+    } catch (error) {
+      console.error('Card refresh failed:', error);
+    } finally {
+      setCardRefreshing((prev) => ({ ...prev, cursor: false }));
+    }
+  };
+
   const handleSwitchGitHubCopilot = async (accountId: string) => {
     if (switching.has(accountId)) return;
     setSwitching((prev) => new Set(prev).add(accountId));
@@ -448,6 +508,24 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
       await switchKiroAccount(accountId);
       setKiroCurrentId(accountId);
       localStorage.setItem(KIRO_CURRENT_ACCOUNT_ID_KEY, accountId);
+    } catch (error) {
+      console.error('Switch failed:', error);
+    } finally {
+      setSwitching((prev) => {
+        const next = new Set(prev);
+        next.delete(accountId);
+        return next;
+      });
+    }
+  };
+
+  const handleSwitchCursor = async (accountId: string) => {
+    if (switching.has(accountId)) return;
+    setSwitching((prev) => new Set(prev).add(accountId));
+    try {
+      await switchCursorAccount(accountId);
+      setCursorCurrentId(accountId);
+      localStorage.setItem(CURSOR_CURRENT_ACCOUNT_ID_KEY, accountId);
     } catch (error) {
       console.error('Switch failed:', error);
     } finally {
@@ -545,6 +623,19 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     });
   }, [kiroAccounts, kiroCurrentId]);
 
+  const cursorCurrent = useMemo(() => {
+    if (cursorAccounts.length === 0) return null;
+    if (cursorCurrentId) {
+      const current = cursorAccounts.find((account) => account.id === cursorCurrentId);
+      if (current) return current;
+    }
+    return cursorAccounts.reduce((prev, curr) => {
+      const prevScore = prev.last_used || prev.created_at || 0;
+      const currScore = curr.last_used || curr.created_at || 0;
+      return currScore > prevScore ? curr : prev;
+    });
+  }, [cursorAccounts, cursorCurrentId]);
+
   React.useEffect(() => {
     if (!githubCopilotCurrentId) return;
     const exists = githubCopilotAccounts.some((account) => account.id === githubCopilotCurrentId);
@@ -568,6 +659,14 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     setKiroCurrentId(null);
     localStorage.removeItem(KIRO_CURRENT_ACCOUNT_ID_KEY);
   }, [kiroAccounts, kiroCurrentId]);
+
+  React.useEffect(() => {
+    if (!cursorCurrentId) return;
+    const exists = cursorAccounts.some((account) => account.id === cursorCurrentId);
+    if (exists) return;
+    setCursorCurrentId(null);
+    localStorage.removeItem(CURSOR_CURRENT_ACCOUNT_ID_KEY);
+  }, [cursorAccounts, cursorCurrentId]);
 
   const githubCopilotRecommended = useMemo(() => {
     if (githubCopilotAccounts.length <= 1) return null;
@@ -643,6 +742,40 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
 
     return others.reduce((prev, curr) => (getScore(curr) > getScore(prev) ? curr : prev));
   }, [kiroAccounts, kiroCurrent?.id]);
+
+  const cursorRecommended = useMemo(() => {
+    if (cursorAccounts.length <= 1) return null;
+    const currentId = cursorCurrent?.id;
+    const others = cursorAccounts.filter((account) => account.id !== currentId);
+    if (others.length === 0) return null;
+
+    const getScore = (account: CursorAccount) => {
+      const credits = getCursorCreditsSummary(account);
+      const totalLeft = toFiniteNumber(credits.creditsLeft);
+      const promptLeft = toFiniteNumber(credits.promptCreditsLeft);
+      const addOnLeft = toFiniteNumber(credits.addOnCredits);
+
+      if (totalLeft != null) {
+        return totalLeft * 1000 + (addOnLeft ?? 0);
+      }
+      if (promptLeft != null || addOnLeft != null) {
+        return (promptLeft ?? 0) * 1000 + (addOnLeft ?? 0);
+      }
+
+      const usage = getCursorUsage(account);
+      const quotaValues = [usage.inlineSuggestionsUsedPercent, usage.chatMessagesUsedPercent].filter(
+        (value): value is number => typeof value === 'number',
+      );
+      if (quotaValues.length > 0) {
+        const avgUsed = quotaValues.reduce((sum, value) => sum + value, 0) / quotaValues.length;
+        return 100 - avgUsed;
+      }
+
+      return (account.last_used || account.created_at || 0) / 1e9;
+    };
+
+    return others.reduce((prev, curr) => (getScore(curr) > getScore(prev) ? curr : prev));
+  }, [cursorAccounts, cursorCurrent?.id]);
 
   // Render Helpers
   const renderAgAccountContent = (account: Account | null) => {
@@ -1126,6 +1259,128 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     );
   };
 
+  const renderCursorAccountContent = (account: CursorAccount | null) => {
+    if (!account) return <div className="empty-slot">{t('dashboard.noAccount', '无账号')}</div>;
+
+    const planName = getCursorPlanDisplayName(
+      account.plan_type ?? account.plan_name ?? account.plan_tier ?? null,
+    );
+    const planLabel = planName;
+    const planBadgeClass = getCursorPlanBadgeClass(planName);
+    const credits = getCursorCreditsSummary(account);
+    const promptMetrics = buildCreditMetrics(
+      credits.promptCreditsUsed,
+      credits.promptCreditsTotal,
+      credits.promptCreditsLeft,
+    );
+    const addOnMetrics = buildCreditMetrics(
+      credits.addOnCreditsUsed,
+      credits.addOnCreditsTotal,
+      credits.addOnCredits,
+    );
+    const hasAddOnCredits = addOnMetrics.left > 0 || addOnMetrics.used > 0 || addOnMetrics.total > 0;
+    const isRefreshing = refreshing.has(account.id);
+    const isSwitching = switching.has(account.id);
+    const cycleText = credits.planEndsAt
+      ? formatCursorResetTime(credits.planEndsAt, t)
+      : t('common.shared.credits.planEndsUnknown', '配额周期时间未知');
+    const displayEmail = getCursorAccountDisplayEmail(account);
+
+    return (
+      <div className="account-mini-card">
+        <div className="account-mini-header">
+          <div className="account-info-row">
+            <span className="account-email" title={maskAccountText(displayEmail)}>
+              {maskAccountText(displayEmail)}
+            </span>
+            <span className={`tier-tag ${planBadgeClass}`}>{planLabel}</span>
+          </div>
+        </div>
+
+        <div className="account-mini-quotas">
+          <div className="mini-quota-row-stacked">
+            <div className="mini-quota-header">
+              <span className="model-name">{t('common.shared.columns.promptCredits', 'User Prompt credits')}</span>
+              <span className={`model-pct ${getCursorQuotaClass(promptMetrics.usedPercent)}`}>
+                {promptMetrics.usedPercent}%
+              </span>
+            </div>
+            <div className="mini-progress-track">
+              <div
+                className={`mini-progress-bar ${getCursorQuotaClass(promptMetrics.usedPercent)}`}
+                style={{ width: `${promptMetrics.usedPercent}%` }}
+              />
+            </div>
+            <div className="mini-reset-time">
+              {t('common.shared.credits.usedLine', {
+                used: formatDecimal(promptMetrics.used),
+                total: formatDecimal(promptMetrics.total),
+                defaultValue: '{{used}} / {{total}} used',
+              })}
+            </div>
+            <div className="mini-reset-time">
+              {t('common.shared.credits.leftInline', {
+                left: formatDecimal(promptMetrics.left),
+                defaultValue: '{{left}} left',
+              })}
+            </div>
+          </div>
+
+          {hasAddOnCredits && (
+            <div className="mini-quota-row-stacked">
+              <div className="mini-quota-header">
+                <span className="model-name">{t('common.shared.columns.addOnPromptCredits', 'Add-on prompt credits')}</span>
+                <span className={`model-pct ${getCursorQuotaClass(addOnMetrics.usedPercent)}`}>
+                  {addOnMetrics.usedPercent}%
+                </span>
+              </div>
+              <div className="mini-progress-track">
+                <div
+                  className={`mini-progress-bar ${getCursorQuotaClass(addOnMetrics.usedPercent)}`}
+                  style={{ width: `${addOnMetrics.usedPercent}%` }}
+                />
+              </div>
+              <div className="mini-reset-time">
+                {t('common.shared.credits.usedLine', {
+                  used: formatDecimal(addOnMetrics.used),
+                  total: formatDecimal(addOnMetrics.total),
+                  defaultValue: '{{used}} / {{total}} used',
+                })}
+              </div>
+              <div className="mini-reset-time">
+                {t('common.shared.credits.leftInline', {
+                  left: formatDecimal(addOnMetrics.left),
+                  defaultValue: '{{left}} left',
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="mini-cycle-time">{cycleText}</div>
+        </div>
+
+        <div className="account-mini-actions icon-only-row">
+          <button
+            className="mini-icon-btn"
+            onClick={() => handleRefreshCursor(account.id)}
+            title={t('common.refresh', '刷新')}
+            disabled={isRefreshing || isSwitching}
+          >
+            <RotateCw size={14} className={isRefreshing ? 'loading-spinner' : ''} />
+          </button>
+          <button
+            className="mini-icon-btn"
+            onClick={() => handleSwitchCursor(account.id)}
+            title={t('dashboard.switch', '切换')}
+            disabled={isSwitching}
+          >
+            {isSwitching ? <RotateCw size={14} className="loading-spinner" /> : <Play size={14} />}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   // Helper for Quota Class (duplicated from Account utils roughly)
   function getQuotaClass(percentage: number): string {
     if (percentage > 80) return 'high';
@@ -1136,6 +1391,7 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
   const platformCounts: Record<PlatformId, number> = {
     antigravity: stats.antigravity,
     codex: stats.codex,
+    cursor: stats.cursor,
     'github-copilot': stats.githubCopilot,
     windsurf: stats.windsurf,
     kiro: stats.kiro,
@@ -1234,6 +1490,50 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
           </div>
 
           <button className="card-footer-action" onClick={() => onNavigate('codex')}>
+            {t('dashboard.viewAllAccounts', '查看所有账号')}
+          </button>
+        </div>
+      );
+    }
+
+    if (platformId === 'cursor') {
+      return (
+        <div className="main-card codex-card" key={platformId}>
+          <div className="main-card-header">
+            <div className="header-title">
+              {renderPlatformIcon('cursor', 18)}
+              <h3>{getPlatformLabel(platformId, t)}</h3>
+            </div>
+            <button
+              className="header-action-btn"
+              onClick={handleRefreshCursorCard}
+              disabled={cardRefreshing.cursor}
+              title={t('common.refresh', '刷新')}
+            >
+              <RotateCw size={14} className={cardRefreshing.cursor ? 'loading-spinner' : ''} />
+              <span>{t('common.refresh', '刷新')}</span>
+            </button>
+          </div>
+
+          <div className="split-content">
+            <div className="split-half current-half">
+              <span className="half-label"><CheckCircle2 size={12} /> {t('dashboard.current', '当前账户')}</span>
+              {renderCursorAccountContent(cursorCurrent)}
+            </div>
+
+            <div className="split-divider"></div>
+
+            <div className="split-half recommend-half">
+              <span className="half-label"><Sparkles size={12} /> {t('dashboard.recommended', '推荐账号')}</span>
+              {cursorRecommended ? (
+                renderCursorAccountContent(cursorRecommended)
+              ) : (
+                <div className="empty-slot-text">{t('dashboard.noRecommendation', '暂无更好推荐')}</div>
+              )}
+            </div>
+          </div>
+
+          <button className="card-footer-action" onClick={() => onNavigate('cursor')}>
             {t('dashboard.viewAllAccounts', '查看所有账号')}
           </button>
         </div>
@@ -1402,6 +1702,8 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
             platformId === 'antigravity'
               ? 'success'
               : platformId === 'codex'
+              ? 'info'
+              : platformId === 'cursor'
               ? 'info'
               : platformId === 'github-copilot'
               ? 'github'

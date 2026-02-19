@@ -22,6 +22,7 @@ interface FlyingRocket {
 const PAGE_PLATFORM_MAP: Partial<Record<Page, PlatformId>> = {
   overview: 'antigravity',
   codex: 'codex',
+  cursor: 'cursor',
   'github-copilot': 'github-copilot',
   windsurf: 'windsurf',
   kiro: 'kiro',

@@ -154,7 +154,8 @@
     "instances": "Мульти-инстанс",
     "githubCopilot": "GitHub второй пилот",
     "windsurf": "Виндсерфинг",
-    "morePlatforms": "Другие платформы"
+    "morePlatforms": "Другие платформы",
+    "cursor": "Аккаунты Cursor"
   },
   "settings": {
     "title": "Настройки приложения",
@@ -1197,7 +1198,12 @@
       "title": "Настройки Киро",
       "appPath": "Киро Путь"
     },
-    "kiroRefreshInterval": "Автоматическое обновление квоты"
+    "kiroRefreshInterval": "Автоматическое обновление квоты",
+    "cursor": {
+      "title": "Настройки Киро",
+      "appPath": "Киро Путь"
+    },
+    "cursorRefreshInterval": "Автоматическое обновление квоты"
   },
   "quotaAlert": {
     "bannerText": "Предупреждение о квоте для {{email}} (порог {{threshold}}%, минимум {{lowest}}%, модели: {{models}})",
@@ -1373,6 +1379,66 @@
     },
     "import": {
       "localDesc": "Импортируйте данные учетной записи Kiro из локального клиента Kiro или файла JSON.",
+      "localClient": "Импорт из местного Киро"
+    },
+    "injectToVSCode": "Переключиться на Киро"
+  },
+  "cursor": {
+    "account": {
+      "signedInWith": "Выполнен вход с помощью {{provider}}",
+      "providerUnknown": "Неизвестный",
+      "userId": "ID пользователя"
+    },
+    "credits": {
+      "estimatedResetOn": "Предполагаемое использование сбрасывается {{date}}.",
+      "bonusUsageLine": "{{used}} использовано / всего {{total}}",
+      "planUsageCoveredLine": "{{used}} использовано / {{total}} включено в план",
+      "expiryDays": "{{days}} дней",
+      "expiryUnknown": "—",
+      "resetNow": "Скоро сброс",
+      "resetInHours": "Сбрасывается через {{hours}}h",
+      "resetInMinutes": "Сброс через {{minutes}}м."
+    },
+    "columns": {
+      "bonusCredits": "Бонусные кредиты",
+      "estimatedUsage": "Предполагаемое использование",
+      "expiry": "Срок действия",
+      "estUsage": "Стандартное восточное время. Использование"
+    },
+    "plan": {
+      "free": "Киро Бесплатно",
+      "individual": "Киро Индивидуальный",
+      "pro": "Киро Про",
+      "business": "Киро Бизнес",
+      "enterprise": "Киро Энтерпрайз",
+      "unknown": "Неизвестный"
+    },
+    "flowNotice": {
+      "title": "Справка по аккаунту Cursor (нажмите, чтобы развернуть/свернуть)",
+      "desc": "При переключении аккаунта на этом устройстве читаются и записываются локальные файлы аутентификации Cursor и настройки инстанса; вход OAuth и обновление квот обращаются к официальным API Cursor.",
+      "reason": "Обрабатываемые пути включают ~/.aws/sso/cache/cursor-auth-token.json, profile.json инстанса и запись cursor.cursorAgent в state.vscdb.",
+      "storage": "Обрабатываемые данные включают сведения о сессии и квотах Cursor; запросы к официальным API Cursor отправляют необходимые поля аутентификации (например, code, refreshToken, accessToken и profileArn)."
+    },
+    "title": "Управление учетными записями Киро",
+    "instances": {
+      "unsupported": {
+        "descPlatform": "Многоэкземплярный режим Cursor доступен только в macOS, Windows и Linux."
+      }
+    },
+    "empty": {
+      "description": "Нажмите «Добавить учетную запись», чтобы начать управлять своими учетными записями Cursor."
+    },
+    "addModal": {
+      "title": "Добавить аккаунт Киро"
+    },
+    "oauth": {
+      "desc": "Нажмите кнопку ниже и завершите авторизацию Cursor в своем браузере."
+    },
+    "token": {
+      "desc": "Вставьте свой токен доступа Cursor или экспортированные данные JSON."
+    },
+    "import": {
+      "localDesc": "Импортируйте данные учетной записи Cursor из локального клиента Cursor или файла JSON.",
       "localClient": "Импорт из местного Киро"
     },
     "injectToVSCode": "Переключиться на Киро"

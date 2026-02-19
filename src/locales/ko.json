@@ -154,7 +154,8 @@
     "instances": "멀티 인스턴스",
     "githubCopilot": "GitHub 코파일럿",
     "windsurf": "윈드서핑",
-    "morePlatforms": "더 많은 플랫폼"
+    "morePlatforms": "더 많은 플랫폼",
+    "cursor": "Cursor 계정"
   },
   "settings": {
     "title": "앱 설정",
@@ -1197,7 +1198,12 @@
       "title": "키로 설정",
       "appPath": "기로의 길"
     },
-    "kiroRefreshInterval": "자동 새로고침 할당량"
+    "kiroRefreshInterval": "자동 새로고침 할당량",
+    "cursor": {
+      "title": "키로 설정",
+      "appPath": "기로의 길"
+    },
+    "cursorRefreshInterval": "자동 새로고침 할당량"
   },
   "quotaAlert": {
     "bannerText": "{{email}} 할당량 경고 (임계값 {{threshold}}%, 최저 {{lowest}}%, 모델: {{models}})",
@@ -1373,6 +1379,66 @@
     },
     "import": {
       "localDesc": "로컬 Kiro 클라이언트 또는 JSON 파일에서 Kiro 계정 데이터를 가져옵니다.",
+      "localClient": "현지 키로에서 수입"
+    },
+    "injectToVSCode": "키로로 전환"
+  },
+  "cursor": {
+    "account": {
+      "signedInWith": "{{provider}}(으)로 로그인됨",
+      "providerUnknown": "알려지지 않은",
+      "userId": "사용자 ID"
+    },
+    "credits": {
+      "estimatedResetOn": "{{date}}에서 예상 사용량이 재설정됩니다.",
+      "bonusUsageLine": "{{used}} 사용 / {{total}} 총",
+      "planUsageCoveredLine": "{{used}} 사용됨 / {{total}} 계획에 포함됨",
+      "expiryDays": "{{days}}일",
+      "expiryUnknown": "—",
+      "resetNow": "곧 재설정",
+      "resetInHours": "{{hours}}h 후에 재설정됩니다.",
+      "resetInMinutes": "{{minutes}}m 후에 재설정됩니다."
+    },
+    "columns": {
+      "bonusCredits": "보너스 크레딧",
+      "estimatedUsage": "예상 사용량",
+      "expiry": "만료",
+      "estUsage": "예상 용법"
+    },
+    "plan": {
+      "free": "키로 프리",
+      "individual": "키로 개인",
+      "pro": "키로 프로",
+      "business": "키로비즈니스",
+      "enterprise": "키로엔터프라이즈",
+      "unknown": "알려지지 않은"
+    },
+    "flowNotice": {
+      "title": "Cursor 계정 안내 (클릭하여 펼치기/접기)",
+      "desc": "계정 전환 시 이 기기에서 Cursor 로컬 인증 파일과 인스턴스 설정을 읽고 씁니다. OAuth 로그인 및 할당량 새로고침 시 Cursor 공식 API를 호출합니다.",
+      "reason": "처리 경로에는 ~/.aws/sso/cache/cursor-auth-token.json, 인스턴스 profile.json, state.vscdb의 cursor.cursorAgent 항목이 포함됩니다.",
+      "storage": "처리 데이터에는 Cursor 세션 및 할당량 정보가 포함됩니다. Cursor 공식 API 요청 시 필요한 인증 필드(code, refreshToken, accessToken, profileArn 등)가 전송됩니다."
+    },
+    "title": "키로 계정 관리",
+    "instances": {
+      "unsupported": {
+        "descPlatform": "Cursor 다중 인스턴스는 macOS, Windows 및 Linux에서만 사용할 수 있습니다."
+      }
+    },
+    "empty": {
+      "description": "Cursor 계정 관리를 시작하려면 \"계정 추가\"를 클릭하세요."
+    },
+    "addModal": {
+      "title": "키로 계정 추가"
+    },
+    "oauth": {
+      "desc": "아래 버튼을 클릭하고 브라우저에서 Cursor 인증을 완료하세요."
+    },
+    "token": {
+      "desc": "Cursor 액세스 토큰이나 내보낸 JSON 데이터를 붙여넣으세요."
+    },
+    "import": {
+      "localDesc": "로컬 Cursor 클라이언트 또는 JSON 파일에서 Cursor 계정 데이터를 가져옵니다.",
       "localClient": "현지 키로에서 수입"
     },
     "injectToVSCode": "키로로 전환"

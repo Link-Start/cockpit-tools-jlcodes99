@@ -154,7 +154,8 @@
     "dashboard": "لوحة التحكم",
     "instances": "مثيلات متعددة",
     "windsurf": "ركوب الأمواج",
-    "morePlatforms": "المزيد من المنصات"
+    "morePlatforms": "المزيد من المنصات",
+    "cursor": "حسابات Cursor"
   },
   "settings": {
     "title": "إعدادات التطبيق",
@@ -1197,7 +1198,12 @@
       "title": "إعدادات Kiro",
       "appPath": "مسار Kiro"
     },
-    "kiroRefreshInterval": "تحديث الحصة تلقائياً"
+    "kiroRefreshInterval": "تحديث الحصة تلقائياً",
+    "cursor": {
+      "title": "إعدادات Cursor",
+      "appPath": "مسار Cursor"
+    },
+    "cursorRefreshInterval": "تحديث الحصة تلقائياً"
   },
   "quotaAlert": {
     "bannerText": "تنبيه حصة للحساب {{email}} (العتبة {{threshold}}%، الأدنى {{lowest}}%، النماذج: {{models}})",
@@ -1376,5 +1382,65 @@
       "localClient": "استيراد من Kiro المحلي"
     },
     "injectToVSCode": "التبديل إلى Kiro"
+  },
+  "cursor": {
+    "account": {
+      "signedInWith": "تم تسجيل الدخول باستخدام {{provider}}",
+      "providerUnknown": "مجهول",
+      "userId": "معرف المستخدم"
+    },
+    "credits": {
+      "estimatedResetOn": "إعادة تعيين الاستخدام المقدر على {{date}}",
+      "bonusUsageLine": "{{used}} مستخدم / {{total}} إجمالي",
+      "planUsageCoveredLine": "{{used}} مستخدم / {{total}} مغطى في الخطة",
+      "expiryDays": "{{days}} يوم",
+      "expiryUnknown": "—",
+      "resetNow": "سيُعاد التعيين قريبًا",
+      "resetInHours": "تتم إعادة الضبط خلال {{hours}} ساعة",
+      "resetInMinutes": "تتم إعادة الضبط خلال {{minutes}} دقيقة"
+    },
+    "columns": {
+      "bonusCredits": "اعتمادات المكافأة",
+      "estimatedUsage": "الاستخدام المقدر",
+      "expiry": "انتهاء الصلاحية",
+      "estUsage": "EST. الاستخدام"
+    },
+    "plan": {
+      "free": "كيرو مجاني",
+      "individual": "كيرو فردي",
+      "pro": "كيرو برو",
+      "business": "كيرو بيزنس",
+      "enterprise": "مؤسسة كيرو",
+      "unknown": "مجهول"
+    },
+    "flowNotice": {
+      "title": "دليل إدارة حساب Cursor (انقر للتوسيع/الطي)",
+      "desc": "يقرأ تبديل الحساب ويكتب ملفات مصادقة Cursor المحلية وإعدادات المثيل على هذا الجهاز؛ كما يستدعي واجهات Cursor الرسمية أثناء تسجيل الدخول عبر OAuth أو تحديث الحصص.",
+      "reason": "تشمل مسارات المعالجة: ~/.aws/sso/cache/cursor-auth-token.json، وملف profile.json الخاص بالمثيل، والبند cursor.cursorAgent داخل state.vscdb.",
+      "storage": "تشمل البيانات المعالجة معلومات جلسة Cursor والحصة؛ وعند طلب واجهات Cursor الرسمية تُرسل حقول مصادقة لازمة (مثل code وrefreshToken وaccessToken وprofileArn)."
+    },
+    "title": "إدارة حسابات Cursor",
+    "instances": {
+      "unsupported": {
+        "descPlatform": "ميزة المثيلات المتعددة لـ Cursor متاحة على macOS وWindows وLinux فقط."
+      }
+    },
+    "empty": {
+      "description": "انقر على \"إضافة حساب\" لبدء إدارة حسابات Cursor"
+    },
+    "addModal": {
+      "title": "إضافة حساب Cursor"
+    },
+    "oauth": {
+      "desc": "انقر الزر أدناه وأكمل تفويض Cursor في المتصفح."
+    },
+    "token": {
+      "desc": "الصق رمز وصول Cursor أو بيانات JSON المصدّرة."
+    },
+    "import": {
+      "localDesc": "يدعم استيراد بيانات حساب Cursor من عميل Cursor المحلي أو ملف JSON.",
+      "localClient": "استيراد من Cursor المحلي"
+    },
+    "injectToVSCode": "التبديل إلى Cursor"
   }
 }

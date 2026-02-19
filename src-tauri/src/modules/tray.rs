@@ -22,16 +22,18 @@ const TRAY_PLATFORM_MAX_VISIBLE: usize = 6;
 enum PlatformId {
     Antigravity,
     Codex,
+    Cursor,
     GitHubCopilot,
     Windsurf,
     Kiro,
 }
 
 impl PlatformId {
-    fn default_order() -> [Self; 5] {
+    fn default_order() -> [Self; 6] {
         [
             Self::Antigravity,
             Self::Codex,
+            Self::Cursor,
             Self::GitHubCopilot,
             Self::Windsurf,
             Self::Kiro,
@@ -42,6 +44,7 @@ impl PlatformId {
         match value {
             crate::modules::tray_layout::PLATFORM_ANTIGRAVITY => Some(Self::Antigravity),
             crate::modules::tray_layout::PLATFORM_CODEX => Some(Self::Codex),
+            crate::modules::tray_layout::PLATFORM_CURSOR => Some(Self::Cursor),
             crate::modules::tray_layout::PLATFORM_GITHUB_COPILOT => Some(Self::GitHubCopilot),
             crate::modules::tray_layout::PLATFORM_WINDSURF => Some(Self::Windsurf),
             crate::modules::tray_layout::PLATFORM_KIRO => Some(Self::Kiro),
@@ -53,6 +56,7 @@ impl PlatformId {
         match self {
             Self::Antigravity => crate::modules::tray_layout::PLATFORM_ANTIGRAVITY,
             Self::Codex => crate::modules::tray_layout::PLATFORM_CODEX,
+            Self::Cursor => crate::modules::tray_layout::PLATFORM_CURSOR,
             Self::GitHubCopilot => crate::modules::tray_layout::PLATFORM_GITHUB_COPILOT,
             Self::Windsurf => crate::modules::tray_layout::PLATFORM_WINDSURF,
             Self::Kiro => crate::modules::tray_layout::PLATFORM_KIRO,
@@ -63,6 +67,7 @@ impl PlatformId {
         match self {
             Self::Antigravity => "Antigravity",
             Self::Codex => "Codex",
+            Self::Cursor => "Cursor",
             Self::GitHubCopilot => "GitHub Copilot",
             Self::Windsurf => "Windsurf",
             Self::Kiro => "Kiro",
@@ -73,6 +78,7 @@ impl PlatformId {
         match self {
             Self::Antigravity => "overview",
             Self::Codex => "codex",
+            Self::Cursor => "cursor",
             Self::GitHubCopilot => "github-copilot",
             Self::Windsurf => "windsurf",
             Self::Kiro => "kiro",
@@ -83,9 +89,10 @@ impl PlatformId {
         match self {
             Self::Antigravity => 0,
             Self::Codex => 1,
-            Self::GitHubCopilot => 2,
-            Self::Windsurf => 3,
-            Self::Kiro => 4,
+            Self::Cursor => 2,
+            Self::GitHubCopilot => 3,
+            Self::Windsurf => 4,
+            Self::Kiro => 5,
         }
     }
 }
@@ -307,6 +314,10 @@ fn collect_platform_account_counts() -> HashMap<PlatformId, usize> {
         crate::modules::codex_account::list_accounts().len(),
     );
     counts.insert(
+        PlatformId::Cursor,
+        crate::modules::cursor_account::list_accounts().len(),
+    );
+    counts.insert(
         PlatformId::GitHubCopilot,
         crate::modules::github_copilot_account::list_accounts().len(),
     );
@@ -365,6 +376,7 @@ fn get_account_display_info(platform: PlatformId, lang: &str) -> AccountDisplayI
     match platform {
         PlatformId::Antigravity => build_antigravity_display_info(lang),
         PlatformId::Codex => build_codex_display_info(lang),
+        PlatformId::Cursor => build_cursor_display_info(lang),
         PlatformId::GitHubCopilot => build_github_copilot_display_info(lang),
         PlatformId::Windsurf => build_windsurf_display_info(lang),
         PlatformId::Kiro => build_kiro_display_info(lang),
@@ -425,6 +437,53 @@ fn build_codex_display_info(lang: &str) -> AccountDisplayInfo {
             account: format!("📧 {}", get_text("not_logged_in", lang)),
             quota_lines: vec!["—".to_string()],
         }
+    }
+}
+
+fn build_cursor_display_info(lang: &str) -> AccountDisplayInfo {
+    let accounts = crate::modules::cursor_account::list_accounts();
+    let Some(account) = resolve_cursor_current_account(&accounts) else {
+        return AccountDisplayInfo {
+            account: format!("📧 {}", get_text("not_logged_in", lang)),
+            quota_lines: vec!["—".to_string()],
+        };
+    };
+
+    let mut quota_lines = Vec::new();
+    let reset_text = format_reset_time_from_ts(lang, account.usage_reset_at);
+
+    if let Some(plan) = first_non_empty(&[account.plan_name.as_deref(), account.plan_tier.as_deref()]) {
+        quota_lines.push(format!("Plan: {}", plan));
+    }
+
+    if let Some(remaining_pct) = calc_remaining_percent(account.credits_total, account.credits_used) {
+        quota_lines.push(format!(
+            "Prompt: {}% · {} {}",
+            remaining_pct,
+            get_text("reset", lang),
+            reset_text
+        ));
+    }
+
+    if let Some(remaining_pct) = calc_remaining_percent(account.bonus_total, account.bonus_used) {
+        quota_lines.push(format!(
+            "Add-on: {}% · {} {}",
+            remaining_pct,
+            get_text("reset", lang),
+            reset_text
+        ));
+    }
+
+    if quota_lines.is_empty() {
+        quota_lines.push(get_text("loading", lang));
+    }
+
+    AccountDisplayInfo {
+        account: format!(
+            "📧 {}",
+            first_non_empty(&[Some(account.email.as_str()), Some(account.id.as_str())]).unwrap_or("—")
+        ),
+        quota_lines,
     }
 }
 
@@ -560,6 +619,26 @@ fn resolve_windsurf_current_account(
     accounts: &[crate::models::windsurf::WindsurfAccount],
 ) -> Option<crate::models::windsurf::WindsurfAccount> {
     if let Ok(settings) = crate::modules::windsurf_instance::load_default_settings() {
+        if let Some(bind_id) = settings.bind_account_id {
+            let bind_id = bind_id.trim();
+            if !bind_id.is_empty() {
+                if let Some(account) = accounts.iter().find(|account| account.id == bind_id) {
+                    return Some(account.clone());
+                }
+            }
+        }
+    }
+
+    accounts
+        .iter()
+        .max_by_key(|account| account.last_used)
+        .cloned()
+}
+
+fn resolve_cursor_current_account(
+    accounts: &[crate::models::cursor::CursorAccount],
+) -> Option<crate::models::cursor::CursorAccount> {
+    if let Ok(settings) = crate::modules::cursor_instance::load_default_settings() {
         if let Some(bind_id) = settings.bind_account_id {
             let bind_id = bind_id.trim();
             if !bind_id.is_empty() {

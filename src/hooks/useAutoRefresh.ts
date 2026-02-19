@@ -5,6 +5,7 @@ import { useCodexAccountStore } from '../stores/useCodexAccountStore';
 import { useGitHubCopilotAccountStore } from '../stores/useGitHubCopilotAccountStore';
 import { useWindsurfAccountStore } from '../stores/useWindsurfAccountStore';
 import { useKiroAccountStore } from '../stores/useKiroAccountStore';
+import { useCursorAccountStore } from '../stores/useCursorAccountStore';
 
 interface GeneralConfig {
   language: string;
@@ -14,6 +15,7 @@ interface GeneralConfig {
   ghcp_auto_refresh_minutes: number;
   windsurf_auto_refresh_minutes: number;
   kiro_auto_refresh_minutes: number;
+  cursor_auto_refresh_minutes: number;
   auto_switch_enabled: boolean;
   close_behavior: string;
   opencode_app_path?: string;
@@ -21,6 +23,8 @@ interface GeneralConfig {
   codex_app_path?: string;
   vscode_app_path?: string;
   windsurf_app_path?: string;
+  kiro_app_path?: string;
+  cursor_app_path?: string;
   opencode_sync_on_switch?: boolean;
   codex_launch_on_switch?: boolean;
 }
@@ -35,6 +39,7 @@ export function useAutoRefresh() {
   const refreshAllGhcpTokens = useGitHubCopilotAccountStore((state) => state.refreshAllTokens);
   const refreshAllWindsurfTokens = useWindsurfAccountStore((state) => state.refreshAllTokens);
   const refreshAllKiroTokens = useKiroAccountStore((state) => state.refreshAllTokens);
+  const refreshAllCursorTokens = useCursorAccountStore((state) => state.refreshAllTokens);
 
   const agIntervalRef = useRef<number | null>(null);
   const autoSwitchIntervalRef = useRef<number | null>(null);
@@ -42,12 +47,14 @@ export function useAutoRefresh() {
   const ghcpIntervalRef = useRef<number | null>(null);
   const windsurfIntervalRef = useRef<number | null>(null);
   const kiroIntervalRef = useRef<number | null>(null);
+  const cursorIntervalRef = useRef<number | null>(null);
 
   const agRefreshingRef = useRef(false);
   const codexRefreshingRef = useRef(false);
   const ghcpRefreshingRef = useRef(false);
   const windsurfRefreshingRef = useRef(false);
   const kiroRefreshingRef = useRef(false);
+  const cursorRefreshingRef = useRef(false);
   const autoSwitchRefreshingRef = useRef(false);
 
   const setupRunningRef = useRef(false);
@@ -78,6 +85,10 @@ export function useAutoRefresh() {
     if (kiroIntervalRef.current) {
       window.clearInterval(kiroIntervalRef.current);
       kiroIntervalRef.current = null;
+    }
+    if (cursorIntervalRef.current) {
+      window.clearInterval(cursorIntervalRef.current);
+      cursorIntervalRef.current = null;
     }
   }, []);
 
@@ -134,12 +145,15 @@ export function useAutoRefresh() {
                     ghcpAutoRefreshMinutes: config.ghcp_auto_refresh_minutes,
                     windsurfAutoRefreshMinutes: config.windsurf_auto_refresh_minutes,
                     kiroAutoRefreshMinutes: config.kiro_auto_refresh_minutes,
+                    cursorAutoRefreshMinutes: config.cursor_auto_refresh_minutes,
                     closeBehavior: config.close_behavior || 'ask',
                     opencodeAppPath: config.opencode_app_path ?? '',
                     antigravityAppPath: config.antigravity_app_path ?? '',
                     codexAppPath: config.codex_app_path ?? '',
                     vscodeAppPath: config.vscode_app_path ?? '',
                     windsurfAppPath: config.windsurf_app_path ?? '',
+                    kiroAppPath: config.kiro_app_path ?? '',
+                    cursorAppPath: config.cursor_app_path ?? '',
                     opencodeSyncOnSwitch: config.opencode_sync_on_switch ?? true,
                     codexLaunchOnSwitch: config.codex_launch_on_switch ?? true,
                   });
@@ -273,6 +287,29 @@ export function useAutoRefresh() {
             console.log('[AutoRefresh] Kiro 已禁用');
           }
 
+          if (config.cursor_auto_refresh_minutes > 0) {
+            console.log(`[AutoRefresh] Cursor 已启用: 每 ${config.cursor_auto_refresh_minutes} 分钟`);
+            const cursorMs = config.cursor_auto_refresh_minutes * 60 * 1000;
+
+            cursorIntervalRef.current = window.setInterval(async () => {
+              if (cursorRefreshingRef.current) {
+                return;
+              }
+              cursorRefreshingRef.current = true;
+
+              try {
+                console.log('[AutoRefresh] 触发 Cursor 配额刷新...');
+                await refreshAllCursorTokens();
+              } catch (e) {
+                console.error('[AutoRefresh] Cursor 刷新失败:', e);
+              } finally {
+                cursorRefreshingRef.current = false;
+              }
+            }, cursorMs);
+          } else {
+            console.log('[AutoRefresh] Cursor 已禁用');
+          }
+
           // 自动切号开启时，额外每 60 秒刷新当前账号（不影响原有配额自动刷新规则）
           if (config.auto_switch_enabled) {
             console.log('[AutoRefresh] 自动切号已启用: 每 60 秒刷新当前账号');
@@ -308,6 +345,7 @@ export function useAutoRefresh() {
     fetchAccounts,
     fetchCurrentAccount,
     refreshAllCodexQuotas,
+    refreshAllCursorTokens,
     refreshAllGhcpTokens,
     refreshAllKiroTokens,
     refreshAllQuotas,

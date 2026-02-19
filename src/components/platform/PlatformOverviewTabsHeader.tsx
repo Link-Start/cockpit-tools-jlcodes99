@@ -1,12 +1,12 @@
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Github, Layers } from 'lucide-react';
+import { Github, Layers, MousePointer2 } from 'lucide-react';
 import { CodexIcon } from '../icons/CodexIcon';
 import { WindsurfIcon } from '../icons/WindsurfIcon';
 import { KiroIcon } from '../icons/KiroIcon';
 
 export type PlatformOverviewTab = 'overview' | 'instances';
-export type PlatformOverviewHeaderId = 'codex' | 'github-copilot' | 'windsurf' | 'kiro';
+export type PlatformOverviewHeaderId = 'codex' | 'cursor' | 'github-copilot' | 'windsurf' | 'kiro';
 
 interface PlatformOverviewTabsHeaderProps {
   platform: PlatformOverviewHeaderId;
@@ -47,6 +47,19 @@ const CONFIGS: Record<PlatformOverviewHeaderId, PlatformOverviewConfig> = {
     instancesSubtitleKey: 'codex.instances.subtitle',
     instancesSubtitleDefault: '多实例独立配置，多账号并行运行。',
     overviewIcon: <CodexIcon className="tab-icon" />,
+  },
+  cursor: {
+    titleKey: 'cursor.title',
+    titleDefault: 'Cursor 账号管理',
+    overviewTabKey: 'common.shared.overview.title',
+    overviewTabDefault: '账号总览',
+    instancesTabKey: 'common.shared.instances.title',
+    instancesTabDefault: '多开实例',
+    overviewSubtitleKey: 'common.shared.subtitle',
+    overviewSubtitleDefault: '实时监控所有账号的配额状态。',
+    instancesSubtitleKey: 'common.shared.instances.subtitle',
+    instancesSubtitleDefault: '多实例独立配置，多账号并行运行。',
+    overviewIcon: <MousePointer2 className="tab-icon" />,
   },
   'github-copilot': {
     titleKey: 'githubCopilot.title',

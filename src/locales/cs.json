@@ -154,7 +154,8 @@
     "instances": "Více instancí",
     "githubCopilot": "GitHub Copilot",
     "windsurf": "Windsurfing",
-    "morePlatforms": "Další platformy"
+    "morePlatforms": "Další platformy",
+    "cursor": "Účty Cursor"
   },
   "settings": {
     "title": "Nastavení aplikace",
@@ -1197,7 +1198,12 @@
       "title": "Nastavení Kiro",
       "appPath": "Kiro cesta"
     },
-    "kiroRefreshInterval": "Kvóta automatického obnovení"
+    "kiroRefreshInterval": "Kvóta automatického obnovení",
+    "cursor": {
+      "title": "Nastavení Cursor",
+      "appPath": "Cursor cesta"
+    },
+    "cursorRefreshInterval": "Kvóta automatického obnovení"
   },
   "quotaAlert": {
     "bannerText": "Upozornění na kvótu pro {{email}} (práh {{threshold}} %, minimum {{lowest}} %, modely: {{models}})",
@@ -1376,5 +1382,65 @@
       "localClient": "Dovoz z místní Kiro"
     },
     "injectToVSCode": "Přepněte na Kiro"
+  },
+  "cursor": {
+    "account": {
+      "signedInWith": "Přihlášen pomocí {{provider}}",
+      "providerUnknown": "Neznámý",
+      "userId": "ID uživatele"
+    },
+    "credits": {
+      "estimatedResetOn": "Odhadované využití se resetuje na {{date}}",
+      "bonusUsageLine": "{{used}} použitá / {{total}} celkem",
+      "planUsageCoveredLine": "{{used}} použitá / {{total}} pokrytá v plánu",
+      "expiryDays": "{{days}} dnů",
+      "expiryUnknown": "—",
+      "resetNow": "Resetovat brzy",
+      "resetInHours": "Resetuje se za {{hours}}h",
+      "resetInMinutes": "Resetuje se za {{minutes}}m"
+    },
+    "columns": {
+      "bonusCredits": "Bonusové kredity",
+      "estimatedUsage": "Odhadované využití",
+      "expiry": "Uplynutí",
+      "estUsage": "Odhad. Používání"
+    },
+    "plan": {
+      "free": "Cursor zdarma",
+      "individual": "Cursor jednotlivec",
+      "pro": "Cursor Pro",
+      "business": "Cursor Business",
+      "enterprise": "Cursor Enterprise",
+      "unknown": "Neznámý"
+    },
+    "flowNotice": {
+      "title": "Průvodce správou účtu Cursor (kliknutím rozbalit/sbalit)",
+      "desc": "Přepnutí účtu čte a zapisuje místní autorizační soubory Cursor a nastavení instance na tomto zařízení; při OAuth přihlášení a obnovení kvót volá oficiální API Cursor.",
+      "reason": "Zpracovávané cesty zahrnují ~/.aws/sso/cache/cursor-auth-token.json, soubor profile.json instance a položku cursor.cursorAgent v state.vscdb.",
+      "storage": "Zpracovávaná data zahrnují informace o relaci a kvótách Cursor; při volání oficiálních API Cursor se odesílají nezbytná autentizační pole (např. code, refreshToken, accessToken a profileArn)."
+    },
+    "title": "Správa účtu Cursor",
+    "instances": {
+      "unsupported": {
+        "descPlatform": "Cursor multi-instance je k dispozici pouze na macOS, Windows a Linux."
+      }
+    },
+    "empty": {
+      "description": "Kliknutím na „Přidat účet“ zahájíte správu účtů Cursor"
+    },
+    "addModal": {
+      "title": "Přidat Cursor účet"
+    },
+    "oauth": {
+      "desc": "Klikněte na tlačítko níže a dokončete autorizaci Cursor ve svém prohlížeči."
+    },
+    "token": {
+      "desc": "Vložte svůj přístupový token Cursor nebo exportovaná data JSON."
+    },
+    "import": {
+      "localDesc": "Importujte data účtu Cursor z místního klienta Cursor nebo souboru JSON.",
+      "localClient": "Dovoz z místní Cursor"
+    },
+    "injectToVSCode": "Přepněte na Cursor"
   }
 }

@@ -19,6 +19,7 @@ import { useCodexAccountStore } from './stores/useCodexAccountStore';
 import { useGitHubCopilotAccountStore } from './stores/useGitHubCopilotAccountStore';
 import { useWindsurfAccountStore } from './stores/useWindsurfAccountStore';
 import { useKiroAccountStore } from './stores/useKiroAccountStore';
+import { useCursorAccountStore } from './stores/useCursorAccountStore';
 
 const DashboardPage = lazy(() =>
   import('./pages/DashboardPage').then((module) => ({ default: module.DashboardPage })),
@@ -28,6 +29,9 @@ const AccountsPage = lazy(() =>
 );
 const CodexAccountsPage = lazy(() =>
   import('./pages/CodexAccountsPage').then((module) => ({ default: module.CodexAccountsPage })),
+);
+const CursorAccountsPage = lazy(() =>
+  import('./pages/CursorAccountsPage').then((module) => ({ default: module.CursorAccountsPage })),
 );
 const GitHubCopilotAccountsPage = lazy(() =>
   import('./pages/GitHubCopilotAccountsPage').then((module) => ({
@@ -78,10 +82,11 @@ interface GeneralConfig extends GeneralConfigTheme {
   vscode_app_path: string;
   windsurf_app_path: string;
   kiro_app_path: string;
+  cursor_app_path: string;
 }
 
 type AppPathMissingDetail = {
-  app: 'antigravity' | 'codex' | 'vscode' | 'windsurf' | 'kiro';
+  app: 'antigravity' | 'codex' | 'vscode' | 'windsurf' | 'kiro' | 'cursor';
   retry?: { kind: 'default' | 'instance'; instanceId?: string };
 };
 
@@ -120,7 +125,7 @@ type QuotaAlertPayload = {
   triggered_at: number;
 };
 
-type QuotaAlertPlatform = 'antigravity' | 'codex' | 'github_copilot' | 'windsurf' | 'kiro';
+type QuotaAlertPlatform = 'antigravity' | 'codex' | 'github_copilot' | 'windsurf' | 'kiro' | 'cursor';
 
 function normalizeQuotaAlertPlatform(platform: string | undefined): QuotaAlertPlatform {
   switch (platform) {
@@ -132,6 +137,8 @@ function normalizeQuotaAlertPlatform(platform: string | undefined): QuotaAlertPl
       return 'windsurf';
     case 'kiro':
       return 'kiro';
+    case 'cursor':
+      return 'cursor';
     default:
       return 'antigravity';
   }
@@ -150,6 +157,8 @@ function getQuotaAlertPlatformLabel(
       return 'Windsurf';
     case 'kiro':
       return 'Kiro';
+    case 'cursor':
+      return t('nav.cursor', 'Cursor');
     default:
       return t('nav.overview', 'Antigravity');
   }
@@ -165,6 +174,8 @@ function getQuotaAlertTargetPage(platform: QuotaAlertPlatform): Page {
       return 'windsurf';
     case 'kiro':
       return 'kiro';
+    case 'cursor':
+      return 'cursor';
     default:
       return 'overview';
   }
@@ -180,6 +191,8 @@ function getQuotaAlertQuickSettingsType(platform: QuotaAlertPlatform): QuickSett
       return 'windsurf';
     case 'kiro':
       return 'kiro';
+    case 'cursor':
+      return 'cursor';
     default:
       return 'antigravity';
   }
@@ -283,6 +296,7 @@ function App() {
         await invoke('detect_app_path', { app: 'vscode' });
         await invoke('detect_app_path', { app: 'windsurf' });
         await invoke('detect_app_path', { app: 'kiro' });
+        await invoke('detect_app_path', { app: 'cursor' });
         const userAgent = navigator.userAgent.toLowerCase();
         if (userAgent.includes('mac')) {
           await invoke('detect_app_path', { app: 'codex' });
@@ -444,6 +458,9 @@ function App() {
                     } else if (platform === 'kiro') {
                       await useKiroAccountStore.getState().switchAccount(targetAccountId);
                       setPage('kiro');
+                    } else if (platform === 'cursor') {
+                      await useCursorAccountStore.getState().switchAccount(targetAccountId);
+                      setPage('cursor');
                     } else {
                       await useAccountStore.getState().switchAccount(targetAccountId);
                       setPage('overview');
@@ -559,6 +576,10 @@ function App() {
         command: 'refresh_all_kiro_tokens',
         errorMessage: 'Failed to refresh Kiro quotas:',
       },
+      {
+        command: 'refresh_all_cursor_tokens',
+        errorMessage: 'Failed to refresh Cursor quotas:',
+      },
     ] as const;
 
     listen('tray:refresh_quota', async () => {
@@ -597,7 +618,8 @@ function App() {
         detail.app !== 'codex' &&
         detail.app !== 'vscode' &&
         detail.app !== 'windsurf' &&
-        detail.app !== 'kiro'
+        detail.app !== 'kiro' &&
+        detail.app !== 'cursor'
       ) {
         return;
       }
@@ -643,6 +665,8 @@ function App() {
                 ? config.windsurf_app_path
               : appPathMissing.app === 'kiro'
                 ? config.kiro_app_path
+              : appPathMissing.app === 'cursor'
+                ? config.cursor_app_path
               : config.antigravity_app_path;
         if (active) {
           setAppPathDraft(currentPath || '');
@@ -692,6 +716,8 @@ function App() {
           await invoke('windsurf_start_instance', { instanceId: retry.instanceId });
         } else if (app === 'kiro') {
           await invoke('kiro_start_instance', { instanceId: retry.instanceId });
+        } else if (app === 'cursor') {
+          await invoke('cursor_start_instance', { instanceId: retry.instanceId });
         } else {
           await invoke('start_instance', { instanceId: retry.instanceId });
         }
@@ -704,6 +730,8 @@ function App() {
           await invoke('windsurf_start_instance', { instanceId: '__default__' });
         } else if (app === 'kiro') {
           await invoke('kiro_start_instance', { instanceId: '__default__' });
+        } else if (app === 'cursor') {
+          await invoke('cursor_start_instance', { instanceId: '__default__' });
         } else {
           await invoke('start_instance', { instanceId: '__default__' });
         }
@@ -753,6 +781,7 @@ function App() {
           switch (target) {
             case 'overview':
             case 'codex':
+            case 'cursor':
             case 'github-copilot':
             case 'windsurf':
             case 'kiro':
@@ -829,6 +858,8 @@ function App() {
                           ? 'Windsurf'
                         : appPathMissing.app === 'kiro'
                           ? 'Kiro'
+                        : appPathMissing.app === 'cursor'
+                          ? 'Cursor'
                         : 'Antigravity',
                 })}
               </p>
@@ -861,9 +892,11 @@ function App() {
                             ? t('settings.general.vscodePathReset', '重置默认')
                             : appPathMissing.app === 'windsurf'
                               ? t('settings.general.windsurfPathReset', '重置默认')
-                              : appPathMissing.app === 'kiro'
-                                ? t('settings.general.kiroPathReset', '重置默认')
-                              : t('settings.general.codexPathReset', '重置默认')
+                            : appPathMissing.app === 'kiro'
+                              ? t('settings.general.kiroPathReset', '重置默认')
+                            : appPathMissing.app === 'cursor'
+                              ? t('settings.general.codexPathReset', '重置默认')
+                            : t('settings.general.codexPathReset', '重置默认')
                         )
                     }
                   >
@@ -873,11 +906,13 @@ function App() {
                       : (
                         appPathMissing.app === 'vscode'
                           ? t('settings.general.vscodePathReset', '重置默认')
-                          : appPathMissing.app === 'windsurf'
-                            ? t('settings.general.windsurfPathReset', '重置默认')
-                            : appPathMissing.app === 'kiro'
-                              ? t('settings.general.kiroPathReset', '重置默认')
-                            : t('settings.general.codexPathReset', '重置默认')
+                        : appPathMissing.app === 'windsurf'
+                          ? t('settings.general.windsurfPathReset', '重置默认')
+                        : appPathMissing.app === 'kiro'
+                          ? t('settings.general.kiroPathReset', '重置默认')
+                        : appPathMissing.app === 'cursor'
+                          ? t('settings.general.codexPathReset', '重置默认')
+                        : t('settings.general.codexPathReset', '重置默认')
                       )}
                   </button>
                 </div>
@@ -935,6 +970,7 @@ function App() {
           )}
           {page === 'overview' && <AccountsPage onNavigate={setPage} />}
           {page === 'codex' && <CodexAccountsPage />}
+          {page === 'cursor' && <CursorAccountsPage />}
           {page === 'github-copilot' && <GitHubCopilotAccountsPage />}
           {page === 'windsurf' && <WindsurfAccountsPage />}
           {page === 'kiro' && <KiroAccountsPage />}

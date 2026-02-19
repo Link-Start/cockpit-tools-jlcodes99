@@ -1,6 +1,8 @@
 pub mod account;
 pub mod codex;
 pub mod codex_instance;
+pub mod cursor;
+pub mod cursor_instance;
 pub mod device;
 pub mod github_copilot;
 pub mod github_copilot_instance;

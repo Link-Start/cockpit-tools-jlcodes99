@@ -154,7 +154,8 @@
     "instances": "Çoklu Örnek",
     "githubCopilot": "GitHub Yardımcı Pilotu",
     "windsurf": "Rüzgar sörfü",
-    "morePlatforms": "Daha Fazla Platform"
+    "morePlatforms": "Daha Fazla Platform",
+    "cursor": "Cursor Hesapları"
   },
   "settings": {
     "title": "Uygulama Ayarları",
@@ -1197,7 +1198,12 @@
       "title": "Kiro Ayarları",
       "appPath": "Kiro Yolu"
     },
-    "kiroRefreshInterval": "Otomatik yenileme kotası"
+    "kiroRefreshInterval": "Otomatik yenileme kotası",
+    "cursor": {
+      "title": "Cursor Ayarları",
+      "appPath": "Cursor Yolu"
+    },
+    "cursorRefreshInterval": "Otomatik yenileme kotası"
   },
   "quotaAlert": {
     "bannerText": "{{email}} için kota uyarısı (eşik {{threshold}}%, en düşük {{lowest}}%, modeller: {{models}})",
@@ -1376,5 +1382,65 @@
       "localClient": "Yerel Kiro'dan ithalat"
     },
     "injectToVSCode": "Kiro'ya geç"
+  },
+  "cursor": {
+    "account": {
+      "signedInWith": "{{provider}} ile oturum açıldı",
+      "providerUnknown": "Bilinmiyor",
+      "userId": "Kullanıcı kimliği"
+    },
+    "credits": {
+      "estimatedResetOn": "Tahmini Kullanım {{date}} tarihinde sıfırlanır",
+      "bonusUsageLine": "{{used}} kullanılmış / {{total}} toplam",
+      "planUsageCoveredLine": "{{used}} kullanıldı / {{total}} planda yer aldı",
+      "expiryDays": "{{days}} gün",
+      "expiryUnknown": "—",
+      "resetNow": "Yakında sıfırla",
+      "resetInHours": "{{hours}}h içinde sıfırlanır",
+      "resetInMinutes": "{{minutes}}m içinde sıfırlanır"
+    },
+    "columns": {
+      "bonusCredits": "Bonus Kredileri",
+      "estimatedUsage": "Tahmini Kullanım",
+      "expiry": "Son kullanma tarihi",
+      "estUsage": "Avustralya, Brezilya ve Kuzey Amerika ülkelerinin kullandığı saat uygulaması. Kullanım"
+    },
+    "plan": {
+      "free": "Cursor'suz",
+      "individual": "Cursor Bireysel",
+      "pro": "CursorPro",
+      "business": "Cursor İş",
+      "enterprise": "Cursor Kurumsal",
+      "unknown": "Bilinmiyor"
+    },
+    "flowNotice": {
+      "title": "Cursor hesap kılavuzu (genişletmek/daraltmak için tıklayın)",
+      "desc": "Hesap değiştirme bu cihazda Cursor yerel kimlik doğrulama dosyalarını ve örnek ayarlarını okur/yazar; OAuth girişi ve kota yenileme işlemleri Cursor resmi API’lerini çağırır.",
+      "reason": "İşlenen yollar arasında ~/.aws/sso/cache/cursor-auth-token.json, örnek profile.json dosyası ve state.vscdb içindeki cursor.cursorAgent girdisi bulunur.",
+      "storage": "İşlenen veriler Cursor oturum ve kota bilgilerini içerir; Cursor resmi API’lerine yapılan isteklerde gerekli kimlik doğrulama alanları gönderilir (ör. code, refreshToken, accessToken ve profileArn)."
+    },
+    "title": "Cursor Hesap Yönetimi",
+    "instances": {
+      "unsupported": {
+        "descPlatform": "Cursor çoklu örneği yalnızca macOS, Windows ve Linux'ta mevcuttur."
+      }
+    },
+    "empty": {
+      "description": "Cursor hesaplarınızı yönetmeye başlamak için \"Hesap Ekle\"ye tıklayın"
+    },
+    "addModal": {
+      "title": "Cursor Hesabı Ekle"
+    },
+    "oauth": {
+      "desc": "Aşağıdaki düğmeye tıklayın ve tarayıcınızda Cursor yetkilendirmesini tamamlayın."
+    },
+    "token": {
+      "desc": "Cursor erişim belirtecinizi veya dışa aktarılan JSON verilerinizi yapıştırın."
+    },
+    "import": {
+      "localDesc": "Cursor hesap verilerini yerel Cursor istemcisinden veya bir JSON dosyasından içe aktarın.",
+      "localClient": "Yerel Cursor'dan ithalat"
+    },
+    "injectToVSCode": "Cursor'ya geç"
   }
 }

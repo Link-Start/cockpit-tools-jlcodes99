@@ -154,7 +154,8 @@
     "instances": "Đa Phiên Bản",
     "githubCopilot": "Phi công phụ GitHub",
     "windsurf": "Lướt ván buồm",
-    "morePlatforms": "Thêm nền tảng"
+    "morePlatforms": "Thêm nền tảng",
+    "cursor": "Tài khoản Cursor"
   },
   "settings": {
     "title": "Cài đặt ứng dụng",
@@ -1197,7 +1198,12 @@
       "title": "Cài đặt Kiro",
       "appPath": "Con đường Kiro"
     },
-    "kiroRefreshInterval": "Hạn ngạch làm mới tự động"
+    "kiroRefreshInterval": "Hạn ngạch làm mới tự động",
+    "cursor": {
+      "title": "Cài đặt Cursor",
+      "appPath": "Con đường Cursor"
+    },
+    "cursorRefreshInterval": "Hạn ngạch làm mới tự động"
   },
   "quotaAlert": {
     "bannerText": "Cảnh báo hạn mức cho {{email}} (ngưỡng {{threshold}}%, thấp nhất {{lowest}}%, mô hình: {{models}})",
@@ -1376,5 +1382,65 @@
       "localClient": "Nhập khẩu từ Kiro địa phương"
     },
     "injectToVSCode": "Chuyển sang Kiro"
+  },
+  "cursor": {
+    "account": {
+      "signedInWith": "Đã đăng nhập bằng {{provider}}",
+      "providerUnknown": "Không xác định",
+      "userId": "ID người dùng"
+    },
+    "credits": {
+      "estimatedResetOn": "Mức sử dụng ước tính được đặt lại trên {{date}}",
+      "bonusUsageLine": "{{used}} đã sử dụng / tổng cộng {{total}}",
+      "planUsageCoveredLine": "{{used}} đã sử dụng / {{total}} nằm trong kế hoạch",
+      "expiryDays": "{{days}} ngày",
+      "expiryUnknown": "—",
+      "resetNow": "Đặt lại sớm",
+      "resetInHours": "Đặt lại sau {{hours}}h",
+      "resetInMinutes": "Đặt lại sau {{minutes}} phút"
+    },
+    "columns": {
+      "bonusCredits": "Tín dụng thưởng",
+      "estimatedUsage": "Mức sử dụng ước tính",
+      "expiry": "Hết hạn",
+      "estUsage": "Ước tính. Cách sử dụng"
+    },
+    "plan": {
+      "free": "Cursor miễn phí",
+      "individual": "Cursor Cá Nhân",
+      "pro": "Cursor Pro",
+      "business": "kinh doanh cursor",
+      "enterprise": "Doanh nghiệp Cursor",
+      "unknown": "Không xác định"
+    },
+    "flowNotice": {
+      "title": "Hướng dẫn tài khoản Cursor (bấm để mở rộng/thu gọn)",
+      "desc": "Chuyển tài khoản sẽ đọc/ghi các tệp xác thực Cursor cục bộ và cấu hình instance trên thiết bị này; đăng nhập OAuth và làm mới quota sẽ gọi các API chính thức của Cursor.",
+      "reason": "Các đường dẫn được xử lý gồm ~/.aws/sso/cache/cursor-auth-token.json, profile.json của instance và mục cursor.cursorAgent trong state.vscdb.",
+      "storage": "Dữ liệu được xử lý gồm thông tin phiên và quota của Cursor; các yêu cầu tới API chính thức của Cursor sẽ gửi các trường xác thực cần thiết (như code, refreshToken, accessToken và profileArn)."
+    },
+    "title": "Quản lý tài khoản Cursor",
+    "instances": {
+      "unsupported": {
+        "descPlatform": "Cursor đa phiên bản chỉ khả dụng trên macOS, Windows và Linux."
+      }
+    },
+    "empty": {
+      "description": "Nhấp vào \"Thêm tài khoản\" để bắt đầu quản lý tài khoản Cursor của bạn"
+    },
+    "addModal": {
+      "title": "Thêm tài khoản Cursor"
+    },
+    "oauth": {
+      "desc": "Nhấp vào nút bên dưới và hoàn tất ủy quyền Cursor trong trình duyệt của bạn."
+    },
+    "token": {
+      "desc": "Dán mã thông báo truy cập Cursor của bạn hoặc dữ liệu JSON đã xuất."
+    },
+    "import": {
+      "localDesc": "Nhập dữ liệu tài khoản Cursor từ ứng dụng khách Cursor cục bộ hoặc tệp JSON.",
+      "localClient": "Nhập khẩu từ Cursor địa phương"
+    },
+    "injectToVSCode": "Chuyển sang Cursor"
   }
 }

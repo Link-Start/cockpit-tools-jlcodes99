@@ -154,7 +154,8 @@
     "instances": "多開實例",
     "githubCopilot": "GitHub 副駕駛",
     "windsurf": "風帆衝浪",
-    "morePlatforms": "更多平台"
+    "morePlatforms": "更多平台",
+    "cursor": "Cursor 帳號"
   },
   "settings": {
     "title": "應用程式設定",
@@ -1197,7 +1198,12 @@
       "title": "基羅設定",
       "appPath": "基羅之路"
     },
-    "kiroRefreshInterval": "自動刷新配額"
+    "kiroRefreshInterval": "自動刷新配額",
+    "cursor": {
+      "title": "基羅設定",
+      "appPath": "基羅之路"
+    },
+    "cursorRefreshInterval": "自動刷新配額"
   },
   "quotaAlert": {
     "bannerText": "帳號 {{email}} 觸發配額預警（閾值 {{threshold}}%，最低 {{lowest}}%，模型：{{models}}）",
@@ -1374,6 +1380,66 @@
     "import": {
       "localDesc": "從本機 Kiro 用戶端或 JSON 檔案匯入 Kiro 帳戶資料。",
       "localClient": "從當地Kiro進口"
+    },
+    "injectToVSCode": "切換到基羅"
+  },
+  "cursor": {
+    "account": {
+      "signedInWith": "使用 {{provider}} 登入",
+      "providerUnknown": "未知",
+      "userId": "使用者身分"
+    },
+    "credits": {
+      "estimatedResetOn": "預計使用量在 {{date}} 上重置",
+      "bonusUsageLine": "使用 {{used}} / 總共 {{total}}",
+      "planUsageCoveredLine": "{{used}} 已使用 / {{total}} 包含在計劃中",
+      "expiryDays": "{{days}} 天",
+      "expiryUnknown": "—",
+      "resetNow": "盡快重置",
+      "resetInHours": "在 {{hours}}h 中重置",
+      "resetInMinutes": "在 {{minutes}}m 中重置"
+    },
+    "columns": {
+      "bonusCredits": "獎勵積分",
+      "estimatedUsage": "預計使用量",
+      "expiry": "到期日",
+      "estUsage": "預計。用法"
+    },
+    "plan": {
+      "free": "基羅自由",
+      "individual": "基羅個人賽",
+      "pro": "基羅專業版",
+      "business": "基羅商務",
+      "enterprise": "基羅企業",
+      "unknown": "未知"
+    },
+    "flowNotice": {
+      "title": "Cursor 帳號管理說明（點擊展開/收起）",
+      "desc": "帳號切換會在本機讀寫 Cursor 登入檔與實例設定；OAuth 登入與配額刷新會呼叫 Cursor 官方介面。",
+      "reason": "處理路徑包含 ~/.aws/sso/cache/cursor-auth-token.json、實例目錄 profile.json，以及 state.vscdb 中的 cursor.cursorAgent 條目。",
+      "storage": "處理資料包含 Cursor 登入會話與配額資訊；請求 Cursor 官方介面時會傳送必要認證欄位（如 code、refreshToken、accessToken、profileArn）。"
+    },
+    "title": "Cursor 帳戶管理",
+    "instances": {
+      "unsupported": {
+        "descPlatform": "Cursor 多執行個體僅適用於 macOS、Windows 和 Linux。"
+      }
+    },
+    "empty": {
+      "description": "點擊「新增帳戶」開始管理您的 Cursor 帳戶"
+    },
+    "addModal": {
+      "title": "新增 Cursor 帳戶"
+    },
+    "oauth": {
+      "desc": "點擊下面的按鈕並在瀏覽器中完成 Cursor 授權。"
+    },
+    "token": {
+      "desc": "貼上您的 Cursor 存取權杖或匯出的 JSON 資料。"
+    },
+    "import": {
+      "localDesc": "從本機 Cursor 用戶端或 JSON 檔案匯入 Cursor 帳戶資料。",
+      "localClient": "從當地Cursor進口"
     },
     "injectToVSCode": "切換到基羅"
   }

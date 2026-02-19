@@ -154,7 +154,8 @@
     "instances": "マルチインスタンス",
     "githubCopilot": "GitHub コパイロット",
     "windsurf": "ウィンドサーフィン",
-    "morePlatforms": "その他のプラットフォーム"
+    "morePlatforms": "その他のプラットフォーム",
+    "cursor": "Cursor アカウント"
   },
   "settings": {
     "title": "アプリ設定",
@@ -1197,7 +1198,12 @@
       "title": "キロの設定",
       "appPath": "キロパス"
     },
-    "kiroRefreshInterval": "自動更新クォータ"
+    "kiroRefreshInterval": "自動更新クォータ",
+    "cursor": {
+      "title": "キロの設定",
+      "appPath": "キロパス"
+    },
+    "cursorRefreshInterval": "自動更新クォータ"
   },
   "quotaAlert": {
     "bannerText": "{{email}} のクォータ警告（しきい値 {{threshold}}%、最低 {{lowest}}%、モデル: {{models}}）",
@@ -1373,6 +1379,66 @@
     },
     "import": {
       "localDesc": "ローカル Kiro クライアントまたは JSON ファイルから Kiro アカウント データをインポートします。",
+      "localClient": "地元キロから輸入"
+    },
+    "injectToVSCode": "キロに切り替えます"
+  },
+  "cursor": {
+    "account": {
+      "signedInWith": "{{provider}} でサインインしました",
+      "providerUnknown": "未知",
+      "userId": "ユーザーID"
+    },
+    "credits": {
+      "estimatedResetOn": "推定使用量は {{date}} にリセットされます",
+      "bonusUsageLine": "{{used}} 使用 / {{total}} 合計",
+      "planUsageCoveredLine": "{{used}} が使用されました / {{total}} は計画に含まれています",
+      "expiryDays": "{{days}}日",
+      "expiryUnknown": "—",
+      "resetNow": "すぐにリセットします",
+      "resetInHours": "{{hours}}h でリセット",
+      "resetInMinutes": "{{minutes}}m 後にリセットされます"
+    },
+    "columns": {
+      "bonusCredits": "ボーナスクレジット",
+      "estimatedUsage": "推定使用量",
+      "expiry": "有効期限",
+      "estUsage": "EST（東部基準時。使用法"
+    },
+    "plan": {
+      "free": "キロフリー",
+      "individual": "キロ個人",
+      "pro": "キロプロ",
+      "business": "キロ事業",
+      "enterprise": "キロエンタープライズ",
+      "unknown": "未知"
+    },
+    "flowNotice": {
+      "title": "Cursor アカウント管理ガイド（クリックで展開/折りたたみ）",
+      "desc": "アカウント切り替えでは、この端末上で Cursor のローカル認証ファイルとインスタンス設定を読み書きします。OAuth ログインとクォータ更新では Cursor 公式 API を呼び出します。",
+      "reason": "処理対象パスには、~/.aws/sso/cache/cursor-auth-token.json、インスタンスの profile.json、state.vscdb 内の cursor.cursorAgent エントリが含まれます。",
+      "storage": "処理されるデータには Cursor のセッション情報とクォータ情報が含まれます。Cursor 公式 API へのリクエスト時には、必要な認証フィールド（code、refreshToken、accessToken、profileArn など）を送信します。"
+    },
+    "title": "キロアカウント管理",
+    "instances": {
+      "unsupported": {
+        "descPlatform": "Cursor マルチインスタンスは、macOS、Windows、および Linux でのみ使用できます。"
+      }
+    },
+    "empty": {
+      "description": "「アカウントを追加」をクリックして Cursor アカウントの管理を開始します"
+    },
+    "addModal": {
+      "title": "Cursorアカウントを追加する"
+    },
+    "oauth": {
+      "desc": "下のボタンをクリックして、ブラウザで Cursor 認証を完了してください。"
+    },
+    "token": {
+      "desc": "Cursor アクセス トークンまたはエクスポートされた JSON データを貼り付けます。"
+    },
+    "import": {
+      "localDesc": "ローカル Cursor クライアントまたは JSON ファイルから Cursor アカウント データをインポートします。",
       "localClient": "地元キロから輸入"
     },
     "injectToVSCode": "キロに切り替えます"

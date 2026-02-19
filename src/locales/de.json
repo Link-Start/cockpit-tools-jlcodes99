@@ -154,7 +154,8 @@
     "instances": "Multi-Instanz",
     "githubCopilot": "GitHub-Copilot",
     "windsurf": "Windsurfen",
-    "morePlatforms": "Weitere Plattformen"
+    "morePlatforms": "Weitere Plattformen",
+    "cursor": "Cursor-Konten"
   },
   "settings": {
     "title": "App-Einstellungen",
@@ -1197,7 +1198,12 @@
       "title": "Kiro-Einstellungen",
       "appPath": "Kiro-Pfad"
     },
-    "kiroRefreshInterval": "Kontingent für automatische Aktualisierung"
+    "kiroRefreshInterval": "Kontingent für automatische Aktualisierung",
+    "cursor": {
+      "title": "Cursor-Einstellungen",
+      "appPath": "Cursor-Pfad"
+    },
+    "cursorRefreshInterval": "Kontingent für automatische Aktualisierung"
   },
   "quotaAlert": {
     "bannerText": "Kontingentwarnung für {{email}} (Schwelle {{threshold}} %, Minimum {{lowest}} %, Modelle: {{models}})",
@@ -1376,5 +1382,65 @@
       "localClient": "Import aus lokalem Kiro"
     },
     "injectToVSCode": "Wechseln Sie zu Kiro"
+  },
+  "cursor": {
+    "account": {
+      "signedInWith": "Angemeldet mit {{provider}}",
+      "providerUnknown": "Unbekannt",
+      "userId": "Benutzer-ID"
+    },
+    "credits": {
+      "estimatedResetOn": "Geschätzte Nutzung wird am {{date}} zurückgesetzt",
+      "bonusUsageLine": "{{used}} verwendet / {{total}} insgesamt",
+      "planUsageCoveredLine": "{{used}} verwendet / {{total}} im Plan abgedeckt",
+      "expiryDays": "{{days}} Tage",
+      "expiryUnknown": "—",
+      "resetNow": "Bald zurücksetzen",
+      "resetInHours": "Wird in {{hours}}h zurückgesetzt",
+      "resetInMinutes": "Wird in {{minutes}}m zurückgesetzt"
+    },
+    "columns": {
+      "bonusCredits": "Bonus-Credits",
+      "estimatedUsage": "Geschätzte Nutzung",
+      "expiry": "Ablauf",
+      "estUsage": "Schätzung: Verwendung"
+    },
+    "plan": {
+      "free": "Cursor Free",
+      "individual": "Cursor Einzelperson",
+      "pro": "Cursor Pro",
+      "business": "Cursor-Geschäft",
+      "enterprise": "Cursor Enterprise",
+      "unknown": "Unbekannt"
+    },
+    "flowNotice": {
+      "title": "Cursor-Kontoverwaltung (zum Ausklappen/Einklappen klicken)",
+      "desc": "Beim Kontowechsel werden lokale Cursor-Auth-Dateien und Instanzeinstellungen auf diesem Gerät gelesen und geschrieben; bei OAuth-Anmeldung und Quotenaktualisierung werden offizielle Cursor-APIs aufgerufen.",
+      "reason": "Verarbeitete Pfade umfassen ~/.aws/sso/cache/cursor-auth-token.json, die Instanzdatei profile.json sowie den Eintrag cursor.cursorAgent in state.vscdb.",
+      "storage": "Verarbeitete Daten umfassen Cursor-Sitzungs- und Quoteninformationen; bei Aufrufen der offiziellen Cursor-APIs werden erforderliche Auth-Felder gesendet (z. B. code, refreshToken, accessToken und profileArn)."
+    },
+    "title": "Cursor-Kontoverwaltung",
+    "instances": {
+      "unsupported": {
+        "descPlatform": "Die Multiinstanz von Cursor ist nur auf macOS, Windows und Linux verfügbar."
+      }
+    },
+    "empty": {
+      "description": "Klicken Sie auf „Konto hinzufügen“, um mit der Verwaltung Ihrer Cursor-Konten zu beginnen"
+    },
+    "addModal": {
+      "title": "Cursor-Konto hinzufügen"
+    },
+    "oauth": {
+      "desc": "Klicken Sie auf die Schaltfläche unten und schließen Sie die Cursor-Autorisierung in Ihrem Browser ab."
+    },
+    "token": {
+      "desc": "Fügen Sie Ihr Cursor-Zugriffstoken oder exportierte JSON-Daten ein."
+    },
+    "import": {
+      "localDesc": "Importieren Sie Cursor-Kontodaten vom lokalen Cursor-Client oder einer JSON-Datei.",
+      "localClient": "Import aus lokalem Cursor"
+    },
+    "injectToVSCode": "Wechseln Sie zu Cursor"
   }
 }

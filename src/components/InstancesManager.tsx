@@ -40,7 +40,7 @@ interface InstancesManagerProps<TAccount extends AccountLike> {
   fetchAccounts: () => Promise<void>;
   renderAccountQuotaPreview: (account: TAccount) => ReactNode;
   getAccountSearchText?: (account: TAccount) => string;
-  appType?: 'antigravity' | 'codex' | 'vscode' | 'windsurf' | 'kiro';
+  appType?: 'antigravity' | 'codex' | 'vscode' | 'windsurf' | 'kiro' | 'cursor';
 }
 
 const INSTANCE_AUTO_REFRESH_INTERVAL_MS = 10_000;
@@ -420,7 +420,8 @@ export function InstancesManager<TAccount extends AccountLike>({
       rawApp === 'antigravity' ||
       rawApp === 'vscode' ||
       rawApp === 'windsurf' ||
-      rawApp === 'kiro'
+      rawApp === 'kiro' ||
+      rawApp === 'cursor'
         ? rawApp
         : appType;
     const retry = instanceId

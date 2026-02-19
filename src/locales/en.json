@@ -154,7 +154,8 @@
     "windsurf": "Windsurf",
     "dashboard": "Dashboard",
     "morePlatforms": "More Platforms",
-    "instances": "Multi-Instance"
+    "instances": "Multi-Instance",
+    "cursor": "Cursor"
   },
   "breakout": {
     "gameOver": "Game Over",
@@ -1245,7 +1246,12 @@
       "title": "Kiro Settings",
       "appPath": "Kiro Path"
     },
-    "kiroRefreshInterval": "Auto refresh quota"
+    "kiroRefreshInterval": "Auto refresh quota",
+    "cursor": {
+      "title": "Cursor Settings",
+      "appPath": "Cursor Path"
+    },
+    "cursorRefreshInterval": "Quota Auto Refresh"
   },
   "quotaAlert": {
     "bannerText": "Quota alert for {{email}} (threshold {{threshold}}%, lowest {{lowest}}%, models: {{models}})",
@@ -1376,5 +1382,65 @@
       "localClient": "Import from local Kiro"
     },
     "injectToVSCode": "Switch to Kiro"
+  },
+  "cursor": {
+    "account": {
+      "signedInWith": "Signed in with {{provider}}",
+      "providerUnknown": "Unknown",
+      "userId": "User ID"
+    },
+    "credits": {
+      "estimatedResetOn": "Estimated Usage resets on {{date}}",
+      "bonusUsageLine": "{{used}} used / {{total}} total",
+      "planUsageCoveredLine": "{{used}} used / {{total}} covered in plan",
+      "expiryDays": "{{days}} days",
+      "expiryUnknown": "—",
+      "resetNow": "Reset soon",
+      "resetInHours": "Resets in {{hours}}h",
+      "resetInMinutes": "Resets in {{minutes}}m"
+    },
+    "columns": {
+      "bonusCredits": "Bonus Credits",
+      "estimatedUsage": "Estimated Usage",
+      "expiry": "Expiry",
+      "estUsage": "Est. Usage"
+    },
+    "plan": {
+      "free": "Cursor Free",
+      "individual": "Cursor Individual",
+      "pro": "Cursor Pro",
+      "business": "Cursor Business",
+      "enterprise": "Cursor Enterprise",
+      "unknown": "Unknown"
+    },
+    "flowNotice": {
+      "title": "Cursor account guide (click to expand/collapse)",
+      "desc": "Account switching reads and writes local Cursor auth files and instance settings on this device; OAuth login and quota refresh call Cursor official APIs.",
+      "reason": "Processing paths include local Cursor auth cache, instance profile.json, and Cursor-related entries in state.vscdb.",
+      "storage": "Processed data includes Cursor session and quota information; requests to Cursor official APIs send required auth fields."
+    },
+    "title": "Cursor Account Management",
+    "instances": {
+      "unsupported": {
+        "descPlatform": "Cursor multi-instance is available only on macOS, Windows and Linux."
+      }
+    },
+    "empty": {
+      "description": "Click \"Add Account\" to start managing your Cursor accounts"
+    },
+    "addModal": {
+      "title": "Add Cursor Account"
+    },
+    "oauth": {
+      "desc": "Click the button below and complete Cursor authorization in your browser."
+    },
+    "token": {
+      "desc": "Paste your Cursor access token or exported JSON data."
+    },
+    "import": {
+      "localDesc": "Import Cursor account data from local Cursor client or a JSON file.",
+      "localClient": "Import from local Cursor"
+    },
+    "injectToVSCode": "Switch to Cursor"
   }
 }

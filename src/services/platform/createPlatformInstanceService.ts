@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { InstanceDefaults, InstanceInitMode, InstanceProfile } from '../../types/instance';
 
-type PlatformInstanceCommandPrefix = '' | 'codex' | 'github_copilot' | 'windsurf' | 'kiro';
+type PlatformInstanceCommandPrefix = '' | 'codex' | 'cursor' | 'github_copilot' | 'windsurf' | 'kiro';
 
 type InstancePayload = {
   name: string;

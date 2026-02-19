@@ -154,7 +154,8 @@
     "instances": "Multi-Instance",
     "githubCopilot": "Copilote GitHub",
     "windsurf": "Planche à voile",
-    "morePlatforms": "Plus de plateformes"
+    "morePlatforms": "Plus de plateformes",
+    "cursor": "Comptes Cursor"
   },
   "settings": {
     "title": "Paramètres de l'application",
@@ -1197,7 +1198,12 @@
       "title": "Paramètres Kiro",
       "appPath": "Chemin Kiro"
     },
-    "kiroRefreshInterval": "Quota de rafraîchissement automatique"
+    "kiroRefreshInterval": "Quota de rafraîchissement automatique",
+    "cursor": {
+      "title": "Paramètres Cursor",
+      "appPath": "Chemin Cursor"
+    },
+    "cursorRefreshInterval": "Quota de rafraîchissement automatique"
   },
   "quotaAlert": {
     "bannerText": "Alerte de quota pour {{email}} (seuil {{threshold}} %, minimum {{lowest}} %, modèles : {{models}})",
@@ -1376,5 +1382,65 @@
       "localClient": "Importer depuis Kiro local"
     },
     "injectToVSCode": "Passer à Kiro"
+  },
+  "cursor": {
+    "account": {
+      "signedInWith": "Connecté avec {{provider}}",
+      "providerUnknown": "Inconnu",
+      "userId": "ID de l'utilisateur"
+    },
+    "credits": {
+      "estimatedResetOn": "L'utilisation estimée est réinitialisée le {{date}}",
+      "bonusUsageLine": "{{used}} utilisé / {{total}} total",
+      "planUsageCoveredLine": "{{used}} utilisé / {{total}} couvert par le plan",
+      "expiryDays": "{{days}} jours",
+      "expiryUnknown": "—",
+      "resetNow": "Réinitialiser bientôt",
+      "resetInHours": "Réinitialisé dans {{hours}}h",
+      "resetInMinutes": "Réinitialisé dans {{minutes}}m"
+    },
+    "columns": {
+      "bonusCredits": "Crédits bonus",
+      "estimatedUsage": "Utilisation estimée",
+      "expiry": "Expiration",
+      "estUsage": "HNE. Usage"
+    },
+    "plan": {
+      "free": "Cursor gratuit",
+      "individual": "Cursor Individuel",
+      "pro": "CursorPro",
+      "business": "Entreprise Cursor",
+      "enterprise": "Cursor Entreprise",
+      "unknown": "Inconnu"
+    },
+    "flowNotice": {
+      "title": "Guide du compte Cursor (cliquer pour développer/réduire)",
+      "desc": "Le changement de compte lit et écrit les fichiers d’authentification locaux de Cursor et les paramètres d’instance sur cet appareil ; la connexion OAuth et l’actualisation des quotas appellent les API officielles de Cursor.",
+      "reason": "Les chemins traités incluent ~/.aws/sso/cache/cursor-auth-token.json, le profile.json de l’instance et l’entrée cursor.cursorAgent dans state.vscdb.",
+      "storage": "Les données traitées incluent les informations de session et de quota Cursor ; les requêtes vers les API officielles de Cursor envoient les champs d’authentification requis (comme code, refreshToken, accessToken et profileArn)."
+    },
+    "title": "Gestion de compte Cursor",
+    "instances": {
+      "unsupported": {
+        "descPlatform": "Cursor multi-instance est disponible uniquement sur macOS, Windows et Linux."
+      }
+    },
+    "empty": {
+      "description": "Cliquez sur \"Ajouter un compte\" pour commencer à gérer vos comptes Cursor"
+    },
+    "addModal": {
+      "title": "Ajouter un compte Cursor"
+    },
+    "oauth": {
+      "desc": "Cliquez sur le bouton ci-dessous et complétez l'autorisation Cursor dans votre navigateur."
+    },
+    "token": {
+      "desc": "Collez votre jeton d'accès Cursor ou les données JSON exportées."
+    },
+    "import": {
+      "localDesc": "Importez les données du compte Cursor à partir du client Cursor local ou d'un fichier JSON.",
+      "localClient": "Importer depuis Cursor local"
+    },
+    "injectToVSCode": "Passer à Cursor"
   }
 }
