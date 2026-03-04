@@ -213,7 +213,10 @@ jobs:
         run: |
           set -euo pipefail
           gh release view "v${VERSION}" --json body --jq '.body' > release-notes.md
-          PUBLISHED_AT="$(gh release view "v${VERSION}" --json publishedAt --jq '.publishedAt')"
+          PUBLISHED_AT="$(gh release view "v${VERSION}" --json publishedAt,createdAt --jq '.publishedAt // .createdAt')"
+          if [ -z "${PUBLISHED_AT}" ] || [ "${PUBLISHED_AT}" = "null" ]; then
+            PUBLISHED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          fi
           echo "PUBLISHED_AT=${PUBLISHED_AT}" >> "$GITHUB_ENV"
 
       - name: Build merged latest.json

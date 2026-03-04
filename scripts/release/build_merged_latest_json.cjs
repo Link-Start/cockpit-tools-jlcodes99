@@ -28,6 +28,18 @@ function requiredArg(args, key) {
   return value;
 }
 
+function normalizePubDate(raw) {
+  const value = (raw || '').trim();
+  if (!value || value === 'true' || value === 'null') {
+    throw new Error(`Invalid --published-at value: "${raw}"`);
+  }
+  const timestamp = Date.parse(value);
+  if (Number.isNaN(timestamp)) {
+    throw new Error(`Invalid --published-at value: "${raw}"`);
+  }
+  return new Date(timestamp).toISOString();
+}
+
 function readText(filePath) {
   return fs.readFileSync(filePath, 'utf8').trim();
 }
@@ -66,7 +78,7 @@ function main() {
   const repo = requiredArg(args, 'repo');
   const assetsDir = requiredArg(args, 'assets-dir');
   const notesFile = requiredArg(args, 'notes-file');
-  const publishedAt = requiredArg(args, 'published-at');
+  const publishedAt = normalizePubDate(requiredArg(args, 'published-at'));
   const output = args.output || 'latest.json';
 
   if (!fs.existsSync(assetsDir) || !fs.statSync(assetsDir).isDirectory()) {
