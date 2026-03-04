@@ -7,6 +7,12 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [0.9.15] - 2026-03-04
+
+### Changed
+- **Release publication now waits for full pipeline completion**: The release workflow now creates draft releases first and only marks them as `latest` after matrix builds, merged updater `latest.json`, checksum upload, and Homebrew cask update all succeed. This prevents in-app update prompts from appearing before release artifacts are fully ready.
+
+---
 ## [0.9.14] - 2026-03-04
 
 ### Added

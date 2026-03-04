@@ -7,6 +7,12 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
 ---
+## [0.9.15] - 2026-03-04
+
+### 变更
+- **发版“对外可见”时机改为等待整条流水线完成**：发布工作流现在先创建 Draft Release，只有在矩阵构建、合并版 updater `latest.json`、`SHA256SUMS` 上传、Homebrew Cask 更新全部成功后，才会将该版本发布为 `latest`。这样可避免产物尚未齐全时应用内提前弹出新版本提示。
+
+---
 ## [0.9.14] - 2026-03-04
 
 ### 新增
