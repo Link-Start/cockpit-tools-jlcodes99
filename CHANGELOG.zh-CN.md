@@ -7,6 +7,12 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
 ---
+## [0.12.3] - 2026-03-11
+
+### 修复
+- **macOS 权限弹窗不再归因到 Cockpit Tools**：macOS 上所有 IDE 启动（Codex、VS Code、CodeBuddy）统一改为通过 `open -a`（LaunchServices）方式启动，不再直接执行二进制文件，使 macOS TCC 权限弹窗（如"访问下载文件夹"）正确归因到被启动的 IDE 而非 Cockpit Tools。多开实例的 PID 跟踪通过启动后进程轮询实现，不受影响。
+
+---
 ## [0.12.2] - 2026-03-11
 
 ### 新增

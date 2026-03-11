@@ -1107,6 +1107,7 @@ fn resolve_macos_app_root_from_config(app: &str) -> Option<String> {
         "antigravity" => current.antigravity_app_path,
         "codex" => current.codex_app_path,
         "vscode" => current.vscode_app_path,
+        "codebuddy" => current.codebuddy_app_path,
         _ => String::new(),
     };
     let trimmed = raw.trim();
@@ -1119,6 +1120,17 @@ fn resolve_macos_app_root_from_config(app: &str) -> Option<String> {
         return Some(app_root);
     }
     None
+}
+
+/// 从已解析的可执行文件路径中提取 .app 根路径
+#[cfg(target_os = "macos")]
+fn resolve_macos_app_root_from_launch_path(launch_path: &std::path::Path) -> Option<String> {
+    let app_root = normalize_macos_app_root(launch_path)?;
+    if std::path::Path::new(&app_root).exists() {
+        Some(app_root)
+    } else {
+        None
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -5607,58 +5619,68 @@ pub fn is_codex_running() -> bool {
 pub fn start_codex_with_args(codex_home: &str, extra_args: &[String]) -> Result<u32, String> {
     #[cfg(target_os = "macos")]
     {
-        let app_root = resolve_macos_app_root_from_config("codex");
-        let launch_path = resolve_codex_launch_path().ok();
-        if let Some(path) = launch_path {
-            let mut cmd = Command::new(&path);
-            sanitize_macos_gui_launch_env(&mut cmd);
-            if !codex_home.trim().is_empty() {
-                cmd.env("CODEX_HOME", codex_home.trim());
+        let app_root = resolve_macos_app_root_from_config("codex").or_else(|| {
+            resolve_codex_launch_path()
+                .ok()
+                .and_then(|p| resolve_macos_app_root_from_launch_path(&p))
+        });
+        let app_root = app_root.ok_or_else(|| app_path_missing_error("codex"))?;
+
+        let codex_home_trimmed = codex_home.trim();
+        let mut args: Vec<String> = Vec::new();
+        for arg in extra_args {
+            if !arg.trim().is_empty() {
+                args.push(arg.to_string());
             }
-            for arg in extra_args {
-                if !arg.trim().is_empty() {
+        }
+
+        // 使用 open -a 启动，避免 macOS Responsible Process 归因
+        // 注意：CODEX_HOME 环境变量无法通过 open -a 传递，
+        // 如果指定了 codex_home 则需要回退到直接执行
+        if !codex_home_trimmed.is_empty() {
+            if let Ok(launch_path) = resolve_codex_launch_path() {
+                let mut cmd = Command::new(&launch_path);
+                sanitize_macos_gui_launch_env(&mut cmd);
+                cmd.env("CODEX_HOME", codex_home_trimmed);
+                for arg in &args {
                     cmd.arg(arg);
                 }
-            }
-            match spawn_detached_unix(&mut cmd) {
-                Ok(child) => {
-                    crate::modules::logger::log_info("Codex 启动命令已发送");
-                    return Ok(child.id());
-                }
-                Err(e) => {
-                    if codex_home.trim().is_empty() {
-                        if let Some(app_root) = app_root {
-                            let mut args: Vec<String> = Vec::new();
-                            for arg in extra_args {
-                                if !arg.trim().is_empty() {
-                                    args.push(arg.to_string());
-                                }
-                            }
-                            let pid = spawn_open_app(&app_root, &args)
-                                .map_err(|open_err| format!("启动 Codex 失败: {}", open_err))?;
-                            crate::modules::logger::log_info("Codex 启动命令已发送");
-                            return Ok(pid);
-                        }
-                    }
-                    return Err(format!("启动 Codex 失败: {}", e));
-                }
-            }
-        }
-        if codex_home.trim().is_empty() {
-            if let Some(app_root) = app_root {
-                let mut args: Vec<String> = Vec::new();
-                for arg in extra_args {
-                    if !arg.trim().is_empty() {
-                        args.push(arg.to_string());
-                    }
-                }
-                let pid = spawn_open_app(&app_root, &args)
+                let child = spawn_detached_unix(&mut cmd)
                     .map_err(|e| format!("启动 Codex 失败: {}", e))?;
-                crate::modules::logger::log_info("Codex 启动命令已发送");
-                return Ok(pid);
+                crate::modules::logger::log_info("Codex 启动命令已发送（直接执行，带 CODEX_HOME）");
+                // 轮询获取真实 PID
+                let probe_started = Instant::now();
+                let timeout = Duration::from_secs(6);
+                while probe_started.elapsed() < timeout {
+                    if let Some(resolved_pid) =
+                        resolve_codex_pid(None, Some(codex_home_trimmed))
+                    {
+                        return Ok(resolved_pid);
+                    }
+                    thread::sleep(Duration::from_millis(200));
+                }
+                return Ok(child.id());
             }
+            return Err(app_path_missing_error("codex"));
         }
-        return Err(app_path_missing_error("codex"));
+
+        let open_pid = spawn_open_app(&app_root, &args)
+            .map_err(|e| format!("启动 Codex 失败: {}", e))?;
+        crate::modules::logger::log_info("Codex 启动命令已发送（open -a）");
+        // 轮询获取真实 PID
+        let probe_started = Instant::now();
+        let timeout = Duration::from_secs(6);
+        while probe_started.elapsed() < timeout {
+            if let Some(resolved_pid) = resolve_codex_pid(None, None) {
+                return Ok(resolved_pid);
+            }
+            thread::sleep(Duration::from_millis(200));
+        }
+        crate::modules::logger::log_warn(&format!(
+            "[Codex Start] 启动后 6s 内未匹配到实例 PID，回退 open pid={}",
+            open_pid
+        ));
+        return Ok(open_pid);
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -5672,33 +5694,31 @@ pub fn start_codex_with_args(codex_home: &str, extra_args: &[String]) -> Result<
 pub fn start_codex_default() -> Result<u32, String> {
     #[cfg(target_os = "macos")]
     {
-        let app_root = resolve_macos_app_root_from_config("codex");
-        if let Ok(launch_path) = resolve_codex_launch_path() {
-            let mut cmd = Command::new(&launch_path);
-            sanitize_macos_gui_launch_env(&mut cmd);
-            match spawn_detached_unix(&mut cmd) {
-                Ok(child) => {
-                    crate::modules::logger::log_info("Codex 启动命令已发送");
-                    return Ok(child.id());
-                }
-                Err(e) => {
-                    if let Some(app_root) = app_root {
-                        let pid = spawn_open_app(&app_root, &[])
-                            .map_err(|open_err| format!("启动 Codex 失败: {}", open_err))?;
-                        crate::modules::logger::log_info("Codex 启动命令已发送");
-                        return Ok(pid);
-                    }
-                    return Err(format!("启动 Codex 失败: {}", e));
-                }
+        let app_root = resolve_macos_app_root_from_config("codex").or_else(|| {
+            resolve_codex_launch_path()
+                .ok()
+                .and_then(|p| resolve_macos_app_root_from_launch_path(&p))
+        });
+        let app_root = app_root.ok_or_else(|| app_path_missing_error("codex"))?;
+
+        // 使用 open -a 启动，避免 macOS Responsible Process 归因
+        let open_pid = spawn_open_app(&app_root, &[])
+            .map_err(|e| format!("启动 Codex 失败: {}", e))?;
+        crate::modules::logger::log_info("Codex 启动命令已发送（open -a）");
+        // 轮询获取真实 PID
+        let probe_started = Instant::now();
+        let timeout = Duration::from_secs(6);
+        while probe_started.elapsed() < timeout {
+            if let Some(resolved_pid) = resolve_codex_pid(None, None) {
+                return Ok(resolved_pid);
             }
+            thread::sleep(Duration::from_millis(200));
         }
-        if let Some(app_root) = app_root {
-            let pid =
-                spawn_open_app(&app_root, &[]).map_err(|e| format!("启动 Codex 失败: {}", e))?;
-            crate::modules::logger::log_info("Codex 启动命令已发送");
-            return Ok(pid);
-        }
-        return Err(app_path_missing_error("codex"));
+        crate::modules::logger::log_warn(&format!(
+            "[Codex Start] 启动后 6s 内未匹配到默认实例 PID，回退 open pid={}",
+            open_pid
+        ));
+        return Ok(open_pid);
     }
 
     #[cfg(target_os = "windows")]
@@ -6417,27 +6437,46 @@ pub fn start_vscode_with_args_with_new_window(
         if target.is_empty() {
             return Err("实例目录为空，无法启动".to_string());
         }
-        let launch_path = resolve_vscode_launch_path()?;
+        // 使用 open -a 启动，避免 macOS Responsible Process 归因
+        let app_root = resolve_macos_app_root_from_config("vscode").or_else(|| {
+            resolve_vscode_launch_path()
+                .ok()
+                .and_then(|p| resolve_macos_app_root_from_launch_path(&p))
+        });
+        let app_root = app_root.ok_or_else(|| app_path_missing_error("vscode"))?;
 
-        let mut cmd = Command::new(&launch_path);
-        sanitize_macos_gui_launch_env(&mut cmd);
-        cmd.arg("--user-data-dir").arg(target);
+        let mut args: Vec<String> = Vec::new();
+        args.push("--user-data-dir".to_string());
+        args.push(target.to_string());
         if use_new_window {
-            cmd.arg("--new-window");
+            args.push("--new-window".to_string());
         } else {
-            cmd.arg("--reuse-window");
+            args.push("--reuse-window".to_string());
         }
         for arg in extra_args {
             let trimmed = arg.trim();
             if !trimmed.is_empty() {
-                cmd.arg(trimmed);
+                args.push(trimmed.to_string());
             }
         }
 
-        let child =
-            spawn_detached_unix(&mut cmd).map_err(|e| format!("启动 VS Code 失败: {}", e))?;
-        crate::modules::logger::log_info("VS Code 启动命令已发送");
-        return Ok(child.id());
+        let open_pid = spawn_open_app_with_options(&app_root, &args, true)
+            .map_err(|e| format!("启动 VS Code 失败: {}", e))?;
+        crate::modules::logger::log_info("VS Code 启动命令已发送（open -a）");
+        // 轮询获取真实 PID
+        let probe_started = Instant::now();
+        let timeout = Duration::from_secs(6);
+        while probe_started.elapsed() < timeout {
+            if let Some(resolved_pid) = resolve_vscode_pid(None, Some(target)) {
+                return Ok(resolved_pid);
+            }
+            thread::sleep(Duration::from_millis(200));
+        }
+        crate::modules::logger::log_warn(&format!(
+            "[VSCode Start] 启动后 6s 内未匹配到实例 PID，回退 open pid={}",
+            open_pid
+        ));
+        return Ok(open_pid);
     }
 
     #[cfg(target_os = "windows")]
@@ -6529,27 +6568,46 @@ pub fn start_codebuddy_with_args_with_new_window(
         if target.is_empty() {
             return Err("实例目录为空，无法启动".to_string());
         }
-        let launch_path = resolve_codebuddy_launch_path()?;
+        // 使用 open -a 启动，避免 macOS Responsible Process 归因
+        let app_root = resolve_macos_app_root_from_config("codebuddy").or_else(|| {
+            resolve_codebuddy_launch_path()
+                .ok()
+                .and_then(|p| resolve_macos_app_root_from_launch_path(&p))
+        });
+        let app_root = app_root.ok_or_else(|| app_path_missing_error("codebuddy"))?;
 
-        let mut cmd = Command::new(&launch_path);
-        sanitize_macos_gui_launch_env(&mut cmd);
-        cmd.arg("--user-data-dir").arg(target);
+        let mut args: Vec<String> = Vec::new();
+        args.push("--user-data-dir".to_string());
+        args.push(target.to_string());
         if use_new_window {
-            cmd.arg("--new-window");
+            args.push("--new-window".to_string());
         } else {
-            cmd.arg("--reuse-window");
+            args.push("--reuse-window".to_string());
         }
         for arg in extra_args {
             let trimmed = arg.trim();
             if !trimmed.is_empty() {
-                cmd.arg(trimmed);
+                args.push(trimmed.to_string());
             }
         }
 
-        let child =
-            spawn_detached_unix(&mut cmd).map_err(|e| format!("启动 CodeBuddy 失败: {}", e))?;
-        crate::modules::logger::log_info("CodeBuddy 启动命令已发送");
-        return Ok(child.id());
+        let open_pid = spawn_open_app_with_options(&app_root, &args, true)
+            .map_err(|e| format!("启动 CodeBuddy 失败: {}", e))?;
+        crate::modules::logger::log_info("CodeBuddy 启动命令已发送（open -a）");
+        // 轮询获取真实 PID
+        let probe_started = Instant::now();
+        let timeout = Duration::from_secs(6);
+        while probe_started.elapsed() < timeout {
+            if let Some(resolved_pid) = resolve_codebuddy_pid(None, Some(target)) {
+                return Ok(resolved_pid);
+            }
+            thread::sleep(Duration::from_millis(200));
+        }
+        crate::modules::logger::log_warn(&format!(
+            "[CodeBuddy Start] 启动后 6s 内未匹配到实例 PID，回退 open pid={}",
+            open_pid
+        ));
+        return Ok(open_pid);
     }
 
     #[cfg(target_os = "windows")]
@@ -6636,24 +6694,44 @@ pub fn start_codebuddy_default_with_args_with_new_window(
 ) -> Result<u32, String> {
     #[cfg(target_os = "macos")]
     {
-        let launch_path = resolve_codebuddy_launch_path()?;
-        let mut cmd = Command::new(&launch_path);
-        sanitize_macos_gui_launch_env(&mut cmd);
+        // 使用 open -a 启动，避免 macOS Responsible Process 归因
+        let app_root = resolve_macos_app_root_from_config("codebuddy").or_else(|| {
+            resolve_codebuddy_launch_path()
+                .ok()
+                .and_then(|p| resolve_macos_app_root_from_launch_path(&p))
+        });
+        let app_root = app_root.ok_or_else(|| app_path_missing_error("codebuddy"))?;
+
+        let mut args: Vec<String> = Vec::new();
         if use_new_window {
-            cmd.arg("--new-window");
+            args.push("--new-window".to_string());
         } else {
-            cmd.arg("--reuse-window");
+            args.push("--reuse-window".to_string());
         }
         for arg in extra_args {
             let trimmed = arg.trim();
             if !trimmed.is_empty() {
-                cmd.arg(trimmed);
+                args.push(trimmed.to_string());
             }
         }
-        let child =
-            spawn_detached_unix(&mut cmd).map_err(|e| format!("启动 CodeBuddy 失败: {}", e))?;
-        crate::modules::logger::log_info("CodeBuddy 默认实例启动命令已发送");
-        return Ok(child.id());
+
+        let open_pid = spawn_open_app(&app_root, &args)
+            .map_err(|e| format!("启动 CodeBuddy 失败: {}", e))?;
+        crate::modules::logger::log_info("CodeBuddy 默认实例启动命令已发送（open -a）");
+        // 轮询获取真实 PID
+        let probe_started = Instant::now();
+        let timeout = Duration::from_secs(6);
+        while probe_started.elapsed() < timeout {
+            if let Some(resolved_pid) = resolve_codebuddy_pid(None, None) {
+                return Ok(resolved_pid);
+            }
+            thread::sleep(Duration::from_millis(200));
+        }
+        crate::modules::logger::log_warn(&format!(
+            "[CodeBuddy Start] 启动后 6s 内未匹配到默认实例 PID，回退 open pid={}",
+            open_pid
+        ));
+        return Ok(open_pid);
     }
 
     #[cfg(target_os = "windows")]
@@ -6731,24 +6809,44 @@ pub fn start_vscode_default_with_args_with_new_window(
 ) -> Result<u32, String> {
     #[cfg(target_os = "macos")]
     {
-        let launch_path = resolve_vscode_launch_path()?;
-        let mut cmd = Command::new(&launch_path);
-        sanitize_macos_gui_launch_env(&mut cmd);
+        // 使用 open -a 启动，避免 macOS Responsible Process 归因
+        let app_root = resolve_macos_app_root_from_config("vscode").or_else(|| {
+            resolve_vscode_launch_path()
+                .ok()
+                .and_then(|p| resolve_macos_app_root_from_launch_path(&p))
+        });
+        let app_root = app_root.ok_or_else(|| app_path_missing_error("vscode"))?;
+
+        let mut args: Vec<String> = Vec::new();
         if use_new_window {
-            cmd.arg("--new-window");
+            args.push("--new-window".to_string());
         } else {
-            cmd.arg("--reuse-window");
+            args.push("--reuse-window".to_string());
         }
         for arg in extra_args {
             let trimmed = arg.trim();
             if !trimmed.is_empty() {
-                cmd.arg(trimmed);
+                args.push(trimmed.to_string());
             }
         }
-        let child =
-            spawn_detached_unix(&mut cmd).map_err(|e| format!("启动 VS Code 失败: {}", e))?;
-        crate::modules::logger::log_info("VS Code 默认实例启动命令已发送");
-        return Ok(child.id());
+
+        let open_pid = spawn_open_app(&app_root, &args)
+            .map_err(|e| format!("启动 VS Code 失败: {}", e))?;
+        crate::modules::logger::log_info("VS Code 默认实例启动命令已发送（open -a）");
+        // 轮询获取真实 PID
+        let probe_started = Instant::now();
+        let timeout = Duration::from_secs(6);
+        while probe_started.elapsed() < timeout {
+            if let Some(resolved_pid) = resolve_vscode_pid(None, None) {
+                return Ok(resolved_pid);
+            }
+            thread::sleep(Duration::from_millis(200));
+        }
+        crate::modules::logger::log_warn(&format!(
+            "[VSCode Start] 启动后 6s 内未匹配到默认实例 PID，回退 open pid={}",
+            open_pid
+        ));
+        return Ok(open_pid);
     }
 
     #[cfg(target_os = "windows")]
