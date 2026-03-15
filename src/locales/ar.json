@@ -504,7 +504,22 @@
       "restartRequired": "تغيرت الإعدادات، يرجى إعادة تشغيل التطبيق للتفعيل",
       "saveSuccess": "تم حفظ الإعدادات!",
       "saveSuccessRestart": "تم حفظ الإعدادات! نظراً لتغير تكوين المنفذ، يرجى إعادة تشغيل التطبيق.",
-      "saveFailed": "فشل الحفظ: {{error}}"
+      "saveFailed": "فشل الحفظ: {{error}}",
+      "reportTitle": "خدمة الاستعلام عبر الويب",
+      "reportService": "خدمة تقرير HTTP",
+      "reportServiceDesc": "يوفّر نقطة نهاية HTTP محمية بالرمز لملخصات الاستخدام",
+      "reportPort": "منفذ التقرير",
+      "reportPortDesc": "القيمة الافتراضية {{port}}، يلزم إعادة التشغيل بعد التغيير",
+      "reportToken": "رمز الوصول",
+      "reportTokenDesc": "مطلوب عند طلب /report، يرجى الحفاظ على سريته",
+      "reportTokenRequired": "لا يمكن أن يكون رمز الوصول فارغًا عند تمكين خدمة الاستعلام عبر الويب.",
+      "generateToken": "إنشاء",
+      "reportUrlPreview": "معاينة نقطة النهاية",
+      "reportUrlPreviewDesc": "يدعم format=md / format=yaml و render=true لعرض HTML",
+      "reportUrlRaw": "المخرجات الخام",
+      "reportUrlRendered": "العرض المرئي",
+      "firewallHintTitle": "تلميح جدار الحماية",
+      "firewallHint": "إذا تعذر الوصول إلى الرابط، فتحقق من إعدادات جدار الحماية في النظام."
     },
     "about": {
       "appName": "Cockpit Tools",

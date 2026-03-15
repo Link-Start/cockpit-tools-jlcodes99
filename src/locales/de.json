@@ -504,7 +504,22 @@
       "restartRequired": "Konfiguration geändert, bitte starten Sie die App neu",
       "saveSuccess": "Einstellungen gespeichert!",
       "saveSuccessRestart": "Einstellungen gespeichert! Bitte starten Sie die App neu, damit die Portänderungen wirksam werden.",
-      "saveFailed": "Speichern fehlgeschlagen: {{error}}"
+      "saveFailed": "Speichern fehlgeschlagen: {{error}}",
+      "reportTitle": "Web-Abfragedienst",
+      "reportService": "HTTP-Berichtsdienst",
+      "reportServiceDesc": "Stellt einen token-geschützten HTTP-Endpunkt für Nutzungsübersichten bereit",
+      "reportPort": "Berichtsport",
+      "reportPortDesc": "Standard ist {{port}}, Neustart nach Änderung erforderlich",
+      "reportToken": "Zugriffstoken",
+      "reportTokenDesc": "Beim Aufruf von /report erforderlich, bitte vertraulich behandeln",
+      "reportTokenRequired": "Wenn der Web-Abfragedienst aktiviert ist, darf das Zugriffstoken nicht leer sein.",
+      "generateToken": "Generieren",
+      "reportUrlPreview": "Endpunkt-Vorschau",
+      "reportUrlPreviewDesc": "Unterstützt format=md / format=yaml sowie render=true für HTML-Ansicht",
+      "reportUrlRaw": "Rohausgabe",
+      "reportUrlRendered": "Gerenderte Ansicht",
+      "firewallHintTitle": "Firewall-Hinweis",
+      "firewallHint": "Wenn die URL nicht erreichbar ist, prüfen Sie die Firewall-Einstellungen Ihres Systems."
     },
     "about": {
       "appName": "Cockpit Tools",

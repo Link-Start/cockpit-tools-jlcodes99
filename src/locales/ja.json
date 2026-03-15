@@ -504,7 +504,22 @@
       "restartRequired": "設定が変更されました。適用するにはアプリを再起動してください。",
       "saveSuccess": "設定を保存しました！",
       "saveSuccessRestart": "設定を保存しました！ポートの変更を反映させるにはアプリを再起動してください。",
-      "saveFailed": "保存に失敗しました: {{error}}"
+      "saveFailed": "保存に失敗しました: {{error}}",
+      "reportTitle": "Web照会サービス",
+      "reportService": "HTTPレポートサービス",
+      "reportServiceDesc": "利用状況サマリー用に、トークン保護されたHTTPエンドポイントを公開します",
+      "reportPort": "レポートポート",
+      "reportPortDesc": "既定値は{{port}}、変更後は再起動が必要です",
+      "reportToken": "アクセストークン",
+      "reportTokenDesc": "/report のリクエスト時に必須です。安全に保管してください",
+      "reportTokenRequired": "Web照会サービスを有効にする場合、アクセストークンは必須です。",
+      "generateToken": "生成",
+      "reportUrlPreview": "エンドポイントプレビュー",
+      "reportUrlPreviewDesc": "format=md / format=yaml に対応し、render=true でHTML表示できます",
+      "reportUrlRaw": "生データ出力",
+      "reportUrlRendered": "レンダリング表示",
+      "firewallHintTitle": "ファイアウォールのヒント",
+      "firewallHint": "URL にアクセスできない場合は、システムのファイアウォール設定を確認してください。"
     },
     "about": {
       "appName": "Cockpit Tools",

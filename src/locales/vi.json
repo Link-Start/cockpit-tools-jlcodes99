@@ -504,7 +504,22 @@
       "restartRequired": "Cấu hình đã thay đổi, vui lòng khởi động lại ứng dụng để có hiệu lực",
       "saveSuccess": "Cài đặt đã được lưu!",
       "saveSuccessRestart": "Cài đặt đã được lưu! Do cấu hình cổng đã thay đổi, vui lòng khởi động lại ứng dụng.",
-      "saveFailed": "Lưu thất bại: {{error}}"
+      "saveFailed": "Lưu thất bại: {{error}}",
+      "reportTitle": "Dịch vụ truy vấn web",
+      "reportService": "Dịch vụ báo cáo HTTP",
+      "reportServiceDesc": "Cung cấp endpoint HTTP có token bảo vệ để xem tóm tắt mức sử dụng",
+      "reportPort": "Cổng báo cáo",
+      "reportPortDesc": "Mặc định là {{port}}, cần khởi động lại sau khi thay đổi",
+      "reportToken": "Token truy cập",
+      "reportTokenDesc": "Bắt buộc khi gọi /report, hãy giữ bí mật",
+      "reportTokenRequired": "Không được để trống token truy cập khi bật dịch vụ truy vấn web.",
+      "generateToken": "Tạo",
+      "reportUrlPreview": "Xem trước endpoint",
+      "reportUrlPreviewDesc": "Hỗ trợ format=md / format=yaml và render=true cho chế độ HTML",
+      "reportUrlRaw": "Đầu ra thô",
+      "reportUrlRendered": "Chế độ hiển thị",
+      "firewallHintTitle": "Gợi ý tường lửa",
+      "firewallHint": "Nếu URL không truy cập được, hãy kiểm tra cài đặt tường lửa của hệ thống."
     },
     "about": {
       "appName": "Cockpit Tools",

@@ -504,7 +504,22 @@
       "restartRequired": "Zmieniono konfigurację, uruchom ponownie aplikację, aby zastosować zmiany",
       "saveSuccess": "Ustawienia zapisane!",
       "saveSuccessRestart": "Ustawienia zapisane! Uruchom ponownie aplikację, aby zmiany portu weszły w życie.",
-      "saveFailed": "Błąd zapisu: {{error}}"
+      "saveFailed": "Błąd zapisu: {{error}}",
+      "reportTitle": "Usługa zapytań WWW",
+      "reportService": "Usługa raportu HTTP",
+      "reportServiceDesc": "Udostępnia endpoint HTTP chroniony tokenem dla podsumowań użycia",
+      "reportPort": "Port raportu",
+      "reportPortDesc": "Domyślnie {{port}}, po zmianie wymagany restart",
+      "reportToken": "Token dostępu",
+      "reportTokenDesc": "Wymagany przy żądaniu /report, zachowaj go w poufności",
+      "reportTokenRequired": "Token dostępu nie może być pusty, gdy usługa webowa jest włączona.",
+      "generateToken": "Generuj",
+      "reportUrlPreview": "Podgląd endpointu",
+      "reportUrlPreviewDesc": "Obsługuje format=md / format=yaml oraz render=true dla widoku HTML",
+      "reportUrlRaw": "Surowe wyjście",
+      "reportUrlRendered": "Widok renderowany",
+      "firewallHintTitle": "Wskazówka zapory",
+      "firewallHint": "Jeśli URL jest niedostępny, sprawdź ustawienia zapory systemowej."
     },
     "about": {
       "appName": "Cockpit Tools",

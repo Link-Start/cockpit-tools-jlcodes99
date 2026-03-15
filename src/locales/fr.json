@@ -504,7 +504,22 @@
       "restartRequired": "Configuration modifiée, veuillez redémarrer l'application pour appliquer",
       "saveSuccess": "Paramètres enregistrés !",
       "saveSuccessRestart": "Paramètres enregistrés ! Veuillez redémarrer l'application pour que les changements de port prennent effet.",
-      "saveFailed": "Échec de l'enregistrement : {{error}}"
+      "saveFailed": "Échec de l'enregistrement : {{error}}",
+      "reportTitle": "Service de requête Web",
+      "reportService": "Service de rapport HTTP",
+      "reportServiceDesc": "Expose un endpoint HTTP protégé par jeton pour les résumés d’utilisation",
+      "reportPort": "Port du rapport",
+      "reportPortDesc": "La valeur par défaut est {{port}}, redémarrage requis après modification",
+      "reportToken": "Jeton d’accès",
+      "reportTokenDesc": "Requis pour /report, gardez-le privé",
+      "reportTokenRequired": "Le jeton d’accès ne peut pas être vide lorsque le service Web est activé.",
+      "generateToken": "Générer",
+      "reportUrlPreview": "Aperçu de l’endpoint",
+      "reportUrlPreviewDesc": "Prend en charge format=md / format=yaml et render=true pour la vue HTML",
+      "reportUrlRaw": "Sortie brute",
+      "reportUrlRendered": "Vue rendue",
+      "firewallHintTitle": "Conseil pare-feu",
+      "firewallHint": "Si l’URL est inaccessible, vérifiez les paramètres du pare-feu système."
     },
     "about": {
       "appName": "Cockpit Tools",

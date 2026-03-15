@@ -504,7 +504,22 @@
       "restartRequired": "설정이 변경되었습니다. 적용하려면 앱을 재시작하십시오",
       "saveSuccess": "설정이 저장되었습니다!",
       "saveSuccessRestart": "설정이 저장되었습니다! 포트 변경을 적용하려면 앱을 재시작하십시오",
-      "saveFailed": "저장 실패: {{error}}"
+      "saveFailed": "저장 실패: {{error}}",
+      "reportTitle": "웹 조회 서비스",
+      "reportService": "HTTP 리포트 서비스",
+      "reportServiceDesc": "사용량 요약을 위한 토큰 보호 HTTP 엔드포인트를 제공합니다",
+      "reportPort": "리포트 포트",
+      "reportPortDesc": "기본값은 {{port}}이며, 변경 후 재시작이 필요합니다",
+      "reportToken": "접근 토큰",
+      "reportTokenDesc": "/report 요청 시 필수이며, 안전하게 보관하세요",
+      "reportTokenRequired": "웹 조회 서비스를 활성화하면 접근 토큰은 비워둘 수 없습니다.",
+      "generateToken": "생성",
+      "reportUrlPreview": "엔드포인트 미리보기",
+      "reportUrlPreviewDesc": "format=md / format=yaml 및 render=true HTML 보기를 지원합니다",
+      "reportUrlRaw": "원본 출력",
+      "reportUrlRendered": "렌더링 보기",
+      "firewallHintTitle": "방화벽 안내",
+      "firewallHint": "URL에 접속할 수 없으면 시스템 방화벽 설정을 확인하세요."
     },
     "about": {
       "appName": "Cockpit Tools",

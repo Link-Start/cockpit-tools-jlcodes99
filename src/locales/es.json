@@ -504,7 +504,22 @@
       "restartRequired": "Configuración cambiada, por favor reinicia la aplicación para aplicar",
       "saveSuccess": "¡Ajustes guardados!",
       "saveSuccessRestart": "¡Ajustes guardados! Por favor, reinicia la aplicación para que los cambios de puerto surtan efecto.",
-      "saveFailed": "Error al guardar: {{error}}"
+      "saveFailed": "Error al guardar: {{error}}",
+      "reportTitle": "Servicio de consulta web",
+      "reportService": "Servicio de informe HTTP",
+      "reportServiceDesc": "Expone un endpoint HTTP protegido por token para resúmenes de uso",
+      "reportPort": "Puerto del informe",
+      "reportPortDesc": "El valor predeterminado es {{port}}; se requiere reiniciar tras cambiarlo",
+      "reportToken": "Token de acceso",
+      "reportTokenDesc": "Obligatorio al solicitar /report, mantenlo privado",
+      "reportTokenRequired": "El token de acceso no puede estar vacío cuando el servicio web está habilitado.",
+      "generateToken": "Generar",
+      "reportUrlPreview": "Vista previa del endpoint",
+      "reportUrlPreviewDesc": "Admite format=md / format=yaml y render=true para vista HTML",
+      "reportUrlRaw": "Salida sin procesar",
+      "reportUrlRendered": "Vista renderizada",
+      "firewallHintTitle": "Consejo de firewall",
+      "firewallHint": "Si no se puede acceder a la URL, revisa la configuración del firewall del sistema."
     },
     "about": {
       "appName": "Cockpit Tools",

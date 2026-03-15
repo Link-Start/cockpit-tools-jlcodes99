@@ -504,7 +504,22 @@
       "restartRequired": "Konfigurace byla změněna, restartujte prosím aplikaci",
       "saveSuccess": "Nastavení uloženo!",
       "saveSuccessRestart": "Nastavení uloženo! Restatujte prosím aplikaci, aby se změny portu projevily.",
-      "saveFailed": "Uložení selhalo: {{error}}"
+      "saveFailed": "Uložení selhalo: {{error}}",
+      "reportTitle": "Služba webového dotazu",
+      "reportService": "HTTP služba reportu",
+      "reportServiceDesc": "Zpřístupní HTTP endpoint chráněný tokenem pro přehledy využití",
+      "reportPort": "Port reportu",
+      "reportPortDesc": "Výchozí je {{port}}, po změně je nutný restart",
+      "reportToken": "Přístupový token",
+      "reportTokenDesc": "Povinné při požadavku na /report, uchovávejte v soukromí",
+      "reportTokenRequired": "Při zapnuté službě webového dotazu nesmí být přístupový token prázdný.",
+      "generateToken": "Generovat",
+      "reportUrlPreview": "Náhled endpointu",
+      "reportUrlPreviewDesc": "Podporuje format=md / format=yaml a render=true pro HTML zobrazení",
+      "reportUrlRaw": "Surový výstup",
+      "reportUrlRendered": "Vykreslené zobrazení",
+      "firewallHintTitle": "Tip k firewallu",
+      "firewallHint": "Pokud URL není dostupná, zkontrolujte nastavení systémového firewallu."
     },
     "about": {
       "appName": "Cockpit Tools",

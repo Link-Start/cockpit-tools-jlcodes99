@@ -504,7 +504,22 @@
       "restartRequired": "Yapılandırma değişti, uygulamak için lütfen uygulamayı yeniden başlatın",
       "saveSuccess": "Ayarlar kaydedildi!",
       "saveSuccessRestart": "Ayarlar kaydedildi! Port değişikliklerinin etkili olması için lütfen uygulamayı yeniden başlatın.",
-      "saveFailed": "Kaydetme hatası: {{error}}"
+      "saveFailed": "Kaydetme hatası: {{error}}",
+      "reportTitle": "Web sorgu servisi",
+      "reportService": "HTTP rapor servisi",
+      "reportServiceDesc": "Kullanım özetleri için token korumalı bir HTTP uç noktası sağlar",
+      "reportPort": "Rapor portu",
+      "reportPortDesc": "Varsayılan {{port}}, değişiklikten sonra yeniden başlatma gerekir",
+      "reportToken": "Erişim tokeni",
+      "reportTokenDesc": "/report isteğinde zorunludur, gizli tutun",
+      "reportTokenRequired": "Web sorgu servisi etkin olduğunda erişim tokeni boş olamaz.",
+      "generateToken": "Oluştur",
+      "reportUrlPreview": "Uç nokta önizlemesi",
+      "reportUrlPreviewDesc": "format=md / format=yaml desteklenir, HTML görünümü için render=true kullanılır",
+      "reportUrlRaw": "Ham çıktı",
+      "reportUrlRendered": "İşlenmiş görünüm",
+      "firewallHintTitle": "Güvenlik duvarı ipucu",
+      "firewallHint": "URL erişilemiyorsa sistem güvenlik duvarı ayarlarını kontrol edin."
     },
     "about": {
       "appName": "Cockpit Tools",

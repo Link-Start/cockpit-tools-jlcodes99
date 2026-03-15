@@ -504,7 +504,22 @@
       "restartRequired": "設定已變更，請重啟應用程式以使新連接埠生效",
       "saveSuccess": "設定已儲存！",
       "saveSuccessRestart": "設定已儲存！由於連接埠設定已變更，請重啟應用程式以生效。",
-      "saveFailed": "儲存失敗: {{error}}"
+      "saveFailed": "儲存失敗: {{error}}",
+      "reportTitle": "網頁查詢服務",
+      "reportService": "HTTP 報表服務",
+      "reportServiceDesc": "提供帶有 token 保護的 HTTP 查詢端點，用於查看用量摘要",
+      "reportPort": "報表埠",
+      "reportPortDesc": "預設為 {{port}}，修改後需重新啟動",
+      "reportToken": "存取 Token",
+      "reportTokenDesc": "請求 /report 時必填，請妥善保管",
+      "reportTokenRequired": "啟用網頁查詢服務時，存取 Token 不可為空。",
+      "generateToken": "產生",
+      "reportUrlPreview": "位址預覽",
+      "reportUrlPreviewDesc": "支援 format=md / format=yaml，也支援 render=true 網頁渲染",
+      "reportUrlRaw": "原始輸出",
+      "reportUrlRendered": "網頁渲染",
+      "firewallHintTitle": "防火牆提示",
+      "firewallHint": "若網址無法存取，請檢查系統防火牆設定。"
     },
     "about": {
       "appName": "Cockpit Tools",

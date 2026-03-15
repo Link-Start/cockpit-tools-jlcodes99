@@ -504,7 +504,22 @@
       "restartRequired": "Конфигурация изменена, пожалуйста, перезапустите приложение",
       "saveSuccess": "Настройки сохранены!",
       "saveSuccessRestart": "Настройки сохранены! Пожалуйста, перезапустите приложение для применения изменений порта.",
-      "saveFailed": "Ошибка сохранения: {{error}}"
+      "saveFailed": "Ошибка сохранения: {{error}}",
+      "reportTitle": "Сервис веб-запросов",
+      "reportService": "Сервис HTTP-отчётов",
+      "reportServiceDesc": "Открывает защищённый токеном HTTP-эндпоинт для сводки использования",
+      "reportPort": "Порт отчёта",
+      "reportPortDesc": "По умолчанию {{port}}, после изменения требуется перезапуск",
+      "reportToken": "Токен доступа",
+      "reportTokenDesc": "Обязателен при запросе /report, храните его в секрете",
+      "reportTokenRequired": "Токен доступа не может быть пустым, когда веб-сервис включён.",
+      "generateToken": "Сгенерировать",
+      "reportUrlPreview": "Предпросмотр эндпоинта",
+      "reportUrlPreviewDesc": "Поддерживает format=md / format=yaml и render=true для HTML-представления",
+      "reportUrlRaw": "Сырой вывод",
+      "reportUrlRendered": "Отрендеренный вид",
+      "firewallHintTitle": "Подсказка по брандмауэру",
+      "firewallHint": "Если URL недоступен, проверьте настройки системного брандмауэра."
     },
     "about": {
       "appName": "Cockpit Tools",
