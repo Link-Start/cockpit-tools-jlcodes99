@@ -7,6 +7,16 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [0.17.2] - 2026-03-20
+
+### Changed
+- **Windows Codex launch now aligns to the Microsoft Store system registration entry by default**: startup now prefers Store AppUserModelId (`shell:AppsFolder`) instead of directly executing `WindowsApps/.../Codex.exe`, with exe-path fallback only when Store entry launch is unavailable.
+- **Windows Codex launch precheck now validates Store installation availability first**: launch-path readiness now succeeds on detected Store registration entry and only falls back to executable-path validation when needed.
+
+### Added
+- **Windows Codex launch logs now explicitly expose startup strategy selection**: launch logs now print whether `system-store-entry` or `exe-path` was used, including matched app id/path and resolved pid for troubleshooting.
+
+---
 ## [0.17.1] - 2026-03-20
 
 ### Added

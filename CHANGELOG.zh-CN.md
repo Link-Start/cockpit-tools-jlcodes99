@@ -7,6 +7,16 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
 ---
+## [0.17.2] - 2026-03-20
+
+### 变更
+- **Windows 下 Codex 启动默认改为对齐 Microsoft Store 系统注册入口**：启动优先使用 Store AppUserModelId（`shell:AppsFolder`），不再默认直启 `WindowsApps/.../Codex.exe`；仅在系统入口不可用时回退到 exe 路径启动。
+- **Windows 下 Codex 启动前置校验改为优先检查商店安装可用性**：检测到 Store 注册入口即可通过启动可用性校验，只有必要时才回退到可执行路径校验。
+
+### 新增
+- **Windows 下 Codex 启动日志新增策略可观测性**：日志会明确打印本次走的是 `system-store-entry` 还是 `exe-path`，并附带命中的 app id/路径与解析到的 pid，便于排障确认。
+
+---
 ## [0.17.1] - 2026-03-20
 
 ### 新增
