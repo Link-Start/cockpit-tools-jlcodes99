@@ -785,6 +785,28 @@ fn build_github_copilot_display_info(lang: &str) -> AccountDisplayInfo {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum WindsurfUsageMode {
+    Credits,
+    Quota,
+}
+
+struct WindsurfQuotaUsageSummary {
+    daily_used_percent: Option<i32>,
+    weekly_used_percent: Option<i32>,
+    daily_reset_ts: Option<i64>,
+    weekly_reset_ts: Option<i64>,
+    overage_balance_micros: Option<f64>,
+}
+
+struct WindsurfCreditsSummary {
+    credits_left: Option<f64>,
+    prompt_left: Option<f64>,
+    prompt_total: Option<f64>,
+    add_on_left: Option<f64>,
+    plan_end_ts: Option<i64>,
+}
+
 fn build_windsurf_display_info(lang: &str) -> AccountDisplayInfo {
     let accounts = crate::modules::windsurf_account::list_accounts();
     let Some(account) = resolve_windsurf_current_account(&accounts) else {
@@ -794,24 +816,21 @@ fn build_windsurf_display_info(lang: &str) -> AccountDisplayInfo {
         };
     };
 
-    let mut usage = compute_copilot_usage(
-        &account.copilot_token,
-        account.copilot_plan.as_deref(),
-        account.copilot_limited_user_quotas.as_ref(),
-        account.copilot_quota_snapshots.as_ref(),
-        account.copilot_limited_user_reset_date,
-        account.copilot_quota_reset_date.as_deref(),
-    );
-    if usage.reset_ts.is_none() {
-        usage.reset_ts = resolve_windsurf_plan_end_ts(&account);
-    }
+    let quota_lines = match resolve_windsurf_usage_mode(&account) {
+        WindsurfUsageMode::Quota => {
+            build_windsurf_quota_usage_lines(lang, resolve_windsurf_quota_usage_summary(&account))
+        }
+        WindsurfUsageMode::Credits => {
+            build_windsurf_credit_usage_lines(lang, resolve_windsurf_credits_summary(&account))
+        }
+    };
 
     AccountDisplayInfo {
         account: format!(
             "📧 {}",
             display_login_email(account.github_email.as_deref(), &account.github_login)
         ),
-        quota_lines: build_windsurf_quota_lines(lang, usage),
+        quota_lines,
     }
 }
 
@@ -2231,32 +2250,99 @@ fn build_copilot_quota_lines(lang: &str, usage: CopilotUsage) -> Vec<String> {
     lines
 }
 
-fn build_windsurf_quota_lines(lang: &str, usage: CopilotUsage) -> Vec<String> {
+fn build_windsurf_quota_usage_lines(
+    lang: &str,
+    summary: WindsurfQuotaUsageSummary,
+) -> Vec<String> {
     let mut lines = Vec::new();
-    let reset_text = format_reset_time_from_ts(lang, usage.reset_ts);
+    let daily_reset_text = format_reset_time_from_ts(lang, summary.daily_reset_ts);
+    let weekly_reset_text = format_reset_time_from_ts(lang, summary.weekly_reset_ts);
 
-    if let Some(percentage) = usage.inline.used_percent {
+    if let Some(percentage) = summary.daily_used_percent {
         lines.push(format_quota_line(
             lang,
-            "Prompt",
+            &get_text("windsurf_daily_quota_usage", lang),
             &format_percent_text(percentage),
-            Some(&reset_text),
+            Some(&daily_reset_text),
         ));
     }
-    if let Some(percentage) = usage.chat.used_percent {
+    if let Some(percentage) = summary.weekly_used_percent {
         lines.push(format_quota_line(
             lang,
-            "Flow",
+            &get_text("windsurf_weekly_quota_usage", lang),
             &format_percent_text(percentage),
-            Some(&reset_text),
+            Some(&weekly_reset_text),
         ));
     }
+    lines.push(format_quota_line(
+        lang,
+        &get_text("windsurf_extra_usage_balance", lang),
+        &format_micros_usd(summary.overage_balance_micros.unwrap_or(0.0)),
+        None,
+    ));
 
     if lines.is_empty() {
         lines.push(get_text("loading", lang));
     }
 
     lines
+}
+
+fn build_windsurf_credit_usage_lines(
+    lang: &str,
+    summary: WindsurfCreditsSummary,
+) -> Vec<String> {
+    let mut lines = Vec::new();
+    let reset_text = format_reset_time_from_ts(lang, summary.plan_end_ts);
+
+    lines.push(format_quota_line(
+        lang,
+        &get_text("windsurf_credits_left", lang),
+        &summary
+            .credits_left
+            .map(format_quota_number)
+            .unwrap_or_else(|| "-".to_string()),
+        Some(&reset_text),
+    ));
+    let prompt_value = match (summary.prompt_left, summary.prompt_total) {
+        (Some(left), Some(total)) if total > 0.0 => {
+            format!("{}/{}", format_quota_number(left), format_quota_number(total))
+        }
+        (Some(left), _) => format_quota_number(left),
+        _ => "-".to_string(),
+    };
+    lines.push(format_quota_line(
+        lang,
+        &get_text("windsurf_prompt_credits_left", lang),
+        &prompt_value,
+        None,
+    ));
+    lines.push(format_quota_line(
+        lang,
+        &get_text("windsurf_addon_credits_available", lang),
+        &format_quota_number(summary.add_on_left.unwrap_or(0.0)),
+        None,
+    ));
+
+    if lines.is_empty() {
+        lines.push(get_text("loading", lang));
+    }
+
+    lines
+}
+
+fn format_quota_number(value: f64) -> String {
+    let normalized = if value.is_finite() { value.max(0.0) } else { 0.0 };
+    if (normalized.fract()).abs() < f64::EPSILON {
+        format!("{:.0}", normalized)
+    } else {
+        format!("{:.2}", normalized)
+    }
+}
+
+fn format_micros_usd(value: f64) -> String {
+    let normalized = if value.is_finite() { value.max(0.0) } else { 0.0 };
+    format!("${:.2}", normalized / 1_000_000.0)
 }
 
 fn compute_copilot_usage(
@@ -2424,6 +2510,264 @@ fn used_percent_from_snapshot(
         .and_then(parse_json_number)
         .map(clamp_percent)?;
     Some(clamp_percent((100 - percent_remaining) as f64))
+}
+
+fn resolve_windsurf_usage_mode(
+    account: &crate::models::windsurf::WindsurfAccount,
+) -> WindsurfUsageMode {
+    if resolve_windsurf_billing_strategy(account).as_deref() == Some("quota") {
+        return WindsurfUsageMode::Quota;
+    }
+
+    let summary = resolve_windsurf_quota_usage_summary(account);
+    if summary.daily_used_percent.is_some()
+        || summary.weekly_used_percent.is_some()
+        || summary.overage_balance_micros.is_some()
+    {
+        return WindsurfUsageMode::Quota;
+    }
+
+    WindsurfUsageMode::Credits
+}
+
+fn resolve_windsurf_billing_strategy(
+    account: &crate::models::windsurf::WindsurfAccount,
+) -> Option<String> {
+    let plan_status_roots = windsurf_plan_status_roots(account);
+    let plan_info_roots = windsurf_plan_info_roots(account);
+    let raw = first_string_from_roots(
+        &plan_status_roots,
+        &[&["billingStrategy"], &["billing_strategy"]],
+    )
+    .or_else(|| {
+        first_string_from_roots(
+            &plan_info_roots,
+            &[&["billingStrategy"], &["billing_strategy"]],
+        )
+    })?;
+
+    let normalized = raw.trim().to_lowercase();
+    let canonical = normalized
+        .trim_start_matches("billing_strategy_")
+        .trim_start_matches("billing-strategy-")
+        .trim_start_matches("billingstrategy")
+        .trim_matches('_')
+        .trim_matches('-')
+        .to_string();
+
+    if canonical == "quota" {
+        return Some("quota".to_string());
+    }
+    if canonical.contains("credit") {
+        return Some("credits".to_string());
+    }
+    Some(canonical)
+}
+
+fn resolve_windsurf_quota_usage_summary(
+    account: &crate::models::windsurf::WindsurfAccount,
+) -> WindsurfQuotaUsageSummary {
+    let plan_status_roots = windsurf_plan_status_roots(account);
+    let daily_remaining = first_number_from_roots(
+        &plan_status_roots,
+        &[&["dailyQuotaRemainingPercent"], &["daily_quota_remaining_percent"]],
+    );
+    let weekly_remaining = first_number_from_roots(
+        &plan_status_roots,
+        &[&["weeklyQuotaRemainingPercent"], &["weekly_quota_remaining_percent"]],
+    );
+
+    WindsurfQuotaUsageSummary {
+        daily_used_percent: daily_remaining.map(|value| clamp_percent(100.0 - value)),
+        weekly_used_percent: weekly_remaining.map(|value| clamp_percent(100.0 - value)),
+        daily_reset_ts: first_timestamp_from_roots(
+            &plan_status_roots,
+            &[&["dailyQuotaResetAtUnix"], &["daily_quota_reset_at_unix"]],
+        ),
+        weekly_reset_ts: first_timestamp_from_roots(
+            &plan_status_roots,
+            &[&["weeklyQuotaResetAtUnix"], &["weekly_quota_reset_at_unix"]],
+        ),
+        overage_balance_micros: first_number_from_roots(
+            &plan_status_roots,
+            &[&["overageBalanceMicros"], &["overage_balance_micros"]],
+        ),
+    }
+}
+
+fn resolve_windsurf_credits_summary(
+    account: &crate::models::windsurf::WindsurfAccount,
+) -> WindsurfCreditsSummary {
+    let plan_status_roots = windsurf_plan_status_roots(account);
+    let plan_info_roots = windsurf_plan_info_roots(account);
+
+    let prompt_left = first_number_from_roots(
+        &plan_status_roots,
+        &[&["availablePromptCredits"], &["available_prompt_credits"]],
+    );
+    let prompt_used = first_number_from_roots(
+        &plan_status_roots,
+        &[&["usedPromptCredits"], &["used_prompt_credits"]],
+    );
+    let mut prompt_total = first_number_from_roots(
+        &plan_info_roots,
+        &[&["monthlyPromptCredits"], &["monthly_prompt_credits"]],
+    )
+    .or(prompt_left);
+    if prompt_total.is_none() && prompt_left.is_some() {
+        prompt_total = prompt_left;
+    }
+    let prompt_left_actual = match (prompt_total, prompt_used, prompt_left) {
+        (Some(total), Some(used), _) => Some((total - used).max(0.0)),
+        (Some(total), None, Some(left)) if total >= left => Some(left),
+        (_, _, left) => left,
+    };
+
+    let add_on_left = first_number_from_roots(
+        &plan_status_roots,
+        &[
+            &["availableFlexCredits"],
+            &["available_flex_credits"],
+            &["flexCreditsAvailable"],
+            &["flex_credits_available"],
+            &["availableAddOnCredits"],
+            &["available_add_on_credits"],
+            &["addOnCreditsAvailable"],
+            &["add_on_credits_available"],
+            &["availableTopUpCredits"],
+            &["available_top_up_credits"],
+            &["topUpCreditsAvailable"],
+            &["top_up_credits_available"],
+        ],
+    )
+    .or(Some(0.0));
+    let add_on_used = first_number_from_roots(
+        &plan_status_roots,
+        &[
+            &["usedFlexCredits"],
+            &["used_flex_credits"],
+            &["usedAddOnCredits"],
+            &["used_add_on_credits"],
+            &["usedTopUpCredits"],
+            &["used_top_up_credits"],
+        ],
+    );
+    let mut add_on_total = first_number_from_roots(
+        &plan_info_roots,
+        &[
+            &["monthlyFlexCreditPurchaseAmount"],
+            &["monthly_flex_credit_purchase_amount"],
+            &["monthlyAddOnCredits"],
+            &["monthly_add_on_credits"],
+            &["monthlyTopUpCredits"],
+            &["monthly_top_up_credits"],
+        ],
+    )
+    .or(add_on_left);
+    if let (Some(total), Some(left)) = (add_on_total, add_on_left) {
+        if total < left {
+            add_on_total = Some(left);
+        }
+    }
+    let add_on_left_actual = match (add_on_total, add_on_used, add_on_left) {
+        (Some(total), Some(used), _) => Some((total - used).max(0.0)),
+        (Some(total), None, Some(left)) if total >= left => Some(left),
+        (_, _, left) => left,
+    };
+
+    WindsurfCreditsSummary {
+        credits_left: sum_option_f64(prompt_left_actual, add_on_left_actual),
+        prompt_left: prompt_left_actual,
+        prompt_total,
+        add_on_left: add_on_left_actual,
+        plan_end_ts: resolve_windsurf_plan_end_ts(account),
+    }
+}
+
+fn windsurf_plan_status_roots<'a>(
+    account: &'a crate::models::windsurf::WindsurfAccount,
+) -> Vec<Option<&'a serde_json::Value>> {
+    let user_status = account.windsurf_user_status.as_ref();
+    let snapshots = account.copilot_quota_snapshots.as_ref();
+    let direct_plan_status = account.windsurf_plan_status.as_ref();
+
+    vec![
+        direct_plan_status,
+        json_path(direct_plan_status, &["planStatus"]),
+        json_path(user_status, &["userStatus", "planStatus"]),
+        json_path(user_status, &["planStatus"]),
+        json_path(snapshots, &["windsurfPlanStatus"]),
+        json_path(snapshots, &["windsurfPlanStatus", "planStatus"]),
+        json_path(snapshots, &["windsurfUserStatus", "userStatus", "planStatus"]),
+    ]
+}
+
+fn windsurf_plan_info_roots<'a>(
+    account: &'a crate::models::windsurf::WindsurfAccount,
+) -> Vec<Option<&'a serde_json::Value>> {
+    let direct_plan_status = account.windsurf_plan_status.as_ref();
+    let snapshots = account.copilot_quota_snapshots.as_ref();
+
+    vec![
+        json_path(direct_plan_status, &["planInfo"]),
+        json_path(direct_plan_status, &["plan_info"]),
+        json_path(snapshots, &["windsurfPlanInfo"]),
+        json_path(snapshots, &["windsurf_plan_info"]),
+    ]
+}
+
+fn first_string_from_roots<'a>(
+    roots: &[Option<&'a serde_json::Value>],
+    paths: &[&[&str]],
+) -> Option<&'a str> {
+    for root in roots.iter().flatten() {
+        for path in paths {
+            if let Some(value) = json_path(Some(*root), path).and_then(|v| v.as_str()) {
+                let trimmed = value.trim();
+                if !trimmed.is_empty() {
+                    return Some(value);
+                }
+            }
+        }
+    }
+    None
+}
+
+fn first_number_from_roots(
+    roots: &[Option<&serde_json::Value>],
+    paths: &[&[&str]],
+) -> Option<f64> {
+    for root in roots.iter().flatten() {
+        for path in paths {
+            if let Some(value) = json_path(Some(*root), path).and_then(parse_json_number) {
+                return Some(value);
+            }
+        }
+    }
+    None
+}
+
+fn first_timestamp_from_roots(
+    roots: &[Option<&serde_json::Value>],
+    paths: &[&[&str]],
+) -> Option<i64> {
+    for root in roots.iter().flatten() {
+        for path in paths {
+            if let Some(value) = json_path(Some(*root), path).and_then(parse_timestamp_like) {
+                return Some(value);
+            }
+        }
+    }
+    None
+}
+
+fn sum_option_f64(left: Option<f64>, right: Option<f64>) -> Option<f64> {
+    match (left, right) {
+        (Some(a), Some(b)) => Some(a + b),
+        (Some(a), None) => Some(a),
+        (None, Some(b)) => Some(b),
+        (None, None) => None,
+    }
 }
 
 fn resolve_windsurf_plan_end_ts(account: &crate::models::windsurf::WindsurfAccount) -> Option<i64> {
@@ -2771,6 +3115,12 @@ fn get_text(key: &str, lang: &str) -> String {
         ("ghcp_inline", "zh-cn") => "Inline".to_string(),
         ("ghcp_chat", "zh-cn") => "Chat".to_string(),
         ("ghcp_premium", "zh-cn") => "Premium".to_string(),
+        ("windsurf_daily_quota_usage", "zh-cn") => "每日额度用量".to_string(),
+        ("windsurf_weekly_quota_usage", "zh-cn") => "每周额度用量".to_string(),
+        ("windsurf_extra_usage_balance", "zh-cn") => "额外用量余额".to_string(),
+        ("windsurf_credits_left", "zh-cn") => "剩余积分".to_string(),
+        ("windsurf_prompt_credits_left", "zh-cn") => "Prompt Credits".to_string(),
+        ("windsurf_addon_credits_available", "zh-cn") => "附加积分".to_string(),
         ("subscription_reset", "zh-cn") => "订阅重置".to_string(),
         ("more_platforms", "zh-cn") => "更多平台".to_string(),
         ("no_platform_selected", "zh-cn") => "未选择托盘平台".to_string(),
@@ -2792,6 +3142,12 @@ fn get_text(key: &str, lang: &str) -> String {
         ("ghcp_inline", "zh-tw") => "Inline".to_string(),
         ("ghcp_chat", "zh-tw") => "Chat".to_string(),
         ("ghcp_premium", "zh-tw") => "Premium".to_string(),
+        ("windsurf_daily_quota_usage", "zh-tw") => "每日額度用量".to_string(),
+        ("windsurf_weekly_quota_usage", "zh-tw") => "每週額度用量".to_string(),
+        ("windsurf_extra_usage_balance", "zh-tw") => "額外用量餘額".to_string(),
+        ("windsurf_credits_left", "zh-tw") => "剩餘積分".to_string(),
+        ("windsurf_prompt_credits_left", "zh-tw") => "Prompt Credits".to_string(),
+        ("windsurf_addon_credits_available", "zh-tw") => "附加積分".to_string(),
         ("subscription_reset", "zh-tw") => "訂閱重置".to_string(),
         ("more_platforms", "zh-tw") => "更多平台".to_string(),
         ("no_platform_selected", "zh-tw") => "未選擇托盤平台".to_string(),
@@ -2813,6 +3169,12 @@ fn get_text(key: &str, lang: &str) -> String {
         ("ghcp_inline", "en") => "Inline".to_string(),
         ("ghcp_chat", "en") => "Chat".to_string(),
         ("ghcp_premium", "en") => "Premium".to_string(),
+        ("windsurf_daily_quota_usage", "en") => "Daily quota usage".to_string(),
+        ("windsurf_weekly_quota_usage", "en") => "Weekly quota usage".to_string(),
+        ("windsurf_extra_usage_balance", "en") => "Extra usage balance".to_string(),
+        ("windsurf_credits_left", "en") => "Credits left".to_string(),
+        ("windsurf_prompt_credits_left", "en") => "Prompt credits left".to_string(),
+        ("windsurf_addon_credits_available", "en") => "Add-on credits available".to_string(),
         ("subscription_reset", "en") => "Subscription reset".to_string(),
         ("more_platforms", "en") => "More platforms".to_string(),
         ("no_platform_selected", "en") => "No tray platforms selected".to_string(),
@@ -2834,6 +3196,12 @@ fn get_text(key: &str, lang: &str) -> String {
         ("ghcp_inline", "ja") => "Inline".to_string(),
         ("ghcp_chat", "ja") => "Chat".to_string(),
         ("ghcp_premium", "ja") => "Premium".to_string(),
+        ("windsurf_daily_quota_usage", "ja") => "日次クォータ使用量".to_string(),
+        ("windsurf_weekly_quota_usage", "ja") => "週次クォータ使用量".to_string(),
+        ("windsurf_extra_usage_balance", "ja") => "追加使用残高".to_string(),
+        ("windsurf_credits_left", "ja") => "残りクレジット".to_string(),
+        ("windsurf_prompt_credits_left", "ja") => "Prompt Credits".to_string(),
+        ("windsurf_addon_credits_available", "ja") => "追加クレジット".to_string(),
         ("subscription_reset", "ja") => "サブスクリプションリセット".to_string(),
         ("more_platforms", "ja") => "その他のプラットフォーム".to_string(),
         ("no_platform_selected", "ja") => {
@@ -2857,6 +3225,12 @@ fn get_text(key: &str, lang: &str) -> String {
         ("ghcp_inline", "ru") => "Inline".to_string(),
         ("ghcp_chat", "ru") => "Chat".to_string(),
         ("ghcp_premium", "ru") => "Premium".to_string(),
+        ("windsurf_daily_quota_usage", "ru") => "Дневная квота".to_string(),
+        ("windsurf_weekly_quota_usage", "ru") => "Недельная квота".to_string(),
+        ("windsurf_extra_usage_balance", "ru") => "Баланс доп. использования".to_string(),
+        ("windsurf_credits_left", "ru") => "Остаток кредитов".to_string(),
+        ("windsurf_prompt_credits_left", "ru") => "Prompt credits".to_string(),
+        ("windsurf_addon_credits_available", "ru") => "Доп. кредиты".to_string(),
         ("subscription_reset", "ru") => "Сброс подписки".to_string(),
         ("more_platforms", "ru") => "Другие платформы".to_string(),
         ("no_platform_selected", "ru") => "Платформы для трея не выбраны".to_string(),
@@ -2878,6 +3252,12 @@ fn get_text(key: &str, lang: &str) -> String {
         ("ghcp_inline", _) => "Inline".to_string(),
         ("ghcp_chat", _) => "Chat".to_string(),
         ("ghcp_premium", _) => "Premium".to_string(),
+        ("windsurf_daily_quota_usage", _) => "Daily quota usage".to_string(),
+        ("windsurf_weekly_quota_usage", _) => "Weekly quota usage".to_string(),
+        ("windsurf_extra_usage_balance", _) => "Extra usage balance".to_string(),
+        ("windsurf_credits_left", _) => "Credits left".to_string(),
+        ("windsurf_prompt_credits_left", _) => "Prompt credits left".to_string(),
+        ("windsurf_addon_credits_available", _) => "Add-on credits available".to_string(),
         ("subscription_reset", _) => "Subscription reset".to_string(),
         ("more_platforms", _) => "More platforms".to_string(),
         ("no_platform_selected", _) => "No tray platforms selected".to_string(),

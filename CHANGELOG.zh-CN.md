@@ -7,6 +7,13 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
 ---
+## [0.17.7] - 2026-03-21
+
+### 变更
+- **仪表盘与托盘中的 Windsurf 用量摘要现已按官方 quota / credits 计费模型一致展示**：按 quota 计费的账号现在展示每日额度用量、每周额度用量与额外用量余额；按 credits 计费的账号继续展示剩余积分拆分，同时避免因枚举式 billing strategy 原值被误判。
+- **多个平台的仪表盘账号卡片现更准确展示各自原生配额结构**：Kiro、Gemini、CodeBuddy、CodeBuddy CN、Qoder、Trae 与 WorkBuddy 卡片现在会通过共享 presentation 层展示正确的剩余/已用摘要、重置或到期时间，以及相关状态信息。
+
+---
 ## [0.17.6] - 2026-03-20
 
 ### 变更

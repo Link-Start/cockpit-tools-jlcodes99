@@ -2174,6 +2174,9 @@
       "status": {
         "loginConfirm": "Completa el inicio de sesión y la autorización en esta página."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   },
   "qoder": {
@@ -2245,7 +2248,8 @@
       "packageEmpty": "Paquete de uso: --",
       "payAsYouGoConsuming": "Uso bajo demanda: consumiendose",
       "payAsYouGoEnabled": "Uso bajo demanda: activado",
-      "payAsYouGoEmpty": "Uso bajo demanda: --"
+      "payAsYouGoEmpty": "Uso bajo demanda: --",
+      "payAsYouGoLabel": "Uso bajo demanda"
     },
     "flowNotice": {
       "title": "Guia de cuentas de Trae (haz clic para expandir o contraer)",
@@ -2376,6 +2380,9 @@
       "unsupported": {
         "descPlatform": "La función de múltiples instancias de WorkBuddy solo es compatible con macOS, Windows y Linux."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   }
 }

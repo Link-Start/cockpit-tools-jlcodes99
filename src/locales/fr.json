@@ -2174,6 +2174,9 @@
       "status": {
         "loginConfirm": "Veuillez terminer la connexion et l'autorisation sur cette page."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   },
   "qoder": {
@@ -2245,7 +2248,8 @@
       "packageEmpty": "Pack d'utilisation : --",
       "payAsYouGoConsuming": "Paiement a l'usage : en cours",
       "payAsYouGoEnabled": "Paiement a l'usage : active",
-      "payAsYouGoEmpty": "Paiement a l'usage : --"
+      "payAsYouGoEmpty": "Paiement a l'usage : --",
+      "payAsYouGoLabel": "Utilisation a la demande"
     },
     "flowNotice": {
       "title": "Guide du compte Trae (cliquez pour developper/reduire)",
@@ -2376,6 +2380,9 @@
       "unsupported": {
         "descPlatform": "Le mode multi-instances WorkBuddy est pris en charge uniquement sur macOS, Windows et Linux."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   }
 }

@@ -2174,6 +2174,9 @@
       "status": {
         "loginConfirm": "このページでサインインと認可を完了してください。"
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   },
   "qoder": {
@@ -2245,7 +2248,8 @@
       "packageEmpty": "利用パック：--",
       "payAsYouGoConsuming": "従量課金：消費中",
       "payAsYouGoEnabled": "従量課金：有効",
-      "payAsYouGoEmpty": "従量課金：--"
+      "payAsYouGoEmpty": "従量課金：--",
+      "payAsYouGoLabel": "従量課金"
     },
     "flowNotice": {
       "title": "Trae アカウントガイド（クリックで展開/折りたたみ）",
@@ -2376,6 +2380,9 @@
       "unsupported": {
         "descPlatform": "WorkBuddy のマルチインスタンスは macOS、Windows、Linux のみ対応しています。"
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   }
 }

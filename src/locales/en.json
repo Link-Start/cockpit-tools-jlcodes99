@@ -1391,6 +1391,9 @@
       "localClient": "Import from local CodeBuddy"
     },
     "search": "Search CodeBuddy accounts...",
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
+    },
     "quotaQuery": {
       "failedRefreshCompact": "Quota query failed",
       "sectionTitle": "Quota Query",
@@ -2243,6 +2246,7 @@
       "packageConsuming": "Package: Consuming",
       "packageAvailable": "Package: Available",
       "packageEmpty": "Package: --",
+      "payAsYouGoLabel": "On-Demand Usage",
       "payAsYouGoConsuming": "On-Demand Usage: Consuming",
       "payAsYouGoEnabled": "On-Demand Usage: Enabled",
       "payAsYouGoEmpty": "On-Demand Usage: --"
@@ -2340,6 +2344,9 @@
       "localClient": "Import from local WorkBuddy"
     },
     "search": "Search WorkBuddy accounts...",
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
+    },
     "quotaQuery": {
       "failedRefreshCompact": "Quota query failed",
       "sectionTitle": "Quota Query",

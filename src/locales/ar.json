@@ -2174,6 +2174,9 @@
       "status": {
         "loginConfirm": "يرجى إكمال تسجيل الدخول والتفويض في هذه الصفحة."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   },
   "qoder": {
@@ -2245,7 +2248,8 @@
       "packageEmpty": "حزمة الاستخدام: --",
       "payAsYouGoConsuming": "الاستخدام حسب الطلب: قيد الاستهلاك",
       "payAsYouGoEnabled": "الاستخدام حسب الطلب: مفعل",
-      "payAsYouGoEmpty": "الاستخدام حسب الطلب: --"
+      "payAsYouGoEmpty": "الاستخدام حسب الطلب: --",
+      "payAsYouGoLabel": "الاستخدام حسب الطلب"
     },
     "flowNotice": {
       "title": "دليل حساب Trae (انقر للتوسيع أو الطي)",
@@ -2376,6 +2380,9 @@
       "unsupported": {
         "descPlatform": "تعدد مثيلات WorkBuddy مدعوم فقط على macOS وWindows وLinux."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   }
 }

@@ -2174,6 +2174,9 @@
       "status": {
         "loginConfirm": "Lütfen bu sayfada giriş ve yetkilendirmeyi tamamlayın."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   },
   "qoder": {
@@ -2245,7 +2248,8 @@
       "packageEmpty": "Kullanim paketi: --",
       "payAsYouGoConsuming": "Kullandikca odeme: tuketiliyor",
       "payAsYouGoEnabled": "Kullandikca odeme: etkin",
-      "payAsYouGoEmpty": "Kullandikca odeme: --"
+      "payAsYouGoEmpty": "Kullandikca odeme: --",
+      "payAsYouGoLabel": "Istege bagli kullanim"
     },
     "flowNotice": {
       "title": "Trae hesap kilavuzu (genisletmek/daraltmak icin tiklayin)",
@@ -2376,6 +2380,9 @@
       "unsupported": {
         "descPlatform": "WorkBuddy çoklu örneği yalnızca macOS, Windows ve Linux'ta desteklenir."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   }
 }

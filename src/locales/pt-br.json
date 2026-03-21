@@ -2174,6 +2174,9 @@
       "status": {
         "loginConfirm": "Conclua o login e a autorização nesta página."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   },
   "qoder": {
@@ -2245,7 +2248,8 @@
       "packageEmpty": "Pacote de uso: --",
       "payAsYouGoConsuming": "Uso sob demanda: consumindo",
       "payAsYouGoEnabled": "Uso sob demanda: ativado",
-      "payAsYouGoEmpty": "Uso sob demanda: --"
+      "payAsYouGoEmpty": "Uso sob demanda: --",
+      "payAsYouGoLabel": "Uso sob demanda"
     },
     "flowNotice": {
       "title": "Guia de contas Trae (clique para expandir/recolher)",
@@ -2376,6 +2380,9 @@
       "unsupported": {
         "descPlatform": "A multiinstância WorkBuddy é compatível apenas com macOS, Windows e Linux."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   }
 }

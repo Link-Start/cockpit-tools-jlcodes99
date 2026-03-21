@@ -7,6 +7,13 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [0.17.7] - 2026-03-21
+
+### Changed
+- **Windsurf usage summaries in both dashboard and tray now stay aligned with the official quota vs. credits billing model**: quota-billed accounts now show daily quota usage, weekly quota usage, and extra usage balance, while credits-billed accounts keep the credits-left breakdown without being misclassified by enum-style billing strategy values.
+- **Dashboard account cards now render platform-specific quota structures more faithfully across multiple providers**: Kiro, Gemini, CodeBuddy, CodeBuddy CN, Qoder, Trae, and WorkBuddy cards now show the correct remaining/used summaries, reset or expiry timing, and related status details through the shared account presentation layer.
+
+---
 ## [0.17.6] - 2026-03-20
 
 ### Changed

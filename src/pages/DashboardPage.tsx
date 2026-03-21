@@ -25,33 +25,20 @@ import { Users, CheckCircle2, Sparkles, RotateCw, Play, Github } from 'lucide-re
 import { Account } from '../types/account';
 import {
   CodebuddyAccount,
-  getCodebuddyAccountDisplayEmail,
-  getCodebuddyPlanBadge,
-  getCodebuddyPlanBadgeClass,
   getCodebuddyResourceSummary,
   getCodebuddyExtraCreditSummary,
-  getCodebuddyUsage,
-  getCodebuddyQuotaDisplayItems,
   getCodebuddyOfficialQuotaModel,
 } from '../types/codebuddy';
 import {
   QoderAccount,
-  getQoderAccountDisplayEmail,
-  getQoderPlanBadge,
   getQoderSubscriptionInfo,
 } from '../types/qoder';
 import {
   TraeAccount,
-  getTraeAccountDisplayEmail,
-  getTraePlanBadge,
-  getTraePlanBadgeClass,
   getTraeUsage,
 } from '../types/trae';
 import {
   WorkbuddyAccount,
-  getWorkbuddyAccountDisplayEmail,
-  getWorkbuddyPlanBadge,
-  getWorkbuddyQuotaDisplayItems,
   getWorkbuddyOfficialQuotaModel,
 } from '../types/workbuddy';
 import { CodexAccount } from '../types/codex';
@@ -68,8 +55,6 @@ import {
 import { CursorAccount, getCursorUsage } from '../types/cursor';
 import {
   GeminiAccount,
-  getGeminiPlanBadgeClass,
-  getGeminiPlanDisplayName,
   getGeminiTierQuotaSummary,
 } from '../types/gemini';
 import './DashboardPage.css';
@@ -91,10 +76,16 @@ import { isPrivacyModeEnabledByDefault, maskSensitiveValue } from '../utils/priv
 import { DisplayGroup, getDisplayGroups } from '../services/groupService';
 import {
   buildAntigravityAccountPresentation,
+  buildCodebuddyAccountPresentation,
   buildCodexAccountPresentation,
-  buildGitHubCopilotAccountPresentation,
   buildCursorAccountPresentation,
+  buildGeminiAccountPresentation,
+  buildGitHubCopilotAccountPresentation,
   buildKiroAccountPresentation,
+  buildQoderAccountPresentation,
+  buildTraeAccountPresentation,
+  buildWorkbuddyAccountPresentation,
+  UnifiedAccountPresentation,
   buildWindsurfAccountPresentation,
 } from '../presentation/platformAccountPresentation';
 
@@ -125,8 +116,6 @@ function toFiniteNumber(value: number | null | undefined): number | null {
 
 export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTriggerClick }: DashboardPageProps) {
   const { t } = useTranslation();
-  // 类型适配器，将 i18next 的 t 函数转换为简单的 (key, defaultValue?) => string 签名
-  const tSimple = (key: string, defaultValue?: string) => t(key, defaultValue ?? key);
   const { orderedEntryIds, hiddenEntryIds, platformGroups } = usePlatformLayoutStore();
   const hiddenEntrySet = useMemo(() => new Set(hiddenEntryIds), [hiddenEntryIds]);
   const visibleEntryOrder = useMemo(
@@ -1617,6 +1606,114 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
   }, [workbuddyAccounts, workbuddyCurrent?.id]);
 
   // Render Helpers
+  const renderPresentationQuotaItems = (
+    presentation: UnifiedAccountPresentation,
+    limit = 3,
+  ) => {
+    const quotaItems = presentation.quotaItems.slice(0, Math.max(0, limit));
+    if (quotaItems.length === 0) {
+      return <span className="no-data-text">{t('dashboard.noData', '暂无数据')}</span>;
+    }
+
+    return quotaItems.map((item) => {
+      const progressPercent = Math.max(
+        0,
+        Math.min(100, item.progressPercent ?? item.percentage ?? 0),
+      );
+      return (
+        <div key={item.key} className="mini-quota-row-stacked">
+          <div className="mini-quota-header">
+            <span className="model-name">{item.label}</span>
+            <span className={`model-pct ${item.quotaClass || ''}`}>
+              {item.valueText || '-'}
+            </span>
+          </div>
+          {item.showProgress !== false && (
+            <div className="mini-progress-track">
+              <div
+                className={`mini-progress-bar ${item.quotaClass || ''}`}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          )}
+          {item.resetText && <div className="mini-reset-time">{item.resetText}</div>}
+        </div>
+      );
+    });
+  };
+
+  const renderUnifiedAccountCard = ({
+    presentation,
+    onRefresh,
+    onSwitch,
+    isRefreshing,
+    isSwitching,
+    switchDisabled = false,
+    sublineText,
+    sublineTitle,
+    maxMetrics = 3,
+  }: {
+    presentation: UnifiedAccountPresentation;
+    onRefresh: () => void;
+    onSwitch: () => void;
+    isRefreshing: boolean;
+    isSwitching: boolean;
+    switchDisabled?: boolean;
+    sublineText?: string;
+    sublineTitle?: string;
+    maxMetrics?: number;
+  }) => {
+    const resolvedSublineText = sublineText || presentation.sublineText || '';
+    const shouldShowPlan = Boolean(presentation.planLabel) && presentation.planLabel !== 'UNKNOWN';
+
+    return (
+      <div className="account-mini-card">
+        <div className="account-mini-header">
+          <div className="account-info-row">
+            <span className="account-email" title={maskAccountText(presentation.displayName)}>
+              {maskAccountText(presentation.displayName)}
+            </span>
+            {shouldShowPlan && (
+              <span className={`tier-tag ${presentation.planClass}`}>{presentation.planLabel}</span>
+            )}
+          </div>
+        </div>
+
+        {resolvedSublineText && (
+          <div
+            className="account-mini-subline"
+            title={sublineTitle || resolvedSublineText}
+          >
+            {resolvedSublineText}
+          </div>
+        )}
+
+        <div className="account-mini-quotas">
+          {renderPresentationQuotaItems(presentation, maxMetrics)}
+        </div>
+
+        <div className="account-mini-actions icon-only-row">
+          <button
+            className="mini-icon-btn"
+            onClick={onRefresh}
+            title={t('common.refresh', '刷新')}
+            disabled={isRefreshing || isSwitching}
+          >
+            <RotateCw size={14} className={isRefreshing ? 'loading-spinner' : ''} />
+          </button>
+          <button
+            className="mini-icon-btn"
+            onClick={onSwitch}
+            title={t('dashboard.switch', '切换')}
+            disabled={isSwitching || switchDisabled}
+          >
+            {isSwitching ? <RotateCw size={14} className="loading-spinner" /> : <Play size={14} />}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const renderAgAccountContent = (account: Account | null) => {
     if (!account) return <div className="empty-slot">{t('dashboard.noAccount', '无账号')}</div>;
 
@@ -1682,338 +1779,54 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     if (!account) return <div className="empty-slot">{t('dashboard.noAccount', '无账号')}</div>;
 
     const presentation = buildCodexAccountPresentation(account, t);
-    const quotaWindows = presentation.quotaItems;
-    
-    return (
-      <div className="account-mini-card">
-        <div className="account-mini-header">
-           <div className="account-info-row">
-             <span className="account-email" title={maskAccountText(presentation.displayName)}>
-               {maskAccountText(presentation.displayName)}
-             </span>
-             <span className={`tier-tag ${presentation.planClass}`}>{presentation.planLabel}</span>
-           </div>
-        </div>
-        
-        <div className="account-mini-quotas">
-          {quotaWindows.length === 0 && (
-            <span className="no-data-text">{t('dashboard.noData', '暂无数据')}</span>
-          )}
-          {quotaWindows.map((window) => (
-            <div key={window.key} className="mini-quota-row-stacked">
-              <div className="mini-quota-header">
-                <span className="model-name">{window.label}</span>
-                <span className={`model-pct ${window.quotaClass}`}>
-                  {window.valueText}
-                </span>
-              </div>
-              <div className="mini-progress-track">
-                <div
-                  className={`mini-progress-bar ${window.quotaClass}`}
-                  style={{ width: `${window.percentage}%` }}
-                />
-              </div>
-              {window.resetText && (
-                <div className="mini-reset-time">
-                  {window.resetText}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <div className="account-mini-actions icon-only-row">
-           <button 
-             className="mini-icon-btn" 
-             onClick={() => handleRefreshCodex(account.id)}
-             title={t('common.refresh', '刷新')}
-             disabled={refreshing.has(account.id)}
-           >
-             <RotateCw size={14} className={refreshing.has(account.id) ? 'loading-spinner' : ''} />
-           </button>
-           <button 
-             className="mini-icon-btn"
-             onClick={() => switchCodexAccount(account.id)}
-             title={t('dashboard.switch', '切换')}
-           >
-             <Play size={14} />
-           </button>
-        </div>
-      </div>
-    );
+    return renderUnifiedAccountCard({
+      presentation,
+      onRefresh: () => handleRefreshCodex(account.id),
+      onSwitch: () => switchCodexAccount(account.id),
+      isRefreshing: refreshing.has(account.id),
+      isSwitching: false,
+      maxMetrics: 4,
+    });
   };
 
   const renderGitHubCopilotAccountContent = (account: GitHubCopilotAccount | null) => {
     if (!account) return <div className="empty-slot">{t('dashboard.noAccount', '无账号')}</div>;
 
     const presentation = buildGitHubCopilotAccountPresentation(account, t);
-    const inlineMetric = presentation.quotaItems.find((item) => item.key === 'inline') || null;
-    const chatMetric = presentation.quotaItems.find((item) => item.key === 'chat') || null;
-    const premiumMetric = presentation.quotaItems.find((item) => item.key === 'premium') || null;
-    const isRefreshing = refreshing.has(account.id);
-    const isSwitching = switching.has(account.id);
-
-    return (
-      <div className="account-mini-card">
-        <div className="account-mini-header">
-          <div className="account-info-row">
-            <span className="account-email" title={maskAccountText(presentation.displayName)}>
-              {maskAccountText(presentation.displayName)}
-            </span>
-            <span className={`tier-tag ${presentation.planClass}`}>{presentation.planLabel}</span>
-          </div>
-        </div>
-
-        <div className="account-mini-quotas">
-          <div className="mini-quota-row-stacked">
-            <div className="mini-quota-header">
-              <span className="model-name">{inlineMetric?.label || t('common.shared.quota.hourly', 'Inline Suggestions')}</span>
-              <span className={`model-pct ${inlineMetric?.quotaClass || ''}`}>
-                {inlineMetric?.valueText || '-'}
-              </span>
-            </div>
-            <div className="mini-progress-track">
-              <div
-                className={`mini-progress-bar ${inlineMetric?.quotaClass || ''}`}
-                style={{ width: `${inlineMetric?.percentage ?? 0}%` }}
-              />
-            </div>
-            {inlineMetric?.resetText && (
-              <div className="mini-reset-time">
-                {inlineMetric.resetText}
-              </div>
-            )}
-          </div>
-
-          <div className="mini-quota-row-stacked">
-            <div className="mini-quota-header">
-              <span className="model-name">{chatMetric?.label || t('common.shared.quota.weekly', 'Chat messages')}</span>
-              <span className={`model-pct ${chatMetric?.quotaClass || ''}`}>
-                {chatMetric?.valueText || '-'}
-              </span>
-            </div>
-            <div className="mini-progress-track">
-              <div
-                className={`mini-progress-bar ${chatMetric?.quotaClass || ''}`}
-                style={{ width: `${chatMetric?.percentage ?? 0}%` }}
-              />
-            </div>
-            {chatMetric?.resetText && (
-              <div className="mini-reset-time">
-                {chatMetric.resetText}
-              </div>
-            )}
-          </div>
-
-          <div className="mini-quota-row-stacked">
-            <div className="mini-quota-header">
-              <span className="model-name">{premiumMetric?.label || t('githubCopilot.columns.premium', 'Premium requests')}</span>
-              <span className={`model-pct ${premiumMetric?.quotaClass || ''}`}>
-                {premiumMetric?.valueText || '-'}
-              </span>
-            </div>
-            <div className="mini-progress-track">
-              <div
-                className={`mini-progress-bar ${premiumMetric?.quotaClass || ''}`}
-                style={{ width: `${premiumMetric?.percentage ?? 0}%` }}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="account-mini-actions icon-only-row">
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleRefreshGitHubCopilot(account.id)}
-            title={t('common.refresh', '刷新')}
-            disabled={isRefreshing || isSwitching}
-          >
-            <RotateCw size={14} className={isRefreshing ? 'loading-spinner' : ''} />
-          </button>
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleSwitchGitHubCopilot(account.id)}
-            title={t('dashboard.switch', '切换')}
-            disabled={isSwitching}
-          >
-            {isSwitching ? <RotateCw size={14} className="loading-spinner" /> : <Play size={14} />}
-          </button>
-        </div>
-      </div>
-    );
+    return renderUnifiedAccountCard({
+      presentation,
+      onRefresh: () => handleRefreshGitHubCopilot(account.id),
+      onSwitch: () => handleSwitchGitHubCopilot(account.id),
+      isRefreshing: refreshing.has(account.id),
+      isSwitching: switching.has(account.id),
+    });
   };
 
   const renderWindsurfAccountContent = (account: WindsurfAccount | null) => {
     if (!account) return <div className="empty-slot">{t('dashboard.noAccount', '无账号')}</div>;
 
     const presentation = buildWindsurfAccountPresentation(account, t);
-    const promptMetric = presentation.quotaItems.find((item) => item.key === 'prompt') || null;
-    const addOnMetric = presentation.quotaItems.find((item) => item.key === 'addon') || null;
-    const isRefreshing = refreshing.has(account.id);
-    const isSwitching = switching.has(account.id);
-
-    return (
-      <div className="account-mini-card">
-        <div className="account-mini-header">
-          <div className="account-info-row">
-            <span className="account-email" title={maskAccountText(presentation.displayName)}>
-              {maskAccountText(presentation.displayName)}
-            </span>
-            <span className={`tier-tag ${presentation.planClass}`}>{presentation.planLabel}</span>
-          </div>
-        </div>
-
-        <div className="account-mini-quotas">
-          <div className="mini-quota-row-stacked">
-            <div className="mini-quota-header">
-              <span className="model-name">
-                {promptMetric?.label || t('common.shared.columns.promptCredits', 'User Prompt credits')}
-              </span>
-              <span className={`model-pct ${promptMetric?.quotaClass || ''}`}>
-                {promptMetric?.valueText || '-'}
-              </span>
-            </div>
-            <div className="mini-progress-track">
-              <div
-                className={`mini-progress-bar ${promptMetric?.quotaClass || ''}`}
-                style={{ width: `${promptMetric?.percentage ?? 0}%` }}
-              />
-            </div>
-            <div className="mini-reset-time">
-              {promptMetric?.resetText || presentation.cycleText || t('common.shared.credits.planEndsUnknown', '配额周期时间未知')}
-            </div>
-          </div>
-
-          <div className="mini-quota-row-stacked">
-            <div className="mini-quota-header">
-              <span className="model-name">
-                {addOnMetric?.label || t('common.shared.columns.addOnPromptCredits', 'Add-on prompt credits')}
-              </span>
-              <span className={`model-pct ${addOnMetric?.quotaClass || ''}`}>
-                {addOnMetric?.valueText || '-'}
-              </span>
-            </div>
-            <div className="mini-progress-track">
-              <div
-                className={`mini-progress-bar ${addOnMetric?.quotaClass || ''}`}
-                style={{ width: `${addOnMetric?.percentage ?? 0}%` }}
-              />
-            </div>
-            <div className="mini-reset-time">
-              {addOnMetric?.resetText || presentation.cycleText || t('common.shared.credits.planEndsUnknown', '配额周期时间未知')}
-            </div>
-          </div>
-        </div>
-
-        <div className="account-mini-actions icon-only-row">
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleRefreshWindsurf(account.id)}
-            title={t('common.refresh', '刷新')}
-            disabled={isRefreshing || isSwitching}
-          >
-            <RotateCw size={14} className={isRefreshing ? 'loading-spinner' : ''} />
-          </button>
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleSwitchWindsurf(account.id)}
-            title={t('dashboard.switch', '切换')}
-            disabled={isSwitching}
-          >
-            {isSwitching ? <RotateCw size={14} className="loading-spinner" /> : <Play size={14} />}
-          </button>
-        </div>
-      </div>
-    );
+    return renderUnifiedAccountCard({
+      presentation,
+      onRefresh: () => handleRefreshWindsurf(account.id),
+      onSwitch: () => handleSwitchWindsurf(account.id),
+      isRefreshing: refreshing.has(account.id),
+      isSwitching: switching.has(account.id),
+    });
   };
 
   const renderKiroAccountContent = (account: KiroAccount | null) => {
     if (!account) return <div className="empty-slot">{t('dashboard.noAccount', '无账号')}</div>;
 
     const presentation = buildKiroAccountPresentation(account, t);
-    const promptMetric = presentation.quotaItems.find((item) => item.key === 'prompt') || null;
-    const addOnMetric = presentation.quotaItems.find((item) => item.key === 'addon') || null;
-    const isRefreshing = refreshing.has(account.id);
-    const isSwitching = switching.has(account.id);
-    const hasAddOnCredits = Boolean(addOnMetric);
-
-    return (
-      <div className="account-mini-card">
-        <div className="account-mini-header">
-          <div className="account-info-row">
-            <span className="account-email" title={maskAccountText(presentation.displayName)}>
-              {maskAccountText(presentation.displayName)}
-            </span>
-            <span className={`tier-tag ${presentation.planClass}`}>{presentation.planLabel}</span>
-          </div>
-        </div>
-
-        <div className="account-mini-quotas">
-          <div className="mini-quota-row-stacked">
-            <div className="mini-quota-header">
-              <span className="model-name">
-                {promptMetric?.label || t('common.shared.columns.promptCredits', 'User Prompt credits')}
-              </span>
-              <span className={`model-pct ${promptMetric?.quotaClass || ''}`}>
-                {promptMetric?.valueText || '-'}
-              </span>
-            </div>
-            <div className="mini-progress-track">
-              <div
-                className={`mini-progress-bar ${promptMetric?.quotaClass || ''}`}
-                style={{ width: `${promptMetric?.percentage ?? 0}%` }}
-              />
-            </div>
-            <div className="mini-reset-time">
-              {promptMetric?.resetText || presentation.cycleText || t('common.shared.credits.planEndsUnknown', '配额周期时间未知')}
-            </div>
-          </div>
-
-          {hasAddOnCredits && (
-            <div className="mini-quota-row-stacked">
-              <div className="mini-quota-header">
-                <span className="model-name">
-                  {addOnMetric?.label || t('common.shared.columns.addOnPromptCredits', 'Add-on prompt credits')}
-                </span>
-                <span className={`model-pct ${addOnMetric?.quotaClass || ''}`}>
-                  {addOnMetric?.valueText || '-'}
-                </span>
-              </div>
-              <div className="mini-progress-track">
-                <div
-                  className={`mini-progress-bar ${addOnMetric?.quotaClass || ''}`}
-                  style={{ width: `${addOnMetric?.percentage ?? 0}%` }}
-                />
-              </div>
-              <div className="mini-reset-time">
-                {addOnMetric?.resetText ||
-                  presentation.cycleText ||
-                  t('common.shared.credits.planEndsUnknown', '配额周期时间未知')}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="account-mini-actions icon-only-row">
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleRefreshKiro(account.id)}
-            title={t('common.refresh', '刷新')}
-            disabled={isRefreshing || isSwitching}
-          >
-            <RotateCw size={14} className={isRefreshing ? 'loading-spinner' : ''} />
-          </button>
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleSwitchKiro(account.id)}
-            title={t('dashboard.switch', '切换')}
-            disabled={isSwitching || presentation.isBanned}
-          >
-            {isSwitching ? <RotateCw size={14} className="loading-spinner" /> : <Play size={14} />}
-          </button>
-        </div>
-      </div>
-    );
+    return renderUnifiedAccountCard({
+      presentation,
+      onRefresh: () => handleRefreshKiro(account.id),
+      onSwitch: () => handleSwitchKiro(account.id),
+      isRefreshing: refreshing.has(account.id),
+      isSwitching: switching.has(account.id),
+      switchDisabled: presentation.isBanned,
+    });
   };
 
   const renderCursorAccountContent = (account: CursorAccount | null) => {
@@ -2022,95 +1835,20 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     const presentation = buildCursorAccountPresentation(account, t);
     const authIdText = (account.auth_id || '').trim();
     const maskedAuthIdText = authIdText ? maskAccountText(authIdText) : '--';
-    const totalMetric = presentation.quotaItems.find((item) => item.key === 'total') || null;
-    const secondaryMetrics = presentation.quotaItems.filter((item) =>
-      item.key === 'auto' || item.key === 'api' || item.key === 'on_demand',
-    );
-    const isRefreshing = refreshing.has(account.id);
-    const isSwitching = switching.has(account.id);
-
-    return (
-      <div className="account-mini-card">
-        <div className="account-mini-header">
-          <div className="account-info-row">
-            <span className="account-email" title={maskAccountText(presentation.displayName)}>
-              {maskAccountText(presentation.displayName)}
-            </span>
-            <span className={`tier-tag ${presentation.planClass}`}>{presentation.planLabel}</span>
-          </div>
-        </div>
-        <div className="account-mini-subline" title={`Auth ID: ${maskedAuthIdText}`}>
-          Auth ID: {maskedAuthIdText}
-        </div>
-
-        <div className="account-mini-quotas">
-          <div className="mini-quota-row-stacked">
-            <div className="mini-quota-header">
-              <span className="model-name">{totalMetric?.label || 'Total Usage'}</span>
-              <span className={`model-pct ${totalMetric?.quotaClass || ''}`}>
-                {totalMetric?.valueText || '-'}
-              </span>
-            </div>
-            <div className="mini-progress-track">
-              <div
-                className={`mini-progress-bar ${totalMetric?.quotaClass || ''}`}
-                style={{ width: `${totalMetric?.percentage ?? 0}%` }}
-              />
-            </div>
-            {totalMetric?.resetText && (
-              <div className="mini-reset-time">{totalMetric.resetText}</div>
-            )}
-          </div>
-
-          {secondaryMetrics.map((metric) => (
-            <div className="mini-quota-row-stacked" key={metric.key}>
-              <div className="mini-quota-header">
-                <span className="model-name">{metric.label}</span>
-                <span className={`model-pct ${metric.quotaClass || ''}`}>{metric.valueText || '-'}</span>
-              </div>
-              <div className="mini-progress-track">
-                <div
-                  className={`mini-progress-bar ${metric.quotaClass || ''}`}
-                  style={{ width: `${metric.percentage ?? 0}%` }}
-                />
-              </div>
-              {metric.resetText && (
-                <div className="mini-reset-time">{metric.resetText}</div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <div className="account-mini-actions icon-only-row">
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleRefreshCursor(account.id)}
-            title={t('common.refresh', '刷新')}
-            disabled={isRefreshing || isSwitching}
-          >
-            <RotateCw size={14} className={isRefreshing ? 'loading-spinner' : ''} />
-          </button>
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleSwitchCursor(account.id)}
-            title={t('dashboard.switch', '切换')}
-            disabled={isSwitching || presentation.isBanned}
-          >
-            {isSwitching ? <RotateCw size={14} className="loading-spinner" /> : <Play size={14} />}
-          </button>
-        </div>
-      </div>
-    );
+    return renderUnifiedAccountCard({
+      presentation,
+      onRefresh: () => handleRefreshCursor(account.id),
+      onSwitch: () => handleSwitchCursor(account.id),
+      isRefreshing: refreshing.has(account.id),
+      isSwitching: switching.has(account.id),
+      switchDisabled: presentation.isBanned,
+      sublineText: `Auth ID: ${maskedAuthIdText}`,
+      sublineTitle: `Auth ID: ${maskedAuthIdText}`,
+    });
   };
 
   const renderGeminiAccountContent = (account: GeminiAccount | null) => {
     if (!account) return <div className="empty-slot">{t('dashboard.noAccount', '无账号')}</div>;
-
-    const tierSummary = getGeminiTierQuotaSummary(account);
-    const planLabel = getGeminiPlanDisplayName(account);
-    const planClass = getGeminiPlanBadgeClass(undefined, account);
-    const isRefreshing = refreshing.has(account.id);
-    const isSwitching = switching.has(account.id);
 
     const formatRelativeDuration = (seconds: number) => {
       const safe = Math.max(0, Math.floor(seconds));
@@ -2141,486 +1879,80 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     const updatedText = t('gemini.updated.label', 'Updated {{relative}} ago', {
       relative: formatRelativeDuration(updatedDiffSeconds),
     });
-
-    const buildTierMetric = (
-      key: 'pro' | 'flash',
-      remainingPercent: number | null,
-      resetAt: number | null,
-    ) => {
-      const hasRemaining = typeof remainingPercent === 'number' && Number.isFinite(remainingPercent);
-      const safeRemaining = hasRemaining ? Math.max(0, Math.min(100, Math.round(remainingPercent))) : 0;
-      const usedPercent = 100 - safeRemaining;
-      const quotaClass = usedPercent >= 90 ? 'low' : usedPercent >= 70 ? 'medium' : 'high';
-      const leftText = hasRemaining
-        ? t('gemini.quota.left', '{{value}}% left', { value: safeRemaining })
-        : '--';
-      const resetText =
-        typeof resetAt === 'number' && Number.isFinite(resetAt)
-          ? (() => {
-              const diffSeconds = Math.floor(resetAt - Date.now() / 1000);
-              if (diffSeconds <= 0) {
-                return t('gemini.quota.resetsSoon', 'Resets soon');
-              }
-              return t('gemini.quota.resetsIn', 'Resets in {{relative}}', {
-                relative: formatRelativeDuration(diffSeconds),
-              });
-            })()
-          : t('gemini.quota.resetsUnknown', 'Reset time unknown');
-
-      return {
-        key,
-        label: t(`gemini.quota.${key}`, key === 'pro' ? 'Pro' : 'Flash'),
-        percentage: safeRemaining,
-        quotaClass,
-        leftText,
-        resetText,
-      };
-    };
-
-    const tierMetrics = [
-      buildTierMetric('pro', tierSummary.pro.remainingPercent, tierSummary.pro.resetAt),
-      buildTierMetric('flash', tierSummary.flash.remainingPercent, tierSummary.flash.resetAt),
-    ];
-
-    return (
-      <div className="account-mini-card gemini-mini-card">
-        <div className="account-mini-header">
-          <div className="account-info-row">
-            <span className="account-email" title={maskAccountText(account.email || account.id)}>
-              {maskAccountText(account.email || account.id)}
-            </span>
-            {planLabel && planLabel !== 'UNKNOWN' && (
-              <span className={`tier-tag ${planClass} raw-value`}>{planLabel}</span>
-            )}
-          </div>
-        </div>
-        <div className="account-mini-subline">{updatedText}</div>
-
-        <div className="account-mini-quotas">
-          {tierMetrics.map((metric) => (
-            <div className="mini-quota-row-stacked" key={metric.key}>
-              <div className="mini-quota-header">
-                <span className="model-name">{metric.label}</span>
-              </div>
-              <div className="mini-progress-track">
-                <div
-                  className={`mini-progress-bar ${metric.quotaClass || ''}`}
-                  style={{ width: `${metric.percentage ?? 0}%` }}
-                />
-              </div>
-              <div className="mini-quota-meta-row">
-                <span className={`mini-left-text ${metric.quotaClass}`}>{metric.leftText}</span>
-                <span className="mini-reset-time-inline">{metric.resetText}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="account-mini-actions icon-only-row">
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleRefreshGemini(account.id)}
-            title={t('common.refresh', '刷新')}
-            disabled={isRefreshing || isSwitching}
-          >
-            <RotateCw size={14} className={isRefreshing ? 'loading-spinner' : ''} />
-          </button>
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleSwitchGemini(account.id)}
-            title={t('dashboard.switch', '切换')}
-            disabled={isSwitching}
-          >
-            {isSwitching ? <RotateCw size={14} className="loading-spinner" /> : <Play size={14} />}
-          </button>
-        </div>
-      </div>
-    );
+    const presentation = buildGeminiAccountPresentation(account, t);
+    return renderUnifiedAccountCard({
+      presentation,
+      onRefresh: () => handleRefreshGemini(account.id),
+      onSwitch: () => handleSwitchGemini(account.id),
+      isRefreshing: refreshing.has(account.id),
+      isSwitching: switching.has(account.id),
+      sublineText: updatedText,
+    });
   };
 
   const renderCodebuddyAccountContent = (account: CodebuddyAccount | null) => {
     if (!account) return <div className="empty-slot">{t('dashboard.noAccount', '无账号')}</div>;
 
-    const displayName = getCodebuddyAccountDisplayEmail(account);
-    const badge = getCodebuddyPlanBadge(account);
-    const badgeClass = getCodebuddyPlanBadgeClass(badge);
-    const usage = getCodebuddyUsage(account);
-    const isRefreshing = refreshing.has(account.id);
-    const isSwitching = switching.has(account.id);
-    const usageStatusText = usage.isNormal
-      ? t('codebuddy.usageNormal', '正常')
-      : t('codebuddy.usageAbnormal', '异常');
-    const usageStatusClass = usage.isNormal ? 'high' : 'critical';
-
-    return (
-      <div className="account-mini-card">
-        <div className="account-mini-header">
-          <div className="account-info-row">
-            <span className="account-email" title={maskAccountText(displayName)}>
-              {maskAccountText(displayName)}
-            </span>
-            <span className={`tier-tag ${badgeClass} raw-value`}>{badge}</span>
-          </div>
-        </div>
-
-        <div className="account-mini-quotas">
-          <div className="mini-quota-row-stacked">
-            <div className="mini-quota-header">
-              <span className="model-name">{t('codebuddy.usage', '用量状态')}</span>
-              <span className={usageStatusClass ? `model-pct ${usageStatusClass}` : 'no-data-text'}>
-                {usageStatusText}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="account-mini-actions icon-only-row">
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleRefreshCodebuddy(account.id)}
-            title={t('common.refresh', '刷新')}
-            disabled={isRefreshing || isSwitching}
-          >
-            <RotateCw size={14} className={isRefreshing ? 'loading-spinner' : ''} />
-          </button>
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleSwitchCodebuddy(account.id)}
-            title={t('dashboard.switch', '切换')}
-            disabled={isSwitching}
-          >
-            {isSwitching ? <RotateCw size={14} className="loading-spinner" /> : <Play size={14} />}
-          </button>
-        </div>
-      </div>
-    );
+    const presentation = buildCodebuddyAccountPresentation(account, t);
+    return renderUnifiedAccountCard({
+      presentation,
+      onRefresh: () => handleRefreshCodebuddy(account.id),
+      onSwitch: () => handleSwitchCodebuddy(account.id),
+      isRefreshing: refreshing.has(account.id),
+      isSwitching: switching.has(account.id),
+    });
   };
 
   const renderCodebuddyCnAccountContent = (account: CodebuddyAccount | null) => {
     if (!account) return <div className="empty-slot">{t('dashboard.noAccount', '无账号')}</div>;
 
-    const displayName = getCodebuddyAccountDisplayEmail(account);
-    const badge = getCodebuddyPlanBadge(account);
-    const badgeClass = getCodebuddyPlanBadgeClass(badge);
-    const isRefreshing = refreshing.has(account.id);
-    const isSwitching = switching.has(account.id);
-    const quotaItems = getCodebuddyQuotaDisplayItems(account, tSimple);
-
-    // 格式化配额数字
-    const formatQuotaNumber = (value: number) => {
-      if (!Number.isFinite(value)) return '0';
-      return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(Math.max(0, value));
-    };
-
-    // 格式化刷新时间（只显示年月日）
-    const formatRefreshDate = (timestamp: number | null) => {
-      if (!timestamp) return null;
-      const date = new Date(timestamp);
-      return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
-    };
-
-    return (
-      <div className="account-mini-card">
-        <div className="account-mini-header">
-          <div className="account-info-row">
-            <span className="account-email" title={maskAccountText(displayName)}>
-              {maskAccountText(displayName)}
-            </span>
-            <span className={`tier-tag ${badgeClass} raw-value`}>{badge}</span>
-          </div>
-        </div>
-
-        <div className="account-mini-quotas quota-scroll-container">
-          {quotaItems.length > 0 ? (
-            quotaItems.map((item) => (
-              <div key={item.key} className="quota-item-row">
-                <div className="quota-item-header">
-                  <span className="quota-package-name" title={item.label}>{item.label}</span>
-                  <span className="quota-usage-text">{formatQuotaNumber(item.used)} / {formatQuotaNumber(item.total)}</span>
-                </div>
-                <div className="quota-item-bar-track">
-                  <div
-                    className={`quota-item-bar ${item.quotaClass}`}
-                    style={{ width: `${item.usedPercent}%` }}
-                  />
-                </div>
-                <div className="quota-item-footer">
-                  <span className="quota-remain-text">{t('common.shared.remaining', '剩余')}: {formatQuotaNumber(item.remain)}</span>
-                  {item.refreshAt && (
-                    <span className="quota-refresh-time">{t('dashboard.refreshTime', '刷新时间')}: {formatRefreshDate(item.refreshAt)}</span>
-                  )}
-                </div>
-              </div>
-            ))
-          ) : (
-            <span className="no-data-text">{t('dashboard.noData', '暂无数据')}</span>
-          )}
-        </div>
-
-        <div className="account-mini-actions icon-only-row">
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleRefreshCodebuddyCn(account.id)}
-            title={t('common.refresh', '刷新')}
-            disabled={isRefreshing || isSwitching}
-          >
-            <RotateCw size={14} className={isRefreshing ? 'loading-spinner' : ''} />
-          </button>
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleSwitchCodebuddyCn(account.id)}
-            title={t('dashboard.switch', '切换')}
-            disabled={isSwitching}
-          >
-            {isSwitching ? <RotateCw size={14} className="loading-spinner" /> : <Play size={14} />}
-          </button>
-        </div>
-      </div>
-    );
+    const presentation = buildCodebuddyAccountPresentation(account, t);
+    return renderUnifiedAccountCard({
+      presentation,
+      onRefresh: () => handleRefreshCodebuddyCn(account.id),
+      onSwitch: () => handleSwitchCodebuddyCn(account.id),
+      isRefreshing: refreshing.has(account.id),
+      isSwitching: switching.has(account.id),
+    });
   };
 
   const renderQoderAccountContent = (account: QoderAccount | null) => {
     if (!account) return <div className="empty-slot">{t('dashboard.noAccount', '无账号')}</div>;
 
-    const displayName = getQoderAccountDisplayEmail(account);
-    const planTag = getQoderPlanBadge(account);
-    const sub = getQoderSubscriptionInfo(account);
-    const isRefreshing = refreshing.has(account.id);
-    const isSwitching = switching.has(account.id);
-
-    const usedPercent = sub.totalUsagePercentage ?? sub.userQuota.percentage ?? null;
-    const remainPercent = usedPercent != null ? Math.max(0, Math.min(100, Math.round(100 - usedPercent))) : null;
-    const quotaClass = remainPercent != null ? (remainPercent <= 10 ? 'low' : remainPercent <= 30 ? 'medium' : 'high') : '';
-    const hasAddOn = sub.addOnQuota.total != null && sub.addOnQuota.total > 0;
-    const addOnRemain = hasAddOn ? (sub.addOnQuota.remaining ?? 0) : 0;
-    const addOnTotal = hasAddOn ? (sub.addOnQuota.total ?? 0) : 0;
-    const addOnPercent = addOnTotal > 0 ? Math.round((addOnRemain / addOnTotal) * 100) : 0;
-    const addOnClass = addOnPercent <= 10 ? 'low' : addOnPercent <= 30 ? 'medium' : 'high';
-
-    return (
-      <div className="account-mini-card">
-        <div className="account-mini-header">
-          <div className="account-info-row">
-            <span className="account-email" title={maskAccountText(displayName)}>
-              {maskAccountText(displayName)}
-            </span>
-            <span className="tier-tag plan-badge raw-value">{planTag}</span>
-          </div>
-        </div>
-
-        <div className="account-mini-quotas">
-          {remainPercent != null ? (
-            <div className="mini-quota-row-stacked">
-              <div className="mini-quota-header">
-                <span className="model-name">{t('qoder.columns.credits', 'Credits')}</span>
-                <span className={`model-pct ${quotaClass}`}>
-                  {remainPercent}% {t('common.shared.remaining', '剩余')}
-                </span>
-              </div>
-              <div className="mini-progress-track">
-                <div
-                  className={`mini-progress-bar ${quotaClass}`}
-                  style={{ width: `${remainPercent}%` }}
-                />
-              </div>
-            </div>
-          ) : (
-            <span className="no-data-text">{t('dashboard.noData', '暂无数据')}</span>
-          )}
-          {hasAddOn && (
-            <div className="mini-quota-row-stacked">
-              <div className="mini-quota-header">
-                <span className="model-name">{t('qoder.columns.addOn', 'Add-on')}</span>
-                <span className={`model-pct ${addOnClass}`}>
-                  {addOnRemain}/{addOnTotal}
-                </span>
-              </div>
-              <div className="mini-progress-track">
-                <div
-                  className={`mini-progress-bar ${addOnClass}`}
-                  style={{ width: `${addOnPercent}%` }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="account-mini-actions icon-only-row">
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleRefreshQoder(account.id)}
-            title={t('common.refresh', '刷新')}
-            disabled={isRefreshing || isSwitching}
-          >
-            <RotateCw size={14} className={isRefreshing ? 'loading-spinner' : ''} />
-          </button>
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleSwitchQoder(account.id)}
-            title={t('dashboard.switch', '切换')}
-            disabled={isSwitching}
-          >
-            {isSwitching ? <RotateCw size={14} className="loading-spinner" /> : <Play size={14} />}
-          </button>
-        </div>
-      </div>
-    );
+    const presentation = buildQoderAccountPresentation(account, t);
+    return renderUnifiedAccountCard({
+      presentation,
+      onRefresh: () => handleRefreshQoder(account.id),
+      onSwitch: () => handleSwitchQoder(account.id),
+      isRefreshing: refreshing.has(account.id),
+      isSwitching: switching.has(account.id),
+    });
   };
 
   const renderTraeAccountContent = (account: TraeAccount | null) => {
     if (!account) return <div className="empty-slot">{t('dashboard.noAccount', '无账号')}</div>;
 
-    const displayName = getTraeAccountDisplayEmail(account);
-    const planTag = getTraePlanBadge(account);
-    const planClass = getTraePlanBadgeClass(planTag);
-    const usage = getTraeUsage(account);
-    const isRefreshing = refreshing.has(account.id);
-    const isSwitching = switching.has(account.id);
-
-    const usedPercent = usage.usedPercent;
-    const remainPercent = usedPercent != null ? Math.max(0, Math.min(100, 100 - Math.round(usedPercent))) : null;
-    const quotaClass = remainPercent != null ? (remainPercent <= 10 ? 'low' : remainPercent <= 30 ? 'medium' : 'high') : '';
-    const spentText = usage.spentUsd != null && usage.totalUsd != null
-      ? `$${usage.spentUsd.toFixed(2)} / $${usage.totalUsd.toFixed(2)}`
-      : null;
-
-    return (
-      <div className="account-mini-card">
-        <div className="account-mini-header">
-          <div className="account-info-row">
-            <span className="account-email" title={maskAccountText(displayName)}>
-              {maskAccountText(displayName)}
-            </span>
-            <span className={`tier-tag plan-badge plan-${planClass} raw-value`}>{planTag}</span>
-          </div>
-        </div>
-
-        <div className="account-mini-quotas">
-          {remainPercent != null ? (
-            <div className="mini-quota-row-stacked">
-              <div className="mini-quota-header">
-                <span className="model-name">{t('trae.columns.usage', 'Usage')}</span>
-                <span className={`model-pct ${quotaClass}`}>
-                  {remainPercent}% {t('common.shared.remaining', '剩余')}
-                </span>
-              </div>
-              <div className="mini-progress-track">
-                <div
-                  className={`mini-progress-bar ${quotaClass}`}
-                  style={{ width: `${remainPercent}%` }}
-                />
-              </div>
-              {spentText && (
-                <div className="mini-reset-time">{spentText}</div>
-              )}
-            </div>
-          ) : (
-            <span className="no-data-text">{t('dashboard.noData', '暂无数据')}</span>
-          )}
-        </div>
-
-        <div className="account-mini-actions icon-only-row">
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleRefreshTrae(account.id)}
-            title={t('common.refresh', '刷新')}
-            disabled={isRefreshing || isSwitching}
-          >
-            <RotateCw size={14} className={isRefreshing ? 'loading-spinner' : ''} />
-          </button>
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleSwitchTrae(account.id)}
-            title={t('dashboard.switch', '切换')}
-            disabled={isSwitching}
-          >
-            {isSwitching ? <RotateCw size={14} className="loading-spinner" /> : <Play size={14} />}
-          </button>
-        </div>
-      </div>
-    );
+    const presentation = buildTraeAccountPresentation(account, t);
+    return renderUnifiedAccountCard({
+      presentation,
+      onRefresh: () => handleRefreshTrae(account.id),
+      onSwitch: () => handleSwitchTrae(account.id),
+      isRefreshing: refreshing.has(account.id),
+      isSwitching: switching.has(account.id),
+    });
   };
 
   const renderWorkbuddyAccountContent = (account: WorkbuddyAccount | null) => {
     if (!account) return <div className="empty-slot">{t('dashboard.noAccount', '无账号')}</div>;
 
-    const displayName = getWorkbuddyAccountDisplayEmail(account);
-    const badge = getWorkbuddyPlanBadge(account);
-    const isRefreshing = refreshing.has(account.id);
-    const isSwitching = switching.has(account.id);
-    const quotaItems = getWorkbuddyQuotaDisplayItems(account, tSimple);
-
-    // 格式化配额数字
-    const formatQuotaNumber = (value: number) => {
-      if (!Number.isFinite(value)) return '0';
-      return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(Math.max(0, value));
-    };
-
-    // 格式化刷新时间（只显示年月日）
-    const formatRefreshDate = (timestamp: number | null) => {
-      if (!timestamp) return null;
-      const date = new Date(timestamp);
-      return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
-    };
-
-    return (
-      <div className="account-mini-card">
-        <div className="account-mini-header">
-          <div className="account-info-row">
-            <span className="account-email" title={maskAccountText(displayName)}>
-              {maskAccountText(displayName)}
-            </span>
-            <span className="tier-tag plan-badge raw-value">{badge}</span>
-          </div>
-        </div>
-
-        <div className="account-mini-quotas quota-scroll-container">
-          {quotaItems.length > 0 ? (
-            quotaItems.map((item) => (
-              <div key={item.key} className="quota-item-row">
-                <div className="quota-item-header">
-                  <span className="quota-package-name" title={item.label}>{item.label}</span>
-                  <span className="quota-usage-text">{formatQuotaNumber(item.used)} / {formatQuotaNumber(item.total)}</span>
-                </div>
-                <div className="quota-item-bar-track">
-                  <div
-                    className={`quota-item-bar ${item.quotaClass}`}
-                    style={{ width: `${item.usedPercent}%` }}
-                  />
-                </div>
-                <div className="quota-item-footer">
-                  <span className="quota-remain-text">{t('common.shared.remaining', '剩余')}: {formatQuotaNumber(item.remain)}</span>
-                  {item.refreshAt && (
-                    <span className="quota-refresh-time">{t('dashboard.refreshTime', '刷新时间')}: {formatRefreshDate(item.refreshAt)}</span>
-                  )}
-                </div>
-              </div>
-            ))
-          ) : (
-            <span className="no-data-text">{t('dashboard.noData', '暂无数据')}</span>
-          )}
-        </div>
-
-        <div className="account-mini-actions icon-only-row">
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleRefreshWorkbuddy(account.id)}
-            title={t('common.refresh', '刷新')}
-            disabled={isRefreshing || isSwitching}
-          >
-            <RotateCw size={14} className={isRefreshing ? 'loading-spinner' : ''} />
-          </button>
-          <button
-            className="mini-icon-btn"
-            onClick={() => handleSwitchWorkbuddy(account.id)}
-            title={t('dashboard.switch', '切换')}
-            disabled={isSwitching}
-          >
-            {isSwitching ? <RotateCw size={14} className="loading-spinner" /> : <Play size={14} />}
-          </button>
-        </div>
-      </div>
-    );
+    const presentation = buildWorkbuddyAccountPresentation(account, t);
+    return renderUnifiedAccountCard({
+      presentation,
+      onRefresh: () => handleRefreshWorkbuddy(account.id),
+      onSwitch: () => handleSwitchWorkbuddy(account.id),
+      isRefreshing: refreshing.has(account.id),
+      isSwitching: switching.has(account.id),
+    });
   };
 
   const platformCounts: Record<PlatformId, number> = {

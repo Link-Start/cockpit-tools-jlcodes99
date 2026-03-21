@@ -1,10 +1,23 @@
 import type { Account } from '../types/account';
+import type {
+  CodebuddyAccount,
+  CodebuddyOfficialQuotaResource,
+} from '../types/codebuddy';
 import type { CodexAccount } from '../types/codex';
 import type { GitHubCopilotAccount } from '../types/githubCopilot';
 import type { WindsurfAccount } from '../types/windsurf';
 import type { CursorAccount } from '../types/cursor';
 import type { GeminiAccount } from '../types/gemini';
 import type { KiroAccount, KiroAccountStatus } from '../types/kiro';
+import type {
+  QoderAccount,
+  QoderSubscriptionInfo,
+} from '../types/qoder';
+import type { TraeAccount } from '../types/trae';
+import type {
+  WorkbuddyAccount,
+  WorkbuddyOfficialQuotaResource,
+} from '../types/workbuddy';
 import {
   formatResetTimeDisplay,
   getAntigravityTierBadge,
@@ -13,6 +26,13 @@ import {
   getQuotaClass as getAntigravityQuotaClass,
   matchModelName,
 } from '../utils/account';
+import {
+  CB_PACKAGE_CODE,
+  getCodebuddyAccountDisplayEmail,
+  getCodebuddyOfficialQuotaModel,
+  getCodebuddyPlanBadge,
+  getCodebuddyUsage,
+} from '../types/codebuddy';
 import {
   formatCodexResetTime,
   getCodexCodeReviewQuotaMetric,
@@ -30,9 +50,11 @@ import {
 import {
   formatWindsurfResetTime,
   getWindsurfAccountDisplayEmail,
+  getWindsurfOfficialUsageMode,
   getWindsurfPlanBadgeClass,
   getWindsurfCreditsSummary,
   getWindsurfPlanDisplayName,
+  getWindsurfQuotaUsageSummary,
   getWindsurfResolvedPlanLabel,
   getWindsurfQuotaClass,
 } from '../types/windsurf';
@@ -62,6 +84,25 @@ import {
   getKiroPlanDisplayName,
   getKiroQuotaClass,
 } from '../types/kiro';
+import {
+  getQoderAccountDisplayEmail,
+  getQoderPlanBadge,
+  getQoderSubscriptionInfo,
+  shouldShowQoderSubscriptionReset,
+} from '../types/qoder';
+import {
+  getTraeAccountDisplayEmail,
+  getTraePlanBadge,
+  getTraePlanBadgeClass,
+  getTraeUsage,
+} from '../types/trae';
+import {
+  WORKBUDDY_PACKAGE_CODE,
+  getWorkbuddyAccountDisplayEmail,
+  getWorkbuddyOfficialQuotaModel,
+  getWorkbuddyPlanBadge,
+  getWorkbuddyUsage,
+} from '../types/workbuddy';
 import type { DisplayGroup, GroupSettings } from '../services/groupService';
 import { calculateGroupQuota } from '../services/groupService';
 
@@ -83,6 +124,8 @@ export interface UnifiedQuotaMetric {
   quotaClass: string;
   valueText: string;
   resetText?: string;
+  progressPercent?: number;
+  showProgress?: boolean;
   resetAt?: string | number | null;
   used?: number;
   total?: number;
@@ -96,6 +139,8 @@ export interface UnifiedAccountPresentation {
   planClass: string;
   quotaItems: UnifiedQuotaMetric[];
   cycleText?: string;
+  sublineText?: string;
+  sublineClass?: string;
 }
 
 export interface KiroAccountPresentation extends UnifiedAccountPresentation {
@@ -139,6 +184,159 @@ function clampPercent(value: number): number {
   if (value <= 0) return 0;
   if (value >= 100) return 100;
   return Math.round(value);
+}
+
+function normalizeUnixSeconds(value: number | null | undefined): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return undefined;
+  }
+  if (value > 10_000_000_000) {
+    return Math.floor(value / 1000);
+  }
+  return Math.floor(value);
+}
+
+function formatQuotaNumber(value: number | null | undefined): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return '0';
+  }
+  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(Math.max(0, value));
+}
+
+function formatUsdCurrency(value: number | null | undefined): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return '$0.00';
+  }
+  return `$${value.toFixed(2)}`;
+}
+
+function formatMicrosUsd(value: number | null | undefined): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return '$0.00';
+  }
+  return formatUsdCurrency(value / 1_000_000);
+}
+
+function resolveSimplePlanClass(planLabel: string | null | undefined): string {
+  const normalized = (planLabel || '').trim().toLowerCase();
+  if (!normalized) return 'unknown';
+  if (normalized.includes('enterprise') || normalized.includes('team')) return 'enterprise';
+  if (normalized.includes('trial')) return 'trial';
+  if (
+    normalized.includes('pro') ||
+    normalized.includes('plus') ||
+    normalized.includes('ultra') ||
+    normalized.includes('ultimate')
+  ) {
+    return 'pro';
+  }
+  if (normalized.includes('free')) return 'free';
+  return 'unknown';
+}
+
+function getRemainingQuotaClass(remainPercent: number | null): string {
+  if (remainPercent == null || !Number.isFinite(remainPercent)) return 'high';
+  if (remainPercent <= 10) return 'low';
+  if (remainPercent <= 30) return 'medium';
+  return 'high';
+}
+
+function formatMetricResetText(
+  resetTime: number | null | undefined,
+  t: Translate,
+): string {
+  const normalized = normalizeUnixSeconds(resetTime);
+  return normalized ? formatCodexResetTime(normalized, t) : '';
+}
+
+function buildUsageStatusSubline(
+  isNormal: boolean,
+  t: Translate,
+  normalKey: string,
+  abnormalKey: string,
+): Pick<UnifiedAccountPresentation, 'sublineText' | 'sublineClass'> {
+  return {
+    sublineText: isNormal ? t(normalKey, '正常') : t(abnormalKey, '异常'),
+    sublineClass: isNormal ? 'high' : 'critical',
+  };
+}
+
+function resolveCodebuddyResourceLabel(
+  resource: CodebuddyOfficialQuotaResource,
+  t: Translate,
+): string {
+  if (resource.packageCode === CB_PACKAGE_CODE.extra) {
+    return t('codebuddy.extraCredit.title', '加量包');
+  }
+  if (resource.packageCode === CB_PACKAGE_CODE.activity) {
+    return t('codebuddy.quotaQuery.packageTitle.activity', '活动赠送包');
+  }
+  if (
+    resource.packageCode === CB_PACKAGE_CODE.free ||
+    resource.packageCode === CB_PACKAGE_CODE.gift ||
+    resource.packageCode === CB_PACKAGE_CODE.freeMon
+  ) {
+    return t('codebuddy.quotaQuery.packageTitle.base', '基础体验包');
+  }
+  if (
+    resource.packageCode === CB_PACKAGE_CODE.proMon ||
+    resource.packageCode === CB_PACKAGE_CODE.proYear
+  ) {
+    return t('codebuddy.quotaQuery.packageTitle.pro', '专业版订阅');
+  }
+  return resource.packageName || t('codebuddy.quotaQuery.packageUnknown', '套餐信息未知');
+}
+
+function resolveWorkbuddyResourceLabel(
+  resource: WorkbuddyOfficialQuotaResource,
+  t: Translate,
+): string {
+  if (resource.packageCode === WORKBUDDY_PACKAGE_CODE.extra) {
+    return t('workbuddy.extraCredit.title', '加量包');
+  }
+  if (resource.packageCode === WORKBUDDY_PACKAGE_CODE.activity) {
+    return t('workbuddy.quotaQuery.packageTitle.activity', '活动赠送包');
+  }
+  if (
+    resource.packageCode === WORKBUDDY_PACKAGE_CODE.free ||
+    resource.packageCode === WORKBUDDY_PACKAGE_CODE.gift ||
+    resource.packageCode === WORKBUDDY_PACKAGE_CODE.freeMon
+  ) {
+    return t('workbuddy.quotaQuery.packageTitle.base', '基础体验包');
+  }
+  if (
+    resource.packageCode === WORKBUDDY_PACKAGE_CODE.proMon ||
+    resource.packageCode === WORKBUDDY_PACKAGE_CODE.proYear
+  ) {
+    return resource.packageName || 'PRO';
+  }
+  return resource.packageName || t('workbuddy.quotaQuery.packageUnknown', '套餐信息未知');
+}
+
+function resolveResourceTimeText(
+  resource: Pick<
+    CodebuddyOfficialQuotaResource | WorkbuddyOfficialQuotaResource,
+    'isBasePackage' | 'refreshAt' | 'expireAt'
+  >,
+  t: Translate,
+  updatedAtKey: string,
+  expireAtKey: string,
+): string {
+  const primaryTime = resource.isBasePackage ? resource.refreshAt : resource.expireAt;
+  const fallbackTime = resource.isBasePackage ? resource.expireAt : resource.refreshAt;
+  const primaryText = formatMetricResetText(primaryTime, t);
+  if (primaryText) {
+    return resource.isBasePackage
+      ? t(updatedAtKey, { time: primaryText, defaultValue: '下次刷新时间：{{time}}' })
+      : t(expireAtKey, { time: primaryText, defaultValue: '到期时间：{{time}}' });
+  }
+  const fallbackText = formatMetricResetText(fallbackTime, t);
+  if (fallbackText) {
+    return resource.isBasePackage
+      ? t(expireAtKey, { time: fallbackText, defaultValue: '到期时间：{{time}}' })
+      : t(updatedAtKey, { time: fallbackText, defaultValue: '下次刷新时间：{{time}}' });
+  }
+  return '';
 }
 
 export function buildCreditMetrics(
@@ -427,50 +625,417 @@ export function buildWindsurfAccountPresentation(
   account: WindsurfAccount,
   t: Translate,
 ): UnifiedAccountPresentation {
+  const usageMode = getWindsurfOfficialUsageMode(account);
   const credits = getWindsurfCreditsSummary(account);
+  const quotaSummary = getWindsurfQuotaUsageSummary(account);
   const rawPlan = getWindsurfResolvedPlanLabel(account) ?? credits.planName?.trim() ?? null;
   const normalizedPlan = getWindsurfPlanDisplayName(rawPlan ?? account.plan_type ?? null);
-  const promptMetrics = buildCreditMetrics(
-    credits.promptCreditsUsed,
-    credits.promptCreditsTotal,
-    credits.promptCreditsLeft,
-  );
-  const addOnMetrics = buildCreditMetrics(
-    credits.addOnCreditsUsed,
-    credits.addOnCreditsTotal,
-    credits.addOnCredits,
-  );
+  const quotaItems: UnifiedQuotaMetric[] = [];
+  const cycleText =
+    credits.planEndsAt
+      ? formatWindsurfResetTime(credits.planEndsAt, t)
+      : t('common.shared.credits.planEndsUnknown', '配额周期时间未知');
+
+  if (usageMode === 'quota') {
+    const dailyUsedPercent =
+      quotaSummary.dailyRemainingPercent == null
+        ? null
+        : clampPercent(100 - quotaSummary.dailyRemainingPercent);
+    const weeklyUsedPercent =
+      quotaSummary.weeklyRemainingPercent == null
+        ? null
+        : clampPercent(100 - quotaSummary.weeklyRemainingPercent);
+
+    quotaItems.push({
+      key: 'daily_quota',
+      label: t('windsurf.usageSummary.dailyQuota', 'Daily quota usage'),
+      percentage: dailyUsedPercent ?? 0,
+      progressPercent: dailyUsedPercent ?? 0,
+      quotaClass: getWindsurfQuotaClass(dailyUsedPercent ?? 0),
+      valueText: dailyUsedPercent == null ? '--' : `${dailyUsedPercent}%`,
+      resetText: quotaSummary.dailyResetAt
+        ? formatWindsurfResetTime(quotaSummary.dailyResetAt, t)
+        : '',
+      resetAt: quotaSummary.dailyResetAt,
+      showProgress: true,
+    });
+    quotaItems.push({
+      key: 'weekly_quota',
+      label: t('windsurf.usageSummary.weeklyQuota', 'Weekly quota usage'),
+      percentage: weeklyUsedPercent ?? 0,
+      progressPercent: weeklyUsedPercent ?? 0,
+      quotaClass: getWindsurfQuotaClass(weeklyUsedPercent ?? 0),
+      valueText: weeklyUsedPercent == null ? '--' : `${weeklyUsedPercent}%`,
+      resetText: quotaSummary.weeklyResetAt
+        ? formatWindsurfResetTime(quotaSummary.weeklyResetAt, t)
+        : '',
+      resetAt: quotaSummary.weeklyResetAt,
+      showProgress: true,
+    });
+    quotaItems.push({
+      key: 'extra_usage_balance',
+      label: t('windsurf.usageSummary.extraUsageBalance', 'Extra usage balance'),
+      percentage: 0,
+      progressPercent: 0,
+      quotaClass: 'high',
+      valueText: formatMicrosUsd(quotaSummary.overageBalanceMicros),
+      showProgress: false,
+    });
+  } else {
+    const promptMetrics = buildCreditMetrics(
+      credits.promptCreditsUsed,
+      credits.promptCreditsTotal,
+      credits.promptCreditsLeft,
+    );
+    const addOnMetrics = buildCreditMetrics(
+      credits.addOnCreditsUsed,
+      credits.addOnCreditsTotal,
+      credits.addOnCredits,
+    );
+    const totalCreditsLeft = credits.creditsLeft;
+
+    quotaItems.push({
+      key: 'credits_left',
+      label: t('windsurf.credits.title', 'Plan'),
+      percentage: 0,
+      progressPercent: 0,
+      quotaClass: 'high',
+      valueText:
+        totalCreditsLeft != null
+          ? t('windsurf.credits.left', {
+              value: formatQuotaNumber(totalCreditsLeft),
+              defaultValue: '{{value}} credits left',
+            })
+          : t('windsurf.credits.leftUnknown', 'Credits left -'),
+      showProgress: false,
+    });
+
+    quotaItems.push({
+      key: 'prompt',
+      label: t('windsurf.credits.promptCreditsLeftLabel', 'prompt credits left'),
+      percentage: promptMetrics.usedPercent,
+      progressPercent: promptMetrics.usedPercent,
+      quotaClass: getWindsurfQuotaClass(promptMetrics.usedPercent),
+      valueText:
+        promptMetrics.total > 0
+          ? t('windsurf.credits.promptLeft', {
+              remaining: formatQuotaNumber(promptMetrics.left),
+              total: formatQuotaNumber(promptMetrics.total),
+              defaultValue: '{{remaining}}/{{total}} prompt credits left',
+            })
+          : promptMetrics.left > 0
+            ? t('windsurf.credits.promptLeftNoTotal', {
+                remaining: formatQuotaNumber(promptMetrics.left),
+                defaultValue: '{{remaining}} prompt credits left',
+              })
+            : t('windsurf.credits.promptLeftUnknown', 'Prompt credits left -'),
+      resetText: cycleText,
+      used: promptMetrics.used,
+      total: promptMetrics.total,
+      left: promptMetrics.left,
+      showProgress: true,
+    });
+    quotaItems.push({
+      key: 'addon',
+      label: t('windsurf.credits.addOnCreditsAvailableLabel', 'add-on credits available'),
+      percentage: addOnMetrics.usedPercent,
+      progressPercent: addOnMetrics.usedPercent,
+      quotaClass: getWindsurfQuotaClass(addOnMetrics.usedPercent),
+      valueText: t('windsurf.credits.addOnAvailable', {
+        count: formatQuotaNumber(addOnMetrics.left),
+        defaultValue: '{{count}} add-on credits available',
+      }),
+      resetText: cycleText,
+      used: addOnMetrics.used,
+      total: addOnMetrics.total,
+      left: addOnMetrics.left,
+      showProgress: true,
+    });
+  }
 
   return {
     id: account.id,
     displayName: account.email?.trim() || getWindsurfAccountDisplayEmail(account),
     planLabel: rawPlan || normalizedPlan,
     planClass: getWindsurfPlanBadgeClass(rawPlan ?? account.plan_type ?? null),
-    cycleText: credits.planEndsAt
-      ? formatWindsurfResetTime(credits.planEndsAt, t)
-      : t('common.shared.credits.planEndsUnknown', '配额周期时间未知'),
-    quotaItems: [
-      {
-        key: 'prompt',
-        label: t('common.shared.columns.promptCredits', 'User Prompt credits'),
-        percentage: promptMetrics.usedPercent,
-        quotaClass: getWindsurfQuotaClass(promptMetrics.usedPercent),
-        valueText: `${promptMetrics.usedPercent}%`,
-        used: promptMetrics.used,
-        total: promptMetrics.total,
-        left: promptMetrics.left,
-      },
-      {
-        key: 'addon',
-        label: t('common.shared.columns.addOnPromptCredits', 'Add-on prompt credits'),
-        percentage: addOnMetrics.usedPercent,
-        quotaClass: getWindsurfQuotaClass(addOnMetrics.usedPercent),
-        valueText: `${addOnMetrics.usedPercent}%`,
-        used: addOnMetrics.used,
-        total: addOnMetrics.total,
-        left: addOnMetrics.left,
-      },
-    ],
+    cycleText: usageMode === 'quota' ? '' : cycleText,
+    quotaItems,
+  };
+}
+
+export function buildCodebuddyAccountPresentation(
+  account: CodebuddyAccount,
+  t: Translate,
+): UnifiedAccountPresentation {
+  const planLabel = getCodebuddyPlanBadge(account);
+  const usage = getCodebuddyUsage(account);
+  const model = getCodebuddyOfficialQuotaModel(account);
+  const quotaItems: UnifiedQuotaMetric[] = [];
+  const allResources = [...model.resources];
+  if (model.extra.total > 0 || model.extra.remain > 0 || model.extra.used > 0) {
+    allResources.push(model.extra);
+  }
+
+  allResources.forEach((resource, index) => {
+    if (resource.total <= 0 && resource.remain <= 0) {
+      return;
+    }
+    const remainPercent = resource.remainPercent ?? Math.max(0, 100 - resource.usedPercent);
+    quotaItems.push({
+      key: `resource_${index}`,
+      label: resolveCodebuddyResourceLabel(resource, t),
+      percentage: clampPercent(resource.usedPercent),
+      progressPercent: clampPercent(resource.usedPercent),
+      quotaClass: getRemainingQuotaClass(remainPercent),
+      valueText: t('codebuddy.quota.usedOfTotal', {
+        used: formatQuotaNumber(resource.used),
+        total: formatQuotaNumber(resource.total),
+        defaultValue: '{{used}} / {{total}}',
+      }),
+      resetText: resolveResourceTimeText(
+        resource,
+        t,
+        'codebuddy.quotaQuery.updatedAt',
+        'codebuddy.quotaQuery.expireAt',
+      ),
+      resetAt: resource.refreshAt ?? resource.expireAt,
+      used: resource.used,
+      total: resource.total,
+      left: resource.remain,
+      showProgress: true,
+    });
+  });
+
+  return {
+    id: account.id,
+    displayName: getCodebuddyAccountDisplayEmail(account),
+    planLabel,
+    planClass: resolveSimplePlanClass(planLabel),
+    quotaItems,
+    ...buildUsageStatusSubline(usage.isNormal, t, 'codebuddy.usageNormal', 'codebuddy.usageAbnormal'),
+  };
+}
+
+export function buildWorkbuddyAccountPresentation(
+  account: WorkbuddyAccount,
+  t: Translate,
+): UnifiedAccountPresentation {
+  const planLabel = getWorkbuddyPlanBadge(account);
+  const usage = getWorkbuddyUsage(account);
+  const model = getWorkbuddyOfficialQuotaModel(account);
+  const quotaItems: UnifiedQuotaMetric[] = [];
+  const allResources = [...model.resources];
+  if (model.extra.total > 0 || model.extra.remain > 0 || model.extra.used > 0) {
+    allResources.push(model.extra);
+  }
+
+  allResources.forEach((resource, index) => {
+    if (resource.total <= 0 && resource.remain <= 0) {
+      return;
+    }
+    const remainPercent = resource.remainPercent ?? Math.max(0, 100 - resource.usedPercent);
+    quotaItems.push({
+      key: `resource_${index}`,
+      label: resolveWorkbuddyResourceLabel(resource, t),
+      percentage: clampPercent(resource.usedPercent),
+      progressPercent: clampPercent(resource.usedPercent),
+      quotaClass: getRemainingQuotaClass(remainPercent),
+      valueText: t('workbuddy.quota.usedOfTotal', {
+        used: formatQuotaNumber(resource.used),
+        total: formatQuotaNumber(resource.total),
+        defaultValue: '{{used}} / {{total}}',
+      }),
+      resetText: resolveResourceTimeText(
+        resource,
+        t,
+        'workbuddy.quotaQuery.updatedAt',
+        'workbuddy.quotaQuery.expireAt',
+      ),
+      resetAt: resource.refreshAt ?? resource.expireAt,
+      used: resource.used,
+      total: resource.total,
+      left: resource.remain,
+      showProgress: true,
+    });
+  });
+
+  return {
+    id: account.id,
+    displayName: getWorkbuddyAccountDisplayEmail(account),
+    planLabel,
+    planClass: resolveSimplePlanClass(planLabel),
+    quotaItems,
+    ...buildUsageStatusSubline(usage.isNormal, t, 'workbuddy.usageNormal', 'workbuddy.usageAbnormal'),
+  };
+}
+
+export function buildQoderAccountPresentation(
+  account: QoderAccount,
+  t: Translate,
+): UnifiedAccountPresentation {
+  const subscription: QoderSubscriptionInfo = getQoderSubscriptionInfo(account);
+  const planLabel = getQoderPlanBadge(account);
+  const userRemainingPercent =
+    subscription.totalUsagePercentage != null
+      ? clampPercent(100 - subscription.totalUsagePercentage)
+      : subscription.userQuota.remaining != null && subscription.userQuota.total != null && subscription.userQuota.total > 0
+        ? clampPercent((subscription.userQuota.remaining / subscription.userQuota.total) * 100)
+        : null;
+  const userUsedPercent =
+    userRemainingPercent == null ? null : clampPercent(100 - userRemainingPercent);
+  const quotaItems: UnifiedQuotaMetric[] = [];
+
+  if (
+    subscription.userQuota.total != null ||
+    subscription.userQuota.used != null ||
+    subscription.userQuota.remaining != null ||
+    userRemainingPercent != null
+  ) {
+    quotaItems.push({
+      key: 'included',
+      label: t('qoder.usageOverview.includedCredits', '套餐内 Credits'),
+      percentage: userRemainingPercent ?? 0,
+      progressPercent: userRemainingPercent ?? 0,
+      quotaClass: getCursorUsageQuotaClass(userUsedPercent ?? 0),
+      valueText:
+        userRemainingPercent == null
+          ? '--'
+          : t('common.shared.remaining', {
+              value: `${userRemainingPercent}%`,
+              defaultValue: '剩余 {{value}}',
+            }),
+      resetText:
+        subscription.userQuota.used != null || subscription.userQuota.total != null
+          ? t('qoder.usageOverview.usedOfTotal', {
+              used: formatQuotaNumber(subscription.userQuota.used),
+              total: formatQuotaNumber(subscription.userQuota.total),
+              defaultValue: '{{used}} / {{total}}',
+            })
+          : '',
+      showProgress: true,
+      used: subscription.userQuota.used ?? 0,
+      total: subscription.userQuota.total ?? 0,
+      left: subscription.userQuota.remaining ?? 0,
+    });
+  }
+
+  if ((subscription.addOnQuota.total ?? 0) > 0 || (subscription.addOnQuota.remaining ?? 0) > 0) {
+    const addOnRemainingPercent =
+      subscription.addOnQuota.remaining != null &&
+      subscription.addOnQuota.total != null &&
+      subscription.addOnQuota.total > 0
+        ? clampPercent((subscription.addOnQuota.remaining / subscription.addOnQuota.total) * 100)
+        : 0;
+    quotaItems.push({
+      key: 'credit_package',
+      label: t('common.shared.columns.creditPackage', 'Credit Package'),
+      percentage: addOnRemainingPercent,
+      progressPercent: addOnRemainingPercent,
+      quotaClass: getCursorUsageQuotaClass(clampPercent(100 - addOnRemainingPercent)),
+      valueText: t('qoder.usageOverview.usedOfTotal', {
+        used: formatQuotaNumber(subscription.addOnQuota.remaining),
+        total: formatQuotaNumber(subscription.addOnQuota.total),
+        defaultValue: '{{used}} / {{total}}',
+      }),
+      showProgress: true,
+      used: subscription.addOnQuota.used ?? 0,
+      total: subscription.addOnQuota.total ?? 0,
+      left: subscription.addOnQuota.remaining ?? 0,
+    });
+  }
+
+  if (subscription.sharedCreditPackageUsed != null) {
+    quotaItems.push({
+      key: 'shared_credit_package',
+      label: t('common.shared.columns.sharedCreditPackage', 'Shared Credit Package'),
+      percentage: 0,
+      progressPercent: 0,
+      quotaClass: 'high',
+      valueText: formatQuotaNumber(subscription.sharedCreditPackageUsed),
+      showProgress: false,
+    });
+  }
+
+  return {
+    id: account.id,
+    displayName: getQoderAccountDisplayEmail(account),
+    planLabel,
+    planClass: resolveSimplePlanClass(planLabel),
+    quotaItems,
+    cycleText: shouldShowQoderSubscriptionReset(subscription)
+      ? formatMetricResetText(subscription.expiresAt, t)
+      : '',
+  };
+}
+
+export function buildTraeAccountPresentation(
+  account: TraeAccount,
+  t: Translate,
+): UnifiedAccountPresentation {
+  const usage = getTraeUsage(account);
+  const planLabel = getTraePlanBadge(account);
+  const usedPercent =
+    typeof usage.usedPercent === 'number' && Number.isFinite(usage.usedPercent)
+      ? clampPercent(usage.usedPercent)
+      : null;
+  const remainingPercent = usedPercent == null ? null : clampPercent(100 - usedPercent);
+  const quotaItems: UnifiedQuotaMetric[] = [];
+
+  if (
+    remainingPercent != null ||
+    usage.spentUsd != null ||
+    usage.totalUsd != null ||
+    usage.resetAt != null
+  ) {
+    quotaItems.push({
+      key: 'usage',
+      label: t('trae.columns.usage', 'Usage'),
+      percentage: remainingPercent ?? 0,
+      progressPercent: remainingPercent ?? 0,
+      quotaClass: getCursorUsageQuotaClass(usedPercent ?? 0),
+      valueText:
+        remainingPercent == null
+          ? '--'
+          : t('common.shared.remaining', {
+              value: `${remainingPercent}%`,
+              defaultValue: '剩余 {{value}}',
+            }),
+      resetText:
+        usage.spentUsd != null && usage.totalUsd != null
+          ? t('trae.quota.usedOfTotal', {
+              used: formatQuotaNumber(usage.spentUsd),
+              total: formatQuotaNumber(usage.totalUsd),
+              defaultValue: '${{used}} / ${{total}}',
+            })
+          : formatMetricResetText(usage.resetAt, t),
+      showProgress: true,
+    });
+  }
+
+  if (usage.payAsYouGoOpen != null) {
+    quotaItems.push({
+      key: 'pay_as_you_go',
+      label: t('trae.quota.payAsYouGoLabel', 'On-Demand Usage'),
+      percentage: 0,
+      progressPercent: 0,
+      quotaClass: usage.payAsYouGoOpen ? 'high' : 'medium',
+      valueText:
+        usage.payAsYouGoUsd != null
+          ? formatUsdCurrency(usage.payAsYouGoUsd)
+          : usage.payAsYouGoOpen
+            ? t('common.enabled', 'Enabled')
+            : t('common.disabled', 'Disabled'),
+      showProgress: false,
+    });
+  }
+
+  return {
+    id: account.id,
+    displayName: getTraeAccountDisplayEmail(account),
+    planLabel,
+    planClass: getTraePlanBadgeClass(planLabel),
+    quotaItems,
+    cycleText: formatMetricResetText(usage.nextBillingAt ?? usage.resetAt, t),
   };
 }
 
@@ -521,6 +1086,10 @@ export function buildKiroAccountPresentation(
           defaultValue: '{{days}} days',
         })
       : t('kiro.credits.expiryUnknown', '—');
+  const cycleText =
+    credits.planEndsAt
+      ? formatKiroResetTime(credits.planEndsAt, t)
+      : t('common.shared.credits.planEndsUnknown', '配额周期时间未知');
 
   const quotaItems: UnifiedQuotaMetric[] = [
     {
@@ -529,6 +1098,7 @@ export function buildKiroAccountPresentation(
       percentage: promptMetrics.usedPercent,
       quotaClass: getKiroQuotaClass(promptMetrics.usedPercent),
       valueText: `${promptMetrics.usedPercent}%`,
+      resetText: cycleText,
       used: promptMetrics.used,
       total: promptMetrics.total,
       left: promptMetrics.left,
@@ -542,6 +1112,7 @@ export function buildKiroAccountPresentation(
       percentage: addOnMetrics.usedPercent,
       quotaClass: getKiroQuotaClass(addOnMetrics.usedPercent),
       valueText: `${addOnMetrics.usedPercent}%`,
+      resetText: cycleText,
       used: addOnMetrics.used,
       total: addOnMetrics.total,
       left: addOnMetrics.left,
@@ -560,9 +1131,7 @@ export function buildKiroAccountPresentation(
     accountStatusReason,
     isBanned: accountStatus === 'banned',
     hasStatusError: accountStatus === 'error',
-    cycleText: credits.planEndsAt
-      ? formatKiroResetTime(credits.planEndsAt, t)
-      : t('common.shared.credits.planEndsUnknown', '配额周期时间未知'),
+    cycleText,
     quotaItems,
   };
 }
@@ -704,13 +1273,15 @@ export function buildGeminiAccountPresentation(
       key: tier.key,
       label: t(`gemini.quota.${tier.key}`, tier.label),
       percentage: remaining ?? 0,
+      progressPercent: remaining ?? 0,
       quotaClass: getCursorUsageQuotaClass(usedPercent),
       valueText:
         remaining == null
           ? '--'
           : t('gemini.quota.left', '{{value}}% left', { value: remaining }),
-      resetText: '',
+      resetText: formatMetricResetText(tier.resetAt, t),
       resetAt: tier.resetAt,
+      showProgress: true,
     });
   });
 

@@ -2174,6 +2174,9 @@
       "status": {
         "loginConfirm": "이 페이지에서 로그인 및 권한 부여를 완료하세요."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   },
   "qoder": {
@@ -2245,7 +2248,8 @@
       "packageEmpty": "사용 패키지: --",
       "payAsYouGoConsuming": "종량제 사용: 사용 중",
       "payAsYouGoEnabled": "종량제 사용: 활성화됨",
-      "payAsYouGoEmpty": "종량제 사용: --"
+      "payAsYouGoEmpty": "종량제 사용: --",
+      "payAsYouGoLabel": "종량제 사용"
     },
     "flowNotice": {
       "title": "Trae 계정 안내 (클릭하여 펼치기/접기)",
@@ -2376,6 +2380,9 @@
       "unsupported": {
         "descPlatform": "WorkBuddy 다중 인스턴스는 macOS, Windows, Linux에서만 지원됩니다."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   }
 }

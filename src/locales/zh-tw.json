@@ -2174,6 +2174,9 @@
       "status": {
         "loginConfirm": "請在此頁面完成登入與授權。"
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   },
   "qoder": {
@@ -2245,7 +2248,8 @@
       "packageEmpty": "用量包：--",
       "payAsYouGoConsuming": "超額自動扣費：消耗中",
       "payAsYouGoEnabled": "超額自動扣費：已開啟",
-      "payAsYouGoEmpty": "超額自動扣費：--"
+      "payAsYouGoEmpty": "超額自動扣費：--",
+      "payAsYouGoLabel": "超額自動扣費"
     },
     "flowNotice": {
       "title": "Trae 帳號接入說明（點擊展開/收起）",
@@ -2376,6 +2380,9 @@
       "unsupported": {
         "descPlatform": "WorkBuddy 多執行個體僅在 macOS、Windows 和 Linux 上支援。"
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   }
 }

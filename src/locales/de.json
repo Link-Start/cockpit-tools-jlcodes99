@@ -2174,6 +2174,9 @@
       "status": {
         "loginConfirm": "Bitte schließen Sie die Anmeldung und Autorisierung auf dieser Seite ab."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   },
   "qoder": {
@@ -2245,7 +2248,8 @@
       "packageEmpty": "Nutzungspaket: --",
       "payAsYouGoConsuming": "Nutzung nach Verbrauch: wird verbraucht",
       "payAsYouGoEnabled": "Nutzung nach Verbrauch: aktiviert",
-      "payAsYouGoEmpty": "Nutzung nach Verbrauch: --"
+      "payAsYouGoEmpty": "Nutzung nach Verbrauch: --",
+      "payAsYouGoLabel": "Nutzungsabrechnung"
     },
     "flowNotice": {
       "title": "Trae-Kontoleitfaden (zum Auf- und Zuklappen klicken)",
@@ -2376,6 +2380,9 @@
       "unsupported": {
         "descPlatform": "WorkBuddy-Mehrinstanzen werden nur unter macOS, Windows und Linux unterstützt."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   }
 }

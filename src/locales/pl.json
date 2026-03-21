@@ -2174,6 +2174,9 @@
       "status": {
         "loginConfirm": "Na tej stronie dokończ logowanie i autoryzację."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   },
   "qoder": {
@@ -2245,7 +2248,8 @@
       "packageEmpty": "Pakiet uzycia: --",
       "payAsYouGoConsuming": "Rozliczanie za uzycie: w trakcie zuzycia",
       "payAsYouGoEnabled": "Rozliczanie za uzycie: wlaczone",
-      "payAsYouGoEmpty": "Rozliczanie za uzycie: --"
+      "payAsYouGoEmpty": "Rozliczanie za uzycie: --",
+      "payAsYouGoLabel": "Uzycie na zadanie"
     },
     "flowNotice": {
       "title": "Przewodnik po kontach Trae (kliknij, aby rozwinac/zwinac)",
@@ -2376,6 +2380,9 @@
       "unsupported": {
         "descPlatform": "Wiele instancji WorkBuddy jest obsługiwane tylko na macOS, Windows i Linux."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   }
 }

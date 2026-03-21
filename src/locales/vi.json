@@ -2174,6 +2174,9 @@
       "status": {
         "loginConfirm": "Vui lòng hoàn tất đăng nhập và ủy quyền trên trang này."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   },
   "qoder": {
@@ -2245,7 +2248,8 @@
       "packageEmpty": "Goi muc dung: --",
       "payAsYouGoConsuming": "Thanh toan theo muc dung: dang tieu thu",
       "payAsYouGoEnabled": "Thanh toan theo muc dung: da bat",
-      "payAsYouGoEmpty": "Thanh toan theo muc dung: --"
+      "payAsYouGoEmpty": "Thanh toan theo muc dung: --",
+      "payAsYouGoLabel": "Su dung theo nhu cau"
     },
     "flowNotice": {
       "title": "Huong dan tai khoan Trae (nhan de mo rong/thu gon)",
@@ -2376,6 +2380,9 @@
       "unsupported": {
         "descPlatform": "Phiên bản đa phiên bản WorkBuddy chỉ được hỗ trợ trên macOS, Windows và Linux."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   }
 }

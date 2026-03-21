@@ -2174,6 +2174,9 @@
       "status": {
         "loginConfirm": "Пожалуйста, завершите вход и авторизацию на этой странице."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   },
   "qoder": {
@@ -2245,7 +2248,8 @@
       "packageEmpty": "Пакет использования: --",
       "payAsYouGoConsuming": "Оплата по факту: расходуется",
       "payAsYouGoEnabled": "Оплата по факту: включена",
-      "payAsYouGoEmpty": "Оплата по факту: --"
+      "payAsYouGoEmpty": "Оплата по факту: --",
+      "payAsYouGoLabel": "Использование по требованию"
     },
     "flowNotice": {
       "title": "Руководство по аккаунту Trae (нажмите, чтобы развернуть или свернуть)",
@@ -2376,6 +2380,9 @@
       "unsupported": {
         "descPlatform": "Мультиэкземпляр WorkBuddy поддерживается только в macOS, Windows и Linux."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   }
 }

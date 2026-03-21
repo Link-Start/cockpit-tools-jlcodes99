@@ -2174,6 +2174,9 @@
       "status": {
         "loginConfirm": "Na této stránce dokončete přihlášení a autorizaci."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   },
   "qoder": {
@@ -2245,7 +2248,8 @@
       "packageEmpty": "Balicek pouziti: --",
       "payAsYouGoConsuming": "Prubezne uctovani: cerpa se",
       "payAsYouGoEnabled": "Prubezne uctovani: zapnuto",
-      "payAsYouGoEmpty": "Prubezne uctovani: --"
+      "payAsYouGoEmpty": "Prubezne uctovani: --",
+      "payAsYouGoLabel": "Pouziti na vyzadani"
     },
     "flowNotice": {
       "title": "Prirucka k uctu Trae (kliknutim rozbalit/sbalit)",
@@ -2376,6 +2380,9 @@
       "unsupported": {
         "descPlatform": "Více instancí WorkBuddy je podporováno pouze na macOS, Windows a Linuxu."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   }
 }

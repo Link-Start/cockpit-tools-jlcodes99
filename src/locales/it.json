@@ -2174,6 +2174,9 @@
       "status": {
         "loginConfirm": "Completa l'accesso e l'autorizzazione in questa pagina."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   },
   "qoder": {
@@ -2245,7 +2248,8 @@
       "packageEmpty": "Pacchetto utilizzo: --",
       "payAsYouGoConsuming": "Consumo on-demand: in consumo",
       "payAsYouGoEnabled": "Consumo on-demand: attivo",
-      "payAsYouGoEmpty": "Consumo on-demand: --"
+      "payAsYouGoEmpty": "Consumo on-demand: --",
+      "payAsYouGoLabel": "Utilizzo on-demand"
     },
     "flowNotice": {
       "title": "Guida account Trae (clicca per espandere/ridurre)",
@@ -2376,6 +2380,9 @@
       "unsupported": {
         "descPlatform": "La multi-istanza WorkBuddy è supportata solo su macOS, Windows e Linux."
       }
+    },
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
     }
   }
 }

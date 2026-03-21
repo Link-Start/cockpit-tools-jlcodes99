@@ -1391,6 +1391,9 @@
       "localClient": "从本机 CodeBuddy 导入"
     },
     "search": "搜索 CodeBuddy 账号...",
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
+    },
     "quotaQuery": {
       "failedRefreshCompact": "配额查询失败",
       "sectionTitle": "配额查询",
@@ -2243,6 +2246,7 @@
       "packageConsuming": "用量包：消耗中",
       "packageAvailable": "用量包：可用",
       "packageEmpty": "用量包：--",
+      "payAsYouGoLabel": "超额自动扣费",
       "payAsYouGoConsuming": "超额自动扣费：消耗中",
       "payAsYouGoEnabled": "超额自动扣费：已开启",
       "payAsYouGoEmpty": "超额自动扣费：--"
@@ -2340,6 +2344,9 @@
       "localClient": "从本机 WorkBuddy 导入"
     },
     "search": "搜索 WorkBuddy 账号...",
+    "quota": {
+      "usedOfTotal": "{{used}} / {{total}}"
+    },
     "quotaQuery": {
       "failedRefreshCompact": "配额查询失败",
       "sectionTitle": "配额查询",
