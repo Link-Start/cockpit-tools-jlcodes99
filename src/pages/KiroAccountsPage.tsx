@@ -29,6 +29,7 @@ import { useKiroAccountStore } from '../stores/useKiroAccountStore';
 import * as kiroService from '../services/kiroService';
 import { TagEditModal } from '../components/TagEditModal';
 import { ExportJsonModal } from '../components/ExportJsonModal';
+import { ModalErrorMessage } from '../components/ModalErrorMessage';
 import {
   getKiroCreditsSummary,
 } from '../types/kiro';
@@ -100,11 +101,11 @@ export function KiroAccountsPage() {
     selected, toggleSelect, toggleSelectAll,
     tagFilter, groupByTag, setGroupByTag, showTagFilter, setShowTagFilter,
     showTagModal, setShowTagModal, tagFilterRef, availableTags,
-    toggleTagFilterValue, clearTagFilter, tagDeleteConfirm, setTagDeleteConfirm,
+    toggleTagFilterValue, clearTagFilter, tagDeleteConfirm, tagDeleteConfirmError, tagDeleteConfirmErrorScrollKey, setTagDeleteConfirm,
     deletingTag, requestDeleteTag, confirmDeleteTag, openTagModal, handleSaveTags,
     refreshing, refreshingAll, injecting,
     handleRefresh, handleRefreshAll, handleDelete, handleBatchDelete,
-    deleteConfirm, setDeleteConfirm, deleting, confirmDelete,
+    deleteConfirm, deleteConfirmError, deleteConfirmErrorScrollKey, setDeleteConfirm, deleting, confirmDelete,
     message, setMessage,
     exporting, handleExport, handleExportByIds, getScopedSelectedCount,
     showExportModal, closeExportModal, exportJsonContent, exportJsonHidden,
@@ -1119,7 +1120,10 @@ export function KiroAccountsPage() {
               <h2>{t('common.confirm')}</h2>
               <button className="modal-close" onClick={() => !deleting && setDeleteConfirm(null)} aria-label={t('common.close', '关闭')}><X /></button>
             </div>
-            <div className="modal-body"><p>{deleteConfirm.message}</p></div>
+            <div className="modal-body">
+              <ModalErrorMessage message={deleteConfirmError} scrollKey={deleteConfirmErrorScrollKey} />
+              <p>{deleteConfirm.message}</p>
+            </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setDeleteConfirm(null)} disabled={deleting}>{t('common.cancel')}</button>
               <button className="btn btn-danger" onClick={confirmDelete} disabled={deleting}>{t('common.confirm')}</button>
@@ -1136,6 +1140,7 @@ export function KiroAccountsPage() {
               <button className="modal-close" onClick={() => !deletingTag && setTagDeleteConfirm(null)} aria-label={t('common.close', '关闭')}><X /></button>
             </div>
             <div className="modal-body">
+              <ModalErrorMessage message={tagDeleteConfirmError} scrollKey={tagDeleteConfirmErrorScrollKey} />
               <p>{t('accounts.confirmDeleteTag', 'Delete tag "{{tag}}"? This tag will be removed from {{count}} accounts.', { tag: tagDeleteConfirm.tag, count: tagDeleteConfirm.count })}</p>
             </div>
             <div className="modal-footer">

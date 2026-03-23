@@ -9,6 +9,7 @@ import * as workbuddyService from '../services/workbuddyService';
 import { syncWorkbuddyToCodebuddyCn } from '../services/codebuddyCnService';
 import { TagEditModal } from '../components/TagEditModal';
 import { ExportJsonModal } from '../components/ExportJsonModal';
+import { ModalErrorMessage } from '../components/ModalErrorMessage';
 import {
   WorkbuddyAccount,
   WorkbuddyOfficialQuotaResource,
@@ -99,11 +100,11 @@ export function WorkbuddyAccountsPage() {
     selected, toggleSelect, toggleSelectAll,
     tagFilter, groupByTag, setGroupByTag, showTagFilter, setShowTagFilter,
     showTagModal, setShowTagModal, tagFilterRef, availableTags,
-    toggleTagFilterValue, clearTagFilter, tagDeleteConfirm, setTagDeleteConfirm,
+    toggleTagFilterValue, clearTagFilter, tagDeleteConfirm, tagDeleteConfirmError, tagDeleteConfirmErrorScrollKey, setTagDeleteConfirm,
     deletingTag, confirmDeleteTag, openTagModal, handleSaveTags,
     refreshing, refreshingAll, injecting,
     handleRefresh, handleRefreshAll, handleDelete, handleBatchDelete,
-    deleteConfirm, setDeleteConfirm, deleting, confirmDelete,
+    deleteConfirm, deleteConfirmError, deleteConfirmErrorScrollKey, setDeleteConfirm, deleting, confirmDelete,
     message, setMessage,
     exporting, handleExport, handleExportByIds, getScopedSelectedCount,
     showExportModal, exportJsonContent, exportJsonHidden,
@@ -848,6 +849,7 @@ export function WorkbuddyAccountsPage() {
               </button>
             </div>
             <div className="modal-body">
+              <ModalErrorMessage message={deleteConfirmError} scrollKey={deleteConfirmErrorScrollKey} />
               <p>{deleteConfirm.message}</p>
             </div>
             <div className="modal-footer">
@@ -872,6 +874,7 @@ export function WorkbuddyAccountsPage() {
               </button>
             </div>
             <div className="modal-body">
+              <ModalErrorMessage message={tagDeleteConfirmError} scrollKey={tagDeleteConfirmErrorScrollKey} />
               <p>{t('common.deleteTagWarning', { tag: tagDeleteConfirm, defaultValue: '确定要从所有账号中移除标签 "{{tag}}" 吗？' })}</p>
             </div>
             <div className="modal-footer">

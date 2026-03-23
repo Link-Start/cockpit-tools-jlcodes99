@@ -7,6 +7,18 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [0.20.0] - 2026-03-23
+
+### Added
+- **Codex now includes a dedicated Wakeup Tasks workspace for OAuth accounts**: the Codex page adds a `Wakeup Tasks` tab where users can create daily/weekly/interval jobs, check Codex CLI availability and install hints, run manual wakeup tests, preview upcoming runs, and review per-account execution history with live progress.
+
+### Changed
+- **Codex wakeup execution is now backed by persisted desktop scheduling instead of page-local state only**: task definitions and run history are saved locally, the desktop app starts a background scheduler on launch, manual task runs refresh Codex account data after completion, and Windows wakeup runs launch the Codex CLI without showing a console window.
+
+### Fixed
+- **Modal failure feedback is now kept inside the active dialog across account, wakeup, verification, fingerprint, and instance flows**: delete/save/bind errors now keep the modal open, render in a dedicated in-modal error area, auto-scroll to the failing section, and clear stale errors before the next submit or when the modal closes.
+
+---
 ## [0.19.2] - 2026-03-23
 
 ### Fixed

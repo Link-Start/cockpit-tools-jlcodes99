@@ -382,7 +382,8 @@ export function InstancesManager<TAccount extends AccountLike>({
         setFormPath(selected);
       }
     } catch (e) {
-      setMessage({ text: String(e), tone: 'error' });
+      setFormError(String(e));
+      setFormErrorTick((prev) => prev + 1);
     }
   };
 

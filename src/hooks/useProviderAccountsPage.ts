@@ -24,6 +24,7 @@ import {
   maskSensitiveValue,
   persistPrivacyModeEnabled,
 } from '../utils/privacy';
+import { useModalErrorState } from '../components/ModalErrorMessage';
 import { useExportJsonModal } from './useExportJsonModal';
 import { parseFileCorruptedError } from '../components/FileCorruptedModal';
 
@@ -182,6 +183,8 @@ export interface UseProviderAccountsPageReturn {
   toggleTagFilterValue: (tag: string) => void;
   clearTagFilter: () => void;
   tagDeleteConfirm: { tag: string; count: number } | null;
+  tagDeleteConfirmError: string | null;
+  tagDeleteConfirmErrorScrollKey: number;
   setTagDeleteConfirm: (v: { tag: string; count: number } | null) => void;
   deletingTag: boolean;
   requestDeleteTag: (tag: string) => void;
@@ -198,6 +201,8 @@ export interface UseProviderAccountsPageReturn {
   handleDelete: (accountId: string) => void;
   handleBatchDelete: () => void;
   deleteConfirm: { ids: string[]; message: string } | null;
+  deleteConfirmError: string | null;
+  deleteConfirmErrorScrollKey: number;
   setDeleteConfirm: (v: { ids: string[]; message: string } | null) => void;
   deleting: boolean;
   confirmDelete: () => Promise<void>;
@@ -399,11 +404,20 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
   const [groupByTag, setGroupByTag] = useState(false);
   const [showTagFilter, setShowTagFilter] = useState(false);
   const [showTagModal, setShowTagModal] = useState<string | null>(null);
-  const [tagDeleteConfirm, setTagDeleteConfirm] = useState<{
+  const [tagDeleteConfirm, rawSetTagDeleteConfirm] = useState<{
     tag: string;
     count: number;
   } | null>(null);
+  const {
+    message: tagDeleteConfirmError,
+    scrollKey: tagDeleteConfirmErrorScrollKey,
+    set: setTagDeleteConfirmError,
+  } = useModalErrorState();
   const [deletingTag, setDeletingTag] = useState(false);
+  const setTagDeleteConfirm = useCallback((value: { tag: string; count: number } | null) => {
+    setTagDeleteConfirmError(null);
+    rawSetTagDeleteConfirm(value);
+  }, []);
   const tagFilterRef = useRef<HTMLDivElement | null>(null);
 
   const normalizeTag = useCallback((tag: string) => tag.trim().toLowerCase(), []);
@@ -445,6 +459,7 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
   const confirmDeleteTag = useCallback(async () => {
     if (!tagDeleteConfirm || deletingTag) return;
     setDeletingTag(true);
+    setTagDeleteConfirmError(null);
     const target = tagDeleteConfirm.tag;
     try {
       const affectedAccounts = accounts.filter((acc) =>
@@ -456,10 +471,17 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
       }
       setTagFilter((prev) => prev.filter((t) => normalizeTag(t) !== target));
       setTagDeleteConfirm(null);
+    } catch (error) {
+      setTagDeleteConfirmError(
+        t('messages.actionFailed', {
+          action: t('common.delete'),
+          error: String(error),
+        }),
+      );
     } finally {
       setDeletingTag(false);
     }
-  }, [tagDeleteConfirm, deletingTag, accounts, normalizeTag, updateAccountTags]);
+  }, [tagDeleteConfirm, deletingTag, accounts, normalizeTag, updateAccountTags, setTagDeleteConfirm, t]);
 
   const openTagModal = useCallback((accountId: string) => {
     setShowTagModal(accountId);
@@ -496,12 +518,21 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
   const [refreshing, setRefreshing] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [injecting, setInjecting] = useState<string | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<{
+  const [deleteConfirm, rawSetDeleteConfirm] = useState<{
     ids: string[];
     message: string;
   } | null>(null);
+  const {
+    message: deleteConfirmError,
+    scrollKey: deleteConfirmErrorScrollKey,
+    set: setDeleteConfirmError,
+  } = useModalErrorState();
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<{ text: string; tone?: 'error' } | null>(null);
+  const setDeleteConfirm = useCallback((value: { ids: string[]; message: string } | null) => {
+    setDeleteConfirmError(null);
+    rawSetDeleteConfirm(value);
+  }, []);
 
   useEffect(() => {
     if (!storeError) return;
@@ -567,6 +598,7 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
   const confirmDelete = useCallback(async () => {
     if (!deleteConfirm || deleting) return;
     setDeleting(true);
+    setDeleteConfirmError(null);
     try {
       await deleteAccounts(deleteConfirm.ids);
       setSelected((prev) => {
@@ -575,10 +607,17 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
         return next;
       });
       setDeleteConfirm(null);
+    } catch (error) {
+      setDeleteConfirmError(
+        t('messages.actionFailed', {
+          action: t('common.delete'),
+          error: String(error),
+        }),
+      );
     } finally {
       setDeleting(false);
     }
-  }, [deleteConfirm, deleting, deleteAccounts]);
+  }, [deleteConfirm, deleting, deleteAccounts, setDeleteConfirm, t]);
 
   // ─── Inject ───────────────────────────────────────────────────────────
   const handleInjectToVSCode = useMemo(() => {
@@ -1418,6 +1457,8 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
     toggleTagFilterValue,
     clearTagFilter,
     tagDeleteConfirm,
+    tagDeleteConfirmError,
+    tagDeleteConfirmErrorScrollKey,
     setTagDeleteConfirm,
     deletingTag,
     requestDeleteTag,
@@ -1432,6 +1473,8 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
     handleDelete,
     handleBatchDelete,
     deleteConfirm,
+    deleteConfirmError,
+    deleteConfirmErrorScrollKey,
     setDeleteConfirm,
     deleting,
     confirmDelete,

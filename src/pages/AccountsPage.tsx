@@ -59,6 +59,7 @@ import { TagEditModal } from '../components/TagEditModal'
 import { ExportJsonModal } from '../components/ExportJsonModal'
 import { AccountGroupModal, AddToGroupModal } from '../components/AccountGroupModal'
 import { GroupAccountPickerModal } from '../components/GroupAccountPickerModal'
+import { ModalErrorMessage, useModalErrorState } from '../components/ModalErrorMessage'
 import {
   AccountGroup,
   getAccountGroups,
@@ -332,17 +333,32 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
     ids: string[]
     message: string
   } | null>(null)
+  const {
+    message: deleteConfirmError,
+    scrollKey: deleteConfirmErrorScrollKey,
+    set: setDeleteConfirmError,
+  } = useModalErrorState()
   const [deleting, setDeleting] = useState(false)
   const [groupDeleteConfirm, setGroupDeleteConfirm] = useState<{
     id: string
     name: string
   } | null>(null)
+  const {
+    message: groupDeleteError,
+    scrollKey: groupDeleteErrorScrollKey,
+    set: setGroupDeleteError,
+  } = useModalErrorState()
   const [deletingGroup, setDeletingGroup] = useState(false)
   const [removingGroupAccountIds, setRemovingGroupAccountIds] = useState<Set<string>>(new Set())
   const [tagDeleteConfirm, setTagDeleteConfirm] = useState<{
     tag: string
     count: number
   } | null>(null)
+  const {
+    message: tagDeleteConfirmError,
+    scrollKey: tagDeleteConfirmErrorScrollKey,
+    set: setTagDeleteConfirmError,
+  } = useModalErrorState()
   const [deletingTag, setDeletingTag] = useState(false)
   // 指纹选择弹框
   const [fingerprints, setFingerprints] = useState<FingerprintWithStats[]>([])
@@ -350,6 +366,11 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
     null
   )
   const [selectedFpId, setSelectedFpId] = useState<string | null>(null)
+  const {
+    message: fpSelectError,
+    scrollKey: fpSelectErrorScrollKey,
+    set: setFpSelectError,
+  } = useModalErrorState()
   const originalFingerprint = fingerprints.find((fp) => fp.is_original)
   const selectableFingerprints = fingerprints.filter((fp) => !fp.is_original)
 
@@ -988,6 +1009,7 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
   }
 
   const handleDelete = (accountId: string) => {
+    setDeleteConfirmError(null)
     setDeleteConfirm({
       ids: [accountId],
       message: t('messages.deleteConfirm')
@@ -996,6 +1018,7 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
 
   const handleBatchDelete = () => {
     if (selected.size === 0) return
+    setDeleteConfirmError(null)
     setDeleteConfirm({
       ids: Array.from(selected),
       message: t('messages.batchDeleteConfirm', { count: selected.size })
@@ -1005,6 +1028,7 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
   const confirmDelete = async () => {
     if (!deleteConfirm || deleting) return
     setDeleting(true)
+    setDeleteConfirmError(null)
     try {
       await deleteAccounts(deleteConfirm.ids)
       setSelected((prev) => {
@@ -1014,6 +1038,14 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
         return next
       })
       setDeleteConfirm(null)
+      setDeleteConfirmError(null)
+    } catch (error) {
+      setDeleteConfirmError(
+        t('messages.actionFailed', {
+          action: t('common.delete'),
+          error: String(error),
+        })
+      )
     } finally {
       setDeleting(false)
     }
@@ -1470,6 +1502,7 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
   )
 
   const requestDeleteGroup = useCallback((groupId: string, groupName: string) => {
+    setGroupDeleteError(null)
     setGroupDeleteConfirm({
       id: groupId,
       name: groupName,
@@ -1480,16 +1513,17 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
     if (!groupDeleteConfirm || deletingGroup) return
 
     setDeletingGroup(true)
+    setGroupDeleteError(null)
     try {
       await deleteGroup(groupDeleteConfirm.id)
       await reloadAccountGroups()
       setGroupDeleteConfirm(null)
+      setGroupDeleteError(null)
     } catch (error) {
       console.error('Failed to delete account group:', error)
-      setMessage({
-        text: t('accounts.groups.error.deleteFailed', { error: String(error) }),
-        tone: 'error',
-      })
+      setGroupDeleteError(
+        t('accounts.groups.error.deleteFailed', { error: String(error) })
+      )
     } finally {
       setDeletingGroup(false)
     }
@@ -1514,19 +1548,21 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
     const count = accounts.filter((account) =>
       (account.tags || []).some((item) => normalizeAccountTag(item) === normalized)
     ).length
+    setTagDeleteConfirmError(null)
     setTagDeleteConfirm({ tag: normalized, count })
   }
 
   const confirmDeleteTag = async () => {
     if (!tagDeleteConfirm || deletingTag) return
     setDeletingTag(true)
+    setTagDeleteConfirmError(null)
     const target = tagDeleteConfirm.tag
     const affected = accounts.filter((account) =>
       (account.tags || []).some((item) => normalizeAccountTag(item) === target)
     )
 
     try {
-      await Promise.allSettled(
+      const results = await Promise.allSettled(
         affected.map((account) => {
           const nextTags = (account.tags || []).filter(
             (item) => normalizeAccountTag(item) !== target
@@ -1534,11 +1570,23 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
           return accountService.updateAccountTags(account.id, nextTags)
         })
       )
+
+      const firstRejected = results.find(
+        (result): result is PromiseRejectedResult => result.status === 'rejected'
+      )
+      if (firstRejected) {
+        setTagDeleteConfirmError(
+          t('messages.actionFailed', { action: t('common.delete'), error: String(firstRejected.reason) })
+        )
+        return
+      }
+
       setTagFilter((prev) => prev.filter((item) => normalizeAccountTag(item) !== target))
       await fetchAccounts()
+      setTagDeleteConfirm(null)
+      setTagDeleteConfirmError(null)
     } finally {
       setDeletingTag(false)
-      setTagDeleteConfirm(null)
     }
   }
 
@@ -1597,12 +1645,14 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
   const openFpSelectModal = (accountId: string) => {
     const account = accounts.find((a) => a.id === accountId)
     setSelectedFpId(account?.fingerprint_id || 'original')
+    setFpSelectError(null)
     setShowFpSelectModal(accountId)
   }
 
   const handleBindFingerprint = async () => {
     if (!showFpSelectModal || !selectedFpId) return
     try {
+      setFpSelectError(null)
       await accountService.bindAccountFingerprint(
         showFpSelectModal,
         selectedFpId
@@ -1610,7 +1660,7 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
       await fetchAccounts()
       setShowFpSelectModal(null)
     } catch (e) {
-      alert(t('messages.bindFailed', { error: String(e) }))
+      setFpSelectError(t('messages.bindFailed', { error: String(e) }))
     }
   }
 
@@ -3263,26 +3313,38 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
       {deleteConfirm && (
         <div
           className="modal-overlay"
-          onClick={() => !deleting && setDeleteConfirm(null)}
+          onClick={() => {
+            if (deleting) return
+            setDeleteConfirm(null)
+            setDeleteConfirmError(null)
+          }}
         >
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{t('common.confirm')}</h2>
               <button
                 className="modal-close"
-                onClick={() => !deleting && setDeleteConfirm(null)}
+                onClick={() => {
+                  if (deleting) return
+                  setDeleteConfirm(null)
+                  setDeleteConfirmError(null)
+                }}
                 aria-label={t('common.close', '关闭')}
               >
                 <X />
               </button>
             </div>
             <div className="modal-body">
+              <ModalErrorMessage message={deleteConfirmError} scrollKey={deleteConfirmErrorScrollKey} />
               <p>{deleteConfirm.message}</p>
             </div>
             <div className="modal-footer">
               <button
                 className="btn btn-secondary"
-                onClick={() => setDeleteConfirm(null)}
+                onClick={() => {
+                  setDeleteConfirm(null)
+                  setDeleteConfirmError(null)
+                }}
                 disabled={deleting}
               >
                 {t('common.cancel')}
@@ -3302,20 +3364,29 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
       {groupDeleteConfirm && (
         <div
           className="modal-overlay"
-          onClick={() => !deletingGroup && setGroupDeleteConfirm(null)}
+          onClick={() => {
+            if (deletingGroup) return
+            setGroupDeleteConfirm(null)
+            setGroupDeleteError(null)
+          }}
         >
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{t('accounts.groups.deleteTitle')}</h2>
               <button
                 className="modal-close"
-                onClick={() => !deletingGroup && setGroupDeleteConfirm(null)}
+                onClick={() => {
+                  if (deletingGroup) return
+                  setGroupDeleteConfirm(null)
+                  setGroupDeleteError(null)
+                }}
                 aria-label={t('common.close', '关闭')}
               >
                 <X />
               </button>
             </div>
             <div className="modal-body">
+              <ModalErrorMessage message={groupDeleteError} scrollKey={groupDeleteErrorScrollKey} />
               <p>
                 {t('accounts.groups.deleteConfirm', {
                   name: groupDeleteConfirm.name,
@@ -3325,7 +3396,10 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
             <div className="modal-footer">
               <button
                 className="btn btn-secondary"
-                onClick={() => setGroupDeleteConfirm(null)}
+                onClick={() => {
+                  setGroupDeleteConfirm(null)
+                  setGroupDeleteError(null)
+                }}
                 disabled={deletingGroup}
               >
                 {t('common.cancel')}
@@ -3345,20 +3419,29 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
       {tagDeleteConfirm && (
         <div
           className="modal-overlay"
-          onClick={() => !deletingTag && setTagDeleteConfirm(null)}
+          onClick={() => {
+            if (deletingTag) return
+            setTagDeleteConfirm(null)
+            setTagDeleteConfirmError(null)
+          }}
         >
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{t('common.confirm')}</h2>
               <button
                 className="modal-close"
-                onClick={() => !deletingTag && setTagDeleteConfirm(null)}
+                onClick={() => {
+                  if (deletingTag) return
+                  setTagDeleteConfirm(null)
+                  setTagDeleteConfirmError(null)
+                }}
                 aria-label={t('common.close', '关闭')}
               >
                 <X />
               </button>
             </div>
             <div className="modal-body">
+              <ModalErrorMessage message={tagDeleteConfirmError} scrollKey={tagDeleteConfirmErrorScrollKey} />
               <p>
                 {t('accounts.confirmDeleteTag', {
                   tag: tagDeleteConfirm.tag,
@@ -3370,7 +3453,10 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
             <div className="modal-footer">
               <button
                 className="btn btn-secondary"
-                onClick={() => setTagDeleteConfirm(null)}
+                onClick={() => {
+                  setTagDeleteConfirm(null)
+                  setTagDeleteConfirmError(null)
+                }}
                 disabled={deletingTag}
               >
                 {t('common.cancel')}
@@ -3391,19 +3477,26 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
       {showFpSelectModal && (
         <div
           className="modal-overlay"
-          onClick={() => setShowFpSelectModal(null)}
+          onClick={() => {
+            setShowFpSelectModal(null)
+            setFpSelectError(null)
+          }}
         >
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{t('modals.fingerprint.title')}</h2>
               <button
                 className="close-btn"
-                onClick={() => setShowFpSelectModal(null)}
+                onClick={() => {
+                  setShowFpSelectModal(null)
+                  setFpSelectError(null)
+                }}
               >
                 <X size={20} />
               </button>
             </div>
             <div className="modal-body">
+              <ModalErrorMessage message={fpSelectError} scrollKey={fpSelectErrorScrollKey} />
               <p>
                 <Trans
                   i18nKey="modals.fingerprint.desc"
@@ -3465,6 +3558,7 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
                   className="btn btn-secondary"
                   onClick={() => {
                     setShowFpSelectModal(null)
+                    setFpSelectError(null)
                     onNavigate?.('fingerprints')
                   }}
                 >
@@ -3473,7 +3567,10 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
                 <div style={{ flex: 1 }}></div>
                 <button
                   className="btn btn-secondary"
-                  onClick={() => setShowFpSelectModal(null)}
+                  onClick={() => {
+                    setShowFpSelectModal(null)
+                    setFpSelectError(null)
+                  }}
                 >
                   {t('common.cancel')}
                 </button>

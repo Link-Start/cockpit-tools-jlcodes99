@@ -1,6 +1,7 @@
 use crate::models::codex::{CodexAccount, CodexQuota, CodexTokens};
 use crate::modules::{
-    codex_account, codex_oauth, codex_quota, config, logger, openclaw_auth, opencode_auth, process,
+    codex_account, codex_oauth, codex_quota, codex_wakeup, codex_wakeup_scheduler, config,
+    logger, openclaw_auth, opencode_auth, process,
 };
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::AppHandle;
@@ -409,4 +410,62 @@ pub fn close_codex_oauth_port() -> Result<u32, String> {
     let port = codex_oauth::get_callback_port();
     let killed = process::kill_port_processes(port)?;
     Ok(killed as u32)
+}
+
+#[tauri::command]
+pub fn codex_wakeup_get_cli_status() -> Result<codex_wakeup::CodexCliStatus, String> {
+    Ok(codex_wakeup::get_cli_status())
+}
+
+#[tauri::command]
+pub fn codex_wakeup_get_state() -> Result<codex_wakeup::CodexWakeupState, String> {
+    codex_wakeup::load_state()
+}
+
+#[tauri::command]
+pub fn codex_wakeup_save_state(
+    enabled: bool,
+    tasks: Vec<codex_wakeup::CodexWakeupTask>,
+) -> Result<codex_wakeup::CodexWakeupState, String> {
+    codex_wakeup::save_state(&codex_wakeup::CodexWakeupState { enabled, tasks })
+}
+
+#[tauri::command]
+pub fn codex_wakeup_load_history() -> Result<Vec<codex_wakeup::CodexWakeupHistoryItem>, String> {
+    codex_wakeup::load_history()
+}
+
+#[tauri::command]
+pub fn codex_wakeup_clear_history() -> Result<(), String> {
+    codex_wakeup::clear_history()
+}
+
+#[tauri::command]
+pub async fn codex_wakeup_test(
+    app: AppHandle,
+    account_ids: Vec<String>,
+    prompt: Option<String>,
+    run_id: Option<String>,
+) -> Result<codex_wakeup::CodexWakeupBatchResult, String> {
+    codex_wakeup::run_batch(
+        Some(&app),
+        account_ids,
+        prompt,
+        codex_wakeup::TaskRunContext {
+            trigger_type: "test".to_string(),
+            task_id: None,
+            task_name: None,
+        },
+        run_id,
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn codex_wakeup_run_task(
+    app: AppHandle,
+    task_id: String,
+    run_id: Option<String>,
+) -> Result<codex_wakeup::CodexWakeupBatchResult, String> {
+    codex_wakeup_scheduler::run_task_now(Some(&app), &task_id, "manual_task", run_id).await
 }

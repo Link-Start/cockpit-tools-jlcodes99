@@ -28,6 +28,7 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { useTranslation } from 'react-i18next';
 import { TagEditModal } from '../components/TagEditModal';
 import { ExportJsonModal } from '../components/ExportJsonModal';
+import { ModalErrorMessage, useModalErrorState } from '../components/ModalErrorMessage';
 import { QuickSettingsPopover } from '../components/QuickSettingsPopover';
 import { MultiSelectFilterDropdown, type MultiSelectFilterOption } from '../components/MultiSelectFilterDropdown';
 import {
@@ -223,6 +224,11 @@ export function QoderAccountsPage() {
   const [showTagFilter, setShowTagFilter] = useState(false);
   const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [tagDeleteConfirm, setTagDeleteConfirm] = useState<{ tag: string; count: number } | null>(null);
+  const {
+    message: tagDeleteConfirmError,
+    scrollKey: tagDeleteConfirmErrorScrollKey,
+    set: setTagDeleteConfirmError,
+  } = useModalErrorState();
   const [deletingTag, setDeletingTag] = useState(false);
   const tagFilterRef = useRef<HTMLDivElement | null>(null);
   const [groupByTag, setGroupByTag] = useState(false);
@@ -651,6 +657,7 @@ export function QoderAccountsPage() {
         return hasTag ? acc + 1 : acc;
       }, 0);
       if (count <= 0) return;
+      setTagDeleteConfirmError(null);
       setTagDeleteConfirm({ tag, count });
     },
     [accounts],
@@ -658,12 +665,14 @@ export function QoderAccountsPage() {
 
   const confirmDeleteTag = useCallback(async () => {
     if (!tagDeleteConfirm || deletingTag) return;
+    setTagDeleteConfirmError(null);
     const normalized = normalizeTag(tagDeleteConfirm.tag);
     const targets = accounts.filter((account) =>
       (account.tags || []).some((item) => normalizeTag(item) === normalized),
     );
     if (targets.length === 0) {
       setTagDeleteConfirm(null);
+      setTagDeleteConfirmError(null);
       return;
     }
 
@@ -675,12 +684,12 @@ export function QoderAccountsPage() {
       }
       setTagFilter((prev) => prev.filter((item) => normalizeTag(item) !== normalized));
       setTagDeleteConfirm(null);
+      setTagDeleteConfirmError(null);
       setMessage({ text: t('accounts.tagUpdated', '标签已更新') });
     } catch (error) {
-      setMessage({
-        tone: 'error',
-        text: t('accounts.deleteTagFailed', '删除标签失败：{{error}}', { error: String(error) }),
-      });
+      setTagDeleteConfirmError(
+        t('accounts.deleteTagFailed', '删除标签失败：{{error}}', { error: String(error) }),
+      );
     } finally {
       setDeletingTag(false);
     }
@@ -1906,19 +1915,28 @@ export function QoderAccountsPage() {
       )}
 
       {tagDeleteConfirm && (
-        <div className="modal-overlay" onClick={() => !deletingTag && setTagDeleteConfirm(null)}>
+        <div className="modal-overlay" onClick={() => {
+          if (deletingTag) return;
+          setTagDeleteConfirm(null);
+          setTagDeleteConfirmError(null);
+        }}>
           <div className="modal" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <h2>{t('common.confirm')}</h2>
               <button
                 className="modal-close"
-                onClick={() => !deletingTag && setTagDeleteConfirm(null)}
+                onClick={() => {
+                  if (deletingTag) return;
+                  setTagDeleteConfirm(null);
+                  setTagDeleteConfirmError(null);
+                }}
                 aria-label={t('common.close', '关闭')}
               >
                 <X />
               </button>
             </div>
             <div className="modal-body">
+              <ModalErrorMessage message={tagDeleteConfirmError} scrollKey={tagDeleteConfirmErrorScrollKey} />
               <p>
                 {t('accounts.confirmDeleteTag', 'Delete tag "{{tag}}"? This tag will be removed from {{count}} accounts.', {
                   tag: tagDeleteConfirm.tag,
@@ -1927,7 +1945,10 @@ export function QoderAccountsPage() {
               </p>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setTagDeleteConfirm(null)} disabled={deletingTag}>
+              <button className="btn btn-secondary" onClick={() => {
+                setTagDeleteConfirm(null);
+                setTagDeleteConfirmError(null);
+              }} disabled={deletingTag}>
                 {t('common.cancel')}
               </button>
               <button className="btn btn-danger" onClick={confirmDeleteTag} disabled={deletingTag}>

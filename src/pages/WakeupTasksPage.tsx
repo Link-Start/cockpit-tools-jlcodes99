@@ -17,6 +17,7 @@ import {
   maskSensitiveValue,
   PRIVACY_MODE_CHANGED_EVENT,
 } from '../utils/privacy';
+import { ModalErrorMessage, useModalErrorState } from '../components/ModalErrorMessage';
 import { OverviewTabsHeader } from '../components/OverviewTabsHeader';
 
 const TASKS_STORAGE_KEY = 'agtools.wakeup.tasks';
@@ -464,6 +465,12 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
   const [historyRecords, setHistoryRecords] = useState<WakeupHistoryRecord[]>([]);
   const [testing, setTesting] = useState(false);
   const [showTestModal, setShowTestModal] = useState(false);
+  const {
+    message: testModalError,
+    scrollKey: testModalErrorScrollKey,
+    report: reportTestModalError,
+    clear: clearTestModalError,
+  } = useModalErrorState('');
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [privacyModeEnabled, setPrivacyModeEnabled] = useState<boolean>(() =>
     isPrivacyModeEnabledByDefault(),
@@ -488,7 +495,12 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
   const [formMaxOutputTokens, setFormMaxOutputTokens] = useState(0);
   const [formCrontab, setFormCrontab] = useState('');
   const [formCrontabError, setFormCrontabError] = useState('');
-  const [formError, setFormError] = useState('');
+  const {
+    message: formError,
+    scrollKey: formErrorScrollKey,
+    report: reportFormError,
+    clear: clearFormError,
+  } = useModalErrorState('');
   const [formTimeWindowEnabled, setFormTimeWindowEnabled] = useState(false);
   const [formTimeWindowStart, setFormTimeWindowStart] = useState('09:00');
   const [formTimeWindowEnd, setFormTimeWindowEnd] = useState('18:00');
@@ -518,6 +530,12 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
     () => filterAvailableModels(availableModels, quotaModelKeys),
     [availableModels, quotaModelKeys],
   );
+
+  const closeTestModal = useCallback(() => {
+    if (testing) return;
+    clearTestModalError();
+    setShowTestModal(false);
+  }, [clearTestModalError, testing]);
   const modelById = useMemo(() => {
     const map = new Map<string, AvailableModel>();
     filteredModels.forEach((model) => map.set(model.id, model));
@@ -764,7 +782,7 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
     }
   };
 
-  const ensureWakeupRuntimeReady = async (): Promise<boolean> => {
+  const ensureWakeupRuntimeReady = async (options?: { reportToTestModal?: boolean }): Promise<boolean> => {
     try {
       await invoke('wakeup_ensure_runtime_ready');
       return true;
@@ -776,10 +794,19 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
             detail: { app: 'antigravity', retry: { kind: 'default' } },
           }),
         );
-        setNotice({ text: t('appPath.modal.desc', { app: 'Antigravity' }), tone: 'warning' });
+        const pathErrorText = t('appPath.modal.desc', { app: 'Antigravity' });
+        if (options?.reportToTestModal) {
+          reportTestModalError(pathErrorText);
+        } else {
+          setNotice({ text: pathErrorText, tone: 'warning' });
+        }
         return false;
       }
-      setNotice({ text: message, tone: 'error' });
+      if (options?.reportToTestModal) {
+        reportTestModalError(message);
+      } else {
+        setNotice({ text: message, tone: 'error' });
+      }
       return false;
     }
   };
@@ -877,18 +904,19 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
 
   const runImmediateTest = async () => {
     if (testing) return;
+    clearTestModalError();
     const models = testSelectedModels;
     if (models.length === 0) {
-      setNotice({ text: t('wakeup.notice.testMissingModel'), tone: 'warning' });
+      reportTestModalError(t('wakeup.notice.testMissingModel'));
       return;
     }
     const selectedAccounts = resolveAccounts(testSelectedAccounts);
     if (selectedAccounts.length === 0) {
-      setNotice({ text: t('wakeup.notice.testMissingAccount'), tone: 'warning' });
+      reportTestModalError(t('wakeup.notice.testMissingAccount'));
       return;
     }
 
-    const runtimeReady = await ensureWakeupRuntimeReady();
+    const runtimeReady = await ensureWakeupRuntimeReady({ reportToTestModal: true });
     if (!runtimeReady) {
       return;
     }
@@ -963,12 +991,13 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
         appendHistoryRecords(historyItems);
       }
     }
-    setTesting(false);
-    setShowTestModal(false);
-
     if (failed.length > 0) {
-      setNotice({ text: t('wakeup.notice.testFailed', { count: failed.length }), tone: 'error' });
+      setTesting(false);
+      reportTestModalError(t('wakeup.notice.testFailed', { count: failed.length }));
     } else {
+      setTesting(false);
+      clearTestModalError();
+      setShowTestModal(false);
       setNotice({ text: t('wakeup.notice.testCompleted'), tone: 'success' });
     }
   };
@@ -1046,7 +1075,7 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
     setCustomDailyTime('');
     setCustomWeeklyTime('');
     setCustomFallbackTime('');
-    setFormError('');
+    clearFormError();
     setShowModal(true);
   };
 
@@ -1082,7 +1111,7 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
     setCustomDailyTime('');
     setCustomWeeklyTime('');
     setCustomFallbackTime('');
-    setFormError('');
+    clearFormError();
     setShowModal(true);
   };
 
@@ -1236,15 +1265,15 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
   const handleSaveTask = async () => {
     const name = formName.trim();
     if (!name) {
-      setFormError(t('wakeup.notice.nameRequired'));
+      reportFormError(t('wakeup.notice.nameRequired'));
       return;
     }
     if (formSelectedAccounts.length === 0) {
-      setFormError(t('wakeup.notice.accountRequired'));
+      reportFormError(t('wakeup.notice.accountRequired'));
       return;
     }
     if (formSelectedModels.length === 0) {
-      setFormError(t('wakeup.notice.modelRequired'));
+      reportFormError(t('wakeup.notice.modelRequired'));
       return;
     }
     if (formTriggerMode === 'crontab' && !formCrontab.trim()) {
@@ -1575,7 +1604,7 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
       )}
 
       {showTestModal && (
-        <div className="modal-overlay" onClick={() => setShowTestModal(false)}>
+        <div className="modal-overlay" onClick={closeTestModal}>
           <div
             className="modal wakeup-modal wakeup-test-modal"
             onClick={(event) => event.stopPropagation()}
@@ -1584,7 +1613,7 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
               <h2>{t('wakeup.dialogs.testTitle')}</h2>
               <button
                 className="modal-close"
-                onClick={() => setShowTestModal(false)}
+                onClick={closeTestModal}
                 aria-label={t('common.close', '关闭')}
               >
                 <X />
@@ -1654,9 +1683,14 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
                 />
                 <p className="wakeup-hint">{t('wakeup.form.maxTokensHint')}</p>
               </div>
+              <ModalErrorMessage
+                message={testModalError}
+                position="bottom"
+                scrollKey={testModalErrorScrollKey}
+              />
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowTestModal(false)}>
+              <button className="btn btn-secondary" onClick={closeTestModal}>
                 {t('common.cancel')}
               </button>
               <button
@@ -2219,11 +2253,11 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
                 </div>
               )}
 
-              {formError && (
-                <div className="form-error-message" style={{ marginBottom: 12, padding: '8px 12px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: 6, fontSize: 13 }}>
-                  {formError}
-                </div>
-              )}
+              <ModalErrorMessage
+                message={formError}
+                position="bottom"
+                scrollKey={formErrorScrollKey}
+              />
               <div className="modal-actions">
                 <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
                   {t('common.cancel')}

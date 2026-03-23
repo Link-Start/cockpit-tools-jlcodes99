@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ExportJsonModal } from '../components/ExportJsonModal';
+import { ModalErrorMessage } from '../components/ModalErrorMessage';
 import { MultiSelectFilterDropdown, type MultiSelectFilterOption } from '../components/MultiSelectFilterDropdown';
 import { QuickSettingsPopover } from '../components/QuickSettingsPopover';
 import { TagEditModal } from '../components/TagEditModal';
@@ -233,6 +234,8 @@ export function ZedAccountsPage() {
     toggleTagFilterValue,
     clearTagFilter,
     tagDeleteConfirm,
+    tagDeleteConfirmError,
+    tagDeleteConfirmErrorScrollKey,
     setTagDeleteConfirm,
     deletingTag,
     requestDeleteTag,
@@ -247,6 +250,8 @@ export function ZedAccountsPage() {
     handleDelete,
     handleBatchDelete,
     deleteConfirm,
+    deleteConfirmError,
+    deleteConfirmErrorScrollKey,
     setDeleteConfirm,
     deleting,
     confirmDelete,
@@ -1486,6 +1491,7 @@ export function ZedAccountsPage() {
               </button>
             </div>
             <div className="modal-body">
+              <ModalErrorMessage message={deleteConfirmError} scrollKey={deleteConfirmErrorScrollKey} />
               <p>{deleteConfirm.message}</p>
             </div>
             <div className="modal-footer">
@@ -1514,6 +1520,7 @@ export function ZedAccountsPage() {
               </button>
             </div>
             <div className="modal-body">
+              <ModalErrorMessage message={tagDeleteConfirmError} scrollKey={tagDeleteConfirmErrorScrollKey} />
               <p>
                 {t('accounts.confirmDeleteTag', 'Delete tag "{{tag}}"? This tag will be removed from {{count}} accounts.', {
                   tag: tagDeleteConfirm.tag,

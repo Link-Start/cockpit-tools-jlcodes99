@@ -30,6 +30,7 @@ import { useGitHubCopilotAccountStore } from '../stores/useGitHubCopilotAccountS
 import * as githubCopilotService from '../services/githubCopilotService';
 import { TagEditModal } from '../components/TagEditModal';
 import { ExportJsonModal } from '../components/ExportJsonModal';
+import { ModalErrorMessage } from '../components/ModalErrorMessage';
 import { buildGitHubCopilotAccountPresentation } from '../presentation/platformAccountPresentation';
 
 import { GitHubCopilotOverviewTabsHeader, GitHubCopilotTab } from '../components/GitHubCopilotOverviewTabsHeader';
@@ -102,11 +103,11 @@ export function GitHubCopilotAccountsPage() {
     selected, toggleSelect, toggleSelectAll,
     tagFilter, groupByTag, setGroupByTag, showTagFilter, setShowTagFilter,
     showTagModal, setShowTagModal, tagFilterRef, availableTags,
-    toggleTagFilterValue, clearTagFilter, tagDeleteConfirm, setTagDeleteConfirm,
+    toggleTagFilterValue, clearTagFilter, tagDeleteConfirm, tagDeleteConfirmError, tagDeleteConfirmErrorScrollKey, setTagDeleteConfirm,
     deletingTag, requestDeleteTag, confirmDeleteTag, openTagModal, handleSaveTags,
     refreshing, refreshingAll, injecting,
     handleRefresh, handleRefreshAll, handleDelete, handleBatchDelete,
-    deleteConfirm, setDeleteConfirm, deleting, confirmDelete,
+    deleteConfirm, deleteConfirmError, deleteConfirmErrorScrollKey, setDeleteConfirm, deleting, confirmDelete,
     message, setMessage,
     exporting, handleExport, handleExportByIds, getScopedSelectedCount,
     showExportModal, closeExportModal, exportJsonContent, exportJsonHidden,
@@ -1204,6 +1205,7 @@ export function GitHubCopilotAccountsPage() {
               </button>
             </div>
             <div className="modal-body">
+              <ModalErrorMessage message={deleteConfirmError} scrollKey={deleteConfirmErrorScrollKey} />
               <p>{deleteConfirm.message}</p>
             </div>
             <div className="modal-footer">
@@ -1232,6 +1234,7 @@ export function GitHubCopilotAccountsPage() {
               </button>
             </div>
             <div className="modal-body">
+              <ModalErrorMessage message={tagDeleteConfirmError} scrollKey={tagDeleteConfirmErrorScrollKey} />
               <p>
                 {t('accounts.confirmDeleteTag', 'Delete tag "{{tag}}"? This tag will be removed from {{count}} accounts.', { tag: tagDeleteConfirm.tag, count: tagDeleteConfirm.count })}
               </p>

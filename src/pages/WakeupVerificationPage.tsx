@@ -5,6 +5,7 @@ import { confirm as confirmDialog } from '@tauri-apps/plugin-dialog';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { ShieldCheck, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { ModalErrorMessage, useModalErrorState } from '../components/ModalErrorMessage';
 import { OverviewTabsHeader } from '../components/OverviewTabsHeader';
 import { useAccountStore } from '../stores/useAccountStore';
 import { Page } from '../types/navigation';
@@ -177,6 +178,12 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
 
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const {
+    message: configModalError,
+    scrollKey: configModalErrorScrollKey,
+    report: reportConfigModalError,
+    clear: clearConfigModalError,
+  } = useModalErrorState('');
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState('');
   const [batchAccountIds, setBatchAccountIds] = useState<string[]>([]);
@@ -494,11 +501,18 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
     };
   }, [detailMode]);
 
+  const closeConfigModal = () => {
+    if (running) return;
+    clearConfigModalError();
+    setShowConfigModal(false);
+  };
+
   const openConfigModal = () => {
     setSelectedAccounts(accounts.map((account) => account.id));
     if (!selectedModel && preferredDefaultModelId) {
       setSelectedModel(preferredDefaultModelId);
     }
+    clearConfigModalError();
     setShowConfigModal(true);
   };
 
@@ -644,7 +658,7 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
     }
   };
 
-  const ensureWakeupRuntimeReady = useCallback(async (): Promise<boolean> => {
+  const ensureWakeupRuntimeReady = useCallback(async (options?: { reportToConfigModal?: boolean }): Promise<boolean> => {
     try {
       await invoke('wakeup_ensure_runtime_ready');
       return true;
@@ -656,25 +670,35 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
             detail: { app: 'antigravity', retry: { kind: 'default' } },
           }),
         );
-        setNotice({ text: t('appPath.modal.desc', { app: 'Antigravity' }), tone: 'warning' });
+        const pathErrorText = t('appPath.modal.desc', { app: 'Antigravity' });
+        if (options?.reportToConfigModal) {
+          reportConfigModalError(pathErrorText);
+        } else {
+          setNotice({ text: pathErrorText, tone: 'warning' });
+        }
         return false;
       }
-      setNotice({ text: message, tone: 'error' });
+      if (options?.reportToConfigModal) {
+        reportConfigModalError(message);
+      } else {
+        setNotice({ text: message, tone: 'error' });
+      }
       return false;
     }
-  }, [t]);
+  }, [reportConfigModalError, t]);
 
   const startBatchVerification = async () => {
     if (running) return;
+    clearConfigModalError();
     if (!selectedModel) {
-      setNotice({ text: t('wakeup.notice.testMissingModel'), tone: 'warning' });
+      reportConfigModalError(t('wakeup.notice.testMissingModel'));
       return;
     }
     if (selectedAccounts.length === 0) {
-      setNotice({ text: t('wakeup.notice.testMissingAccount'), tone: 'warning' });
+      reportConfigModalError(t('wakeup.notice.testMissingAccount'));
       return;
     }
-    const runtimeReady = await ensureWakeupRuntimeReady();
+    const runtimeReady = await ensureWakeupRuntimeReady({ reportToConfigModal: true });
     if (!runtimeReady) {
       return;
     }
@@ -775,8 +799,16 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
       await fetchHistory();
     } catch (error) {
       console.error('批量验证失败:', error);
+      activeBatchIdRef.current = null;
       setRunning(false);
-      setNotice({ text: String(error), tone: 'error' });
+      setProgress(null);
+      setLiveStates({});
+      setBatchAccountIds([]);
+      setRunningStartedAt(null);
+      setShowDetailModal(false);
+      setDetailBatchId(null);
+      setShowConfigModal(true);
+      reportConfigModalError(String(error));
     }
   };
 
@@ -959,15 +991,16 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
       </div>
 
       {showConfigModal && (
-        <div className="modal-overlay" onClick={() => !running && setShowConfigModal(false)}>
+        <div className="modal-overlay" onClick={closeConfigModal}>
           <div className="modal wakeup-modal verification-config-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{t('wakeup.verification.actions.runCheckNow', '立即检测')}</h2>
-              <button className="modal-close" onClick={() => setShowConfigModal(false)} disabled={running}>
+              <button className="modal-close" onClick={closeConfigModal} disabled={running}>
                 <X />
               </button>
             </div>
             <div className="modal-body verification-modal-body">
+              <ModalErrorMessage message={configModalError} scrollKey={configModalErrorScrollKey} />
               <div className="wakeup-form-group">
                 <label>{t('wakeup.form.modelSelect')}</label>
                 <div className="verification-select-wrap">
@@ -1044,7 +1077,7 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowConfigModal(false)} disabled={running}>
+              <button className="btn btn-secondary" onClick={closeConfigModal} disabled={running}>
                 {t('common.cancel')}
               </button>
               <button

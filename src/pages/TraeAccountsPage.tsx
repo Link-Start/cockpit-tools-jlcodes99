@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { TagEditModal } from '../components/TagEditModal';
 import { ExportJsonModal } from '../components/ExportJsonModal';
+import { ModalErrorMessage } from '../components/ModalErrorMessage';
 import { QuickSettingsPopover } from '../components/QuickSettingsPopover';
 import {
   PlatformOverviewTab,
@@ -161,6 +162,8 @@ export function TraeAccountsPage() {
     toggleTagFilterValue,
     clearTagFilter,
     tagDeleteConfirm,
+    tagDeleteConfirmError,
+    tagDeleteConfirmErrorScrollKey,
     setTagDeleteConfirm,
     deletingTag,
     requestDeleteTag,
@@ -175,6 +178,8 @@ export function TraeAccountsPage() {
     handleDelete,
     handleBatchDelete,
     deleteConfirm,
+    deleteConfirmError,
+    deleteConfirmErrorScrollKey,
     setDeleteConfirm,
     deleting,
     confirmDelete,
@@ -1473,6 +1478,7 @@ export function TraeAccountsPage() {
                   </button>
                 </div>
                 <div className="modal-body">
+                  <ModalErrorMessage message={deleteConfirmError} scrollKey={deleteConfirmErrorScrollKey} />
                   <p>{deleteConfirm.message}</p>
                 </div>
                 <div className="modal-footer">
@@ -1505,6 +1511,7 @@ export function TraeAccountsPage() {
                   </button>
                 </div>
                 <div className="modal-body">
+                  <ModalErrorMessage message={tagDeleteConfirmError} scrollKey={tagDeleteConfirmErrorScrollKey} />
                   <p>
                     {t(
                       'accounts.confirmDeleteTag',

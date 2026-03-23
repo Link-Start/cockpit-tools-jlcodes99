@@ -607,17 +607,6 @@ async fn fetch_remote_bundle(user_id: &str, access_token: &str) -> Result<ZedFet
     })
 }
 
-fn serialize_fetch_bundle_for_log(bundle: &ZedFetchBundle) -> String {
-    serde_json::to_string(&json!({
-        "user_raw": bundle.user_raw,
-        "subscription_raw": bundle.subscription_raw,
-        "usage_raw": bundle.usage_raw,
-        "usage_tokens_raw": bundle.usage_tokens_raw,
-        "preferences_raw": bundle.preferences_raw,
-    }))
-    .unwrap_or_else(|err| format!("{{\"serialize_error\":\"{}\"}}", err))
-}
-
 fn build_account_id(user_id: &str) -> String {
     format!("zed_{}", sanitize_account_id_component(user_id))
 }
@@ -822,11 +811,6 @@ pub async fn refresh_account(account_id: &str) -> Result<ZedAccount, String> {
     let stored =
         load_stored_account(account_id).ok_or_else(|| format!("Zed 账号不存在: {}", account_id))?;
     let bundle = fetch_remote_bundle(&stored.public_account.user_id, &stored.access_token).await?;
-    logger::log_info(&format!(
-        "[Zed] 刷新配额原始返回: account_id={}, payload={}",
-        account_id,
-        serialize_fetch_bundle_for_log(&bundle)
-    ));
     let refreshed = build_stored_account_from_bundle(
         &stored.public_account.user_id,
         &stored.access_token,
