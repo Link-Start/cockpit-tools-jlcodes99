@@ -7,6 +7,16 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [0.20.2] - 2026-03-23
+
+### Fixed
+- **Bundled macOS Codex wakeup builds now detect Homebrew-installed Codex CLI and its Node runtime without depending on the terminal PATH**: the desktop app now augments packaged GUI detection with standard macOS CLI install directories, resolves the `codex` launcher and required `node` interpreter through the same runtime search path, and prevents released `.app` builds from falsely reporting that Codex CLI is not installed when it is available under `/opt/homebrew` or `/usr/local`.
+- **Windows Codex wakeup CLI checks no longer flash a black console window during runtime probing**: Codex CLI version probing and wakeup command launches now apply the hidden-window process flags consistently, so packaged desktop builds no longer briefly open a console window when checking CLI availability or running a wakeup command.
+
+### Changed
+- **Codex wakeup CLI probing now writes targeted desktop logs for packaged-app diagnosis**: CLI rechecks, version probing, runtime resolution, and wakeup execution now emit `[CodexWakeup][CLI]` log lines with the resolved search directories, launcher path, Node path, and process failure output so packaged-app environment issues can be diagnosed directly from `app.log`.
+
+---
 ## [0.20.1] - 2026-03-23
 
 ### Added

@@ -1,4 +1,4 @@
-use crate::modules::{account, codex_account};
+use crate::modules::{account, codex_account, logger};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine as _;
 use serde::{Deserialize, Serialize};
@@ -12,6 +12,7 @@ use tauri::{AppHandle, Emitter};
 const TASKS_FILE: &str = "codex_wakeup_tasks.json";
 const HISTORY_FILE: &str = "codex_wakeup_history.json";
 const MAX_HISTORY_ITEMS: usize = 300;
+const MAX_LOGGED_SEARCH_DIRS: usize = 8;
 pub const DEFAULT_PROMPT: &str = "hi";
 pub const PROGRESS_EVENT: &str = "codex://wakeup-progress";
 
@@ -176,6 +177,7 @@ pub struct CodexWakeupProgressPayload {
 struct ResolvedBinary {
     path: PathBuf,
     source: String,
+    node_path: Option<PathBuf>,
 }
 
 #[derive(Debug)]
@@ -217,6 +219,39 @@ fn install_hints() -> Vec<CodexCliInstallHint> {
         });
     }
     hints
+}
+
+fn summarize_path_dirs_for_log(dirs: &[PathBuf]) -> String {
+    if dirs.is_empty() {
+        return "<empty>".to_string();
+    }
+
+    let mut preview: Vec<String> = dirs
+        .iter()
+        .take(MAX_LOGGED_SEARCH_DIRS)
+        .map(|item| item.display().to_string())
+        .collect();
+
+    if dirs.len() > MAX_LOGGED_SEARCH_DIRS {
+        preview.push(format!("...(+{} more)", dirs.len() - MAX_LOGGED_SEARCH_DIRS));
+    }
+
+    preview.join(" | ")
+}
+
+fn truncate_log_text(value: &str, max_chars: usize) -> String {
+    let count = value.chars().count();
+    if count <= max_chars {
+        return value.to_string();
+    }
+    let mut result = value.chars().take(max_chars).collect::<String>();
+    result.push_str("...");
+    result
+}
+
+fn format_optional_path_for_log(path: Option<&Path>) -> String {
+    path.map(|item| item.display().to_string())
+        .unwrap_or_else(|| "<none>".to_string())
 }
 
 fn normalize_text(value: Option<&str>) -> Option<String> {
@@ -333,22 +368,53 @@ fn binary_candidates() -> &'static [&'static str] {
     &["codex"]
 }
 
-fn resolve_binary_from_path() -> Option<PathBuf> {
-    let dirs: Vec<PathBuf> = std::env::var_os("PATH")
+#[cfg(target_os = "windows")]
+fn node_binary_candidates() -> &'static [&'static str] {
+    &["node.exe", "node.cmd", "node.bat", "node"]
+}
+
+#[cfg(not(target_os = "windows"))]
+fn node_binary_candidates() -> &'static [&'static str] {
+    &["node"]
+}
+
+fn collect_path_dirs() -> Vec<PathBuf> {
+    std::env::var_os("PATH")
         .map(|paths| std::env::split_paths(&paths).collect())
-        .unwrap_or_default();
+        .unwrap_or_default()
+}
 
-    #[cfg(target_os = "windows")]
-    let dirs = {
-        let mut dirs = dirs;
-        if let Some(app_data) = std::env::var_os("APPDATA") {
-            dirs.push(PathBuf::from(app_data).join("npm"));
-        }
-        dirs
-    };
+#[cfg(target_os = "macos")]
+fn append_platform_cli_dirs(dirs: &mut Vec<PathBuf>) {
+    for dir in [
+        "/opt/homebrew/bin",
+        "/opt/homebrew/sbin",
+        "/usr/local/bin",
+        "/usr/local/sbin",
+    ] {
+        push_unique_dir(dirs, PathBuf::from(dir));
+    }
+}
 
+#[cfg(target_os = "windows")]
+fn append_platform_cli_dirs(dirs: &mut Vec<PathBuf>) {
+    if let Some(app_data) = std::env::var_os("APPDATA") {
+        push_unique_dir(dirs, PathBuf::from(app_data).join("npm"));
+    }
+}
+
+#[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
+fn append_platform_cli_dirs(_dirs: &mut Vec<PathBuf>) {}
+
+fn collect_runtime_search_dirs() -> Vec<PathBuf> {
+    let mut dirs = collect_path_dirs();
+    append_platform_cli_dirs(&mut dirs);
+    dirs
+}
+
+fn resolve_binary_in_dirs(dirs: &[PathBuf], candidates: &[&str]) -> Option<PathBuf> {
     for dir in dirs {
-        for candidate in binary_candidates() {
+        for candidate in candidates {
             let path = dir.join(candidate);
             if path.is_file() {
                 return Some(path);
@@ -359,67 +425,335 @@ fn resolve_binary_from_path() -> Option<PathBuf> {
     None
 }
 
+fn push_unique_dir(dirs: &mut Vec<PathBuf>, dir: PathBuf) {
+    if dir.as_os_str().is_empty() {
+        return;
+    }
+    if !dirs.iter().any(|existing| existing == &dir) {
+        dirs.push(dir);
+    }
+}
+
+fn is_node_binary_name(value: &str) -> bool {
+    matches!(
+        value.trim().to_ascii_lowercase().as_str(),
+        "node" | "node.exe" | "node.cmd" | "node.bat"
+    )
+}
+
+fn read_script_header_line(path: &Path) -> Option<String> {
+    let bytes = fs::read(path).ok()?;
+    let first_line = bytes.split(|byte| *byte == b'\n').next()?;
+    Some(
+        String::from_utf8_lossy(first_line)
+            .trim_end_matches('\r')
+            .to_string(),
+    )
+}
+
+#[derive(Debug, Clone)]
+enum NodeLaunchRequirement {
+    NotNeeded,
+    Search,
+    Direct(PathBuf),
+}
+
+fn parse_node_launch_requirement(path: &Path) -> NodeLaunchRequirement {
+    let extension = path
+        .extension()
+        .and_then(|item| item.to_str())
+        .map(|item| item.trim().to_ascii_lowercase());
+    if matches!(extension.as_deref(), Some("js" | "mjs" | "cjs")) {
+        return NodeLaunchRequirement::Search;
+    }
+
+    let Some(line) = read_script_header_line(path) else {
+        return NodeLaunchRequirement::NotNeeded;
+    };
+    let Some(shebang) = line.strip_prefix("#!") else {
+        return NodeLaunchRequirement::NotNeeded;
+    };
+    let shebang = shebang.trim();
+    if shebang.is_empty() {
+        return NodeLaunchRequirement::NotNeeded;
+    }
+
+    let mut parts = shebang.split_whitespace();
+    let Some(program) = parts.next() else {
+        return NodeLaunchRequirement::NotNeeded;
+    };
+
+    let program_path = PathBuf::from(program);
+    if program_path
+        .file_name()
+        .and_then(|item| item.to_str())
+        .map(is_node_binary_name)
+        .unwrap_or(false)
+    {
+        return NodeLaunchRequirement::Direct(program_path);
+    }
+
+    if program_path
+        .file_name()
+        .and_then(|item| item.to_str())
+        .map(|item| item.eq_ignore_ascii_case("env"))
+        .unwrap_or(false)
+    {
+        for token in parts {
+            if token == "-S" {
+                continue;
+            }
+            if token.contains('=') {
+                continue;
+            }
+            if is_node_binary_name(token) {
+                return NodeLaunchRequirement::Search;
+            }
+            break;
+        }
+    }
+
+    NodeLaunchRequirement::NotNeeded
+}
+
+fn resolve_binary_from_path() -> Option<PathBuf> {
+    let dirs = collect_runtime_search_dirs();
+
+    logger::log_info(&format!(
+        "[CodexWakeup][CLI] 扫描 CLI 搜索目录查找 codex: 目录数={}, 预览={}",
+        dirs.len(),
+        summarize_path_dirs_for_log(&dirs)
+    ));
+
+    resolve_binary_in_dirs(&dirs, binary_candidates())
+}
+
+fn resolve_node_from_binary_path(binary_path: &Path) -> Option<PathBuf> {
+    let mut dirs = collect_runtime_search_dirs();
+
+    if let Some(parent) = binary_path.parent() {
+        push_unique_dir(&mut dirs, parent.to_path_buf());
+    }
+
+    for ancestor in binary_path.ancestors().skip(1) {
+        push_unique_dir(&mut dirs, ancestor.join("bin"));
+    }
+
+    logger::log_info(&format!(
+        "[CodexWakeup][CLI] 扫描 node 解释器目录: codex_path={}, 目录数={}, 预览={}",
+        binary_path.display(),
+        dirs.len(),
+        summarize_path_dirs_for_log(&dirs)
+    ));
+
+    resolve_binary_in_dirs(&dirs, node_binary_candidates())
+}
+
+fn resolve_node_for_binary(binary_path: &Path) -> Result<Option<PathBuf>, String> {
+    match parse_node_launch_requirement(binary_path) {
+        NodeLaunchRequirement::NotNeeded => {
+            logger::log_info(&format!(
+                "[CodexWakeup][CLI] CLI 无需额外 Node 解释器: {}",
+                binary_path.display()
+            ));
+            Ok(None)
+        }
+        NodeLaunchRequirement::Direct(path) => {
+            if path.is_file() {
+                logger::log_info(&format!(
+                    "[CodexWakeup][CLI] CLI 使用 shebang 指定的 Node 解释器: codex_path={}, node_path={}",
+                    binary_path.display(),
+                    path.display()
+                ));
+                Ok(Some(path))
+            } else {
+                let err = format!(
+                    "Codex CLI 指定的 Node.js 不存在: {}",
+                    path.display()
+                );
+                logger::log_warn(&format!(
+                    "[CodexWakeup][CLI] {} | codex_path={}",
+                    err,
+                    binary_path.display()
+                ));
+                Err(err)
+            }
+        }
+        NodeLaunchRequirement::Search => {
+            logger::log_info(&format!(
+                "[CodexWakeup][CLI] CLI 需要通过 PATH 解析 Node 解释器: {}",
+                binary_path.display()
+            ));
+            resolve_node_from_binary_path(binary_path)
+                .map(|path| {
+                    logger::log_info(&format!(
+                        "[CodexWakeup][CLI] 已解析 Node 解释器: codex_path={}, node_path={}",
+                        binary_path.display(),
+                        path.display()
+                    ));
+                    Some(path)
+                })
+                .ok_or_else(|| {
+                    let err = format!(
+                    "Codex CLI 依赖 Node.js，但未找到可用的 node 解释器: {}",
+                    binary_path.display()
+                    );
+                    logger::log_warn(&format!("[CodexWakeup][CLI] {}", err));
+                    err
+                })
+        }
+    }
+}
+
+fn build_resolved_binary(path: PathBuf, source: String) -> Result<ResolvedBinary, String> {
+    let node_path = resolve_node_for_binary(&path)?;
+    Ok(ResolvedBinary {
+        path,
+        source,
+        node_path,
+    })
+}
+
 fn resolve_binary() -> Result<ResolvedBinary, String> {
+    let code_cli_path = std::env::var("CODEX_CLI_PATH")
+        .ok()
+        .map(|item| item.trim().to_string())
+        .filter(|item| !item.is_empty());
+    logger::log_info(&format!(
+        "[CodexWakeup][CLI] 开始检测 CLI: CODEX_CLI_PATH={}, PATH目录数={}, 搜索目录数={}",
+        code_cli_path.as_deref().unwrap_or("<unset>"),
+        collect_path_dirs().len(),
+        collect_runtime_search_dirs().len()
+    ));
+
     if let Ok(raw) = std::env::var("CODEX_CLI_PATH") {
         let trimmed = raw.trim();
         if !trimmed.is_empty() {
             let path = PathBuf::from(trimmed);
             if path.is_file() {
-                return Ok(ResolvedBinary {
-                    path,
-                    source: "CODEX_CLI_PATH".to_string(),
-                });
+                logger::log_info(&format!(
+                    "[CodexWakeup][CLI] 命中 CODEX_CLI_PATH: {}",
+                    path.display()
+                ));
+                return build_resolved_binary(path, "CODEX_CLI_PATH".to_string());
             }
-            return Err(format!("CODEX_CLI_PATH 指向的文件不存在: {}", trimmed));
+            let err = format!("CODEX_CLI_PATH 指向的文件不存在: {}", trimmed);
+            logger::log_warn(&format!("[CodexWakeup][CLI] {}", err));
+            return Err(err);
         }
     }
 
     if let Some(path) = resolve_binary_from_path() {
-        return Ok(ResolvedBinary {
-            path,
-            source: "PATH".to_string(),
-        });
+        logger::log_info(&format!(
+            "[CodexWakeup][CLI] 已从 PATH 解析到 codex: {}",
+            path.display()
+        ));
+        return build_resolved_binary(path, "PATH".to_string());
     }
 
-    Err("未检测到 Codex CLI，请先安装 `codex` 命令。".to_string())
+    let err = "未检测到 Codex CLI，请先安装 `codex` 命令。".to_string();
+    logger::log_warn(&format!("[CodexWakeup][CLI] {}", err));
+    Err(err)
 }
 
 fn fetch_binary_version(path: &Path) -> Option<String> {
-    let output = Command::new(path).arg("--version").output().ok()?;
+    let binary = match build_resolved_binary(path.to_path_buf(), "runtime".to_string()) {
+        Ok(binary) => binary,
+        Err(err) => {
+            logger::log_warn(&format!("[CodexWakeup][CLI] 版本探测前解析运行时失败: {}", err));
+            return None;
+        }
+    };
+    logger::log_info(&format!(
+        "[CodexWakeup][CLI] 开始探测版本: codex_path={}, node_path={}",
+        binary.path.display(),
+        format_optional_path_for_log(binary.node_path.as_deref())
+    ));
+    let mut command = build_binary_command(&binary);
+    command.arg("--version");
+    let output = match command.output() {
+        Ok(output) => output,
+        Err(err) => {
+            logger::log_warn(&format!("[CodexWakeup][CLI] 启动版本探测进程失败: {}", err));
+            return None;
+        }
+    };
     if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        logger::log_warn(&format!(
+            "[CodexWakeup][CLI] 版本探测失败: status={}, stdout={}, stderr={}",
+            output.status,
+            truncate_log_text(&stdout, 200),
+            truncate_log_text(&stderr, 200)
+        ));
         return None;
     }
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
     if !stdout.is_empty() {
+        logger::log_info(&format!(
+            "[CodexWakeup][CLI] 版本探测成功: {}",
+            truncate_log_text(&stdout, 200)
+        ));
         return Some(stdout);
     }
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
     if !stderr.is_empty() {
+        logger::log_info(&format!(
+            "[CodexWakeup][CLI] 版本探测成功(stderr): {}",
+            truncate_log_text(&stderr, 200)
+        ));
         return Some(stderr);
     }
+    logger::log_info("[CodexWakeup][CLI] 版本探测完成，但未返回输出");
     None
+}
+
+fn build_binary_command(binary: &ResolvedBinary) -> Command {
+    let mut command = if let Some(node_path) = &binary.node_path {
+        let mut command = Command::new(node_path);
+        command.arg(&binary.path);
+        command
+    } else {
+        Command::new(&binary.path)
+    };
+    apply_hidden_window_flags(&mut command);
+    command
 }
 
 pub fn get_cli_status() -> CodexCliStatus {
     match resolve_binary() {
-        Ok(binary) => CodexCliStatus {
-            available: true,
-            binary_path: Some(binary.path.display().to_string()),
-            version: fetch_binary_version(&binary.path),
-            source: Some(binary.source),
-            message: None,
-            checked_at: now_ms(),
-            install_hints: install_hints(),
-        },
-        Err(err) => CodexCliStatus {
-            available: false,
-            binary_path: None,
-            version: None,
-            source: None,
-            message: Some(err),
-            checked_at: now_ms(),
-            install_hints: install_hints(),
-        },
+        Ok(binary) => {
+            let version = fetch_binary_version(&binary.path);
+            logger::log_info(&format!(
+                "[CodexWakeup][CLI] 检测成功: source={}, codex_path={}, node_path={}, version={}",
+                binary.source,
+                binary.path.display(),
+                format_optional_path_for_log(binary.node_path.as_deref()),
+                version.as_deref().unwrap_or("<unknown>")
+            ));
+            CodexCliStatus {
+                available: true,
+                binary_path: Some(binary.path.display().to_string()),
+                version,
+                source: Some(binary.source),
+                message: None,
+                checked_at: now_ms(),
+                install_hints: install_hints(),
+            }
+        }
+        Err(err) => {
+            logger::log_warn(&format!("[CodexWakeup][CLI] 检测失败: {}", err));
+            CodexCliStatus {
+                available: false,
+                binary_path: None,
+                version: None,
+                source: None,
+                message: Some(err),
+                checked_at: now_ms(),
+                install_hints: install_hints(),
+            }
+        }
     }
 }
 
@@ -668,7 +1002,16 @@ fn run_codex_exec_sync(binary_path: &Path, codex_home: &Path, prompt: &str) -> R
     let last_message_path = codex_home.join("last_message.txt");
 
     let started = std::time::Instant::now();
-    let mut command = Command::new(binary_path);
+    let binary = build_resolved_binary(binary_path.to_path_buf(), "runtime".to_string())?;
+    logger::log_info(&format!(
+        "[CodexWakeup][CLI] 开始执行唤醒命令: codex_path={}, node_path={}, codex_home={}, workspace_dir={}, prompt_chars={}",
+        binary.path.display(),
+        format_optional_path_for_log(binary.node_path.as_deref()),
+        codex_home.display(),
+        workspace_dir.display(),
+        prompt.chars().count()
+    ));
+    let mut command = build_binary_command(&binary);
     command
         .env("CODEX_HOME", codex_home)
         .arg("exec")
@@ -680,7 +1023,6 @@ fn run_codex_exec_sync(binary_path: &Path, codex_home: &Path, prompt: &str) -> R
         .arg("-C")
         .arg(&workspace_dir)
         .arg(prompt);
-    apply_hidden_window_flags(&mut command);
 
     let output = command
         .output()
@@ -702,11 +1044,22 @@ fn run_codex_exec_sync(binary_path: &Path, codex_home: &Path, prompt: &str) -> R
 
     if output.status.success() {
         let reply = reply.unwrap_or_else(|| "Codex CLI 已完成，但未返回可读消息。".to_string());
+        logger::log_info(&format!(
+            "[CodexWakeup][CLI] 唤醒命令执行成功: duration_ms={}, reply_chars={}",
+            duration_ms,
+            reply.chars().count()
+        ));
         return Ok(CommandOutput { reply, duration_ms });
     }
 
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    logger::log_warn(&format!(
+        "[CodexWakeup][CLI] 唤醒命令执行失败: status={}, stdout={}, stderr={}",
+        output.status,
+        truncate_log_text(&stdout, 200),
+        truncate_log_text(&stderr, 200)
+    ));
     let mut message = format!("Codex CLI 退出失败: {}", output.status);
     if !stderr.is_empty() {
         message.push_str(&format!(" | {}", truncate_text(&stderr, 400)));
