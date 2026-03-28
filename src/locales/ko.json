@@ -645,7 +645,8 @@
     "missing": {
       "title": "애플리케이션 경로를 찾을 수 없음",
       "desc": "{{app}} 애플리케이션 경로를 찾을 수 없습니다. 계속하려면 지금 설정해 주세요.",
-      "action": "지금 설정"
+      "action": "지금 설정",
+      "codexLaunchHint": "끄면 계정 전환과 로그인 덮어쓰기는 계속 실행되지만, Codex 앱은 더 이상 실행되지 않으며 이 실행 경로 안내도 다시 표시되지 않습니다."
     }
   },
   "accounts": {
@@ -815,7 +816,9 @@
       "editTitle": "그룹 편집",
       "ungrouped": "미분류",
       "currentGroupLabel": "현재 그룹",
-      "accountPickerEmpty": "일치하는 계정이 없습니다"
+      "accountPickerEmpty": "일치하는 계정이 없습니다",
+      "filterHint": "필터링할 그룹 {{count}}개 선택됨",
+      "filterToggle": "이 그룹으로 필터링하려면 선택"
     }
   },
   "overview": {
@@ -1020,7 +1023,10 @@
         "verifiedAt": "검증 시간"
       },
       "filters": {
-        "all": "전체"
+        "all": "전체",
+        "typeShort": "유형",
+        "tagsShort": "태그",
+        "groupsShort": "그룹"
       },
       "actions": {
         "selectAllAccounts": "전체 선택",
@@ -1577,6 +1583,15 @@
       "updatedAt": "업데이트됨",
       "locationRunning": " (실행 중)",
       "untitled": "제목 없는 세션"
+    },
+    "api": {
+      "baseUrl": "기본 URL",
+      "baseUrlPlaceholder": "비워 두면 공식 기본값을 사용합니다",
+      "validation": {
+        "apiKeyCannotBeUrl": "API 키는 URL일 수 없습니다. 입력 필드가 서로 바뀌지 않았는지 확인하세요.",
+        "baseUrlInvalid": "기본 URL 형식이 올바르지 않습니다. http:// 또는 https:// 를 포함한 전체 URL을 입력하세요.",
+        "apiKeyEqualsBaseUrl": "API 키는 기본 URL과 동일할 수 없습니다."
+      }
     }
   },
   "githubCopilot": {

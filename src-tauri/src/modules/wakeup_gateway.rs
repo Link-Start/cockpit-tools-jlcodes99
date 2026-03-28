@@ -36,6 +36,53 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 static LOCAL_GATEWAY_BASE_URL: OnceLock<TokioMutex<Option<String>>> = OnceLock::new();
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum OfficialLsVersionMode {
+    Gte1216,
+    Lt1216,
+}
+
+impl OfficialLsVersionMode {
+    fn from_str(value: &str) -> Option<Self> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "gte_1_21_6" | ">=1.21.6" => Some(Self::Gte1216),
+            "lt_1_21_6" | "<1.21.6" => Some(Self::Lt1216),
+            _ => None,
+        }
+    }
+
+    fn requires_random_port(self) -> bool {
+        matches!(self, Self::Lt1216)
+    }
+}
+
+fn official_ls_version_mode_cell() -> &'static Mutex<OfficialLsVersionMode> {
+    static MODE: OnceLock<Mutex<OfficialLsVersionMode>> = OnceLock::new();
+    MODE.get_or_init(|| Mutex::new(OfficialLsVersionMode::Gte1216))
+}
+
+fn current_official_ls_version_mode() -> OfficialLsVersionMode {
+    official_ls_version_mode_cell()
+        .lock()
+        .map(|guard| *guard)
+        .unwrap_or(OfficialLsVersionMode::Gte1216)
+}
+
+fn official_ls_requires_random_port() -> bool {
+    current_official_ls_version_mode().requires_random_port()
+}
+
+pub fn set_official_ls_version_mode(mode: Option<&str>) -> Result<(), String> {
+    let next_mode = mode
+        .and_then(OfficialLsVersionMode::from_str)
+        .unwrap_or(OfficialLsVersionMode::Gte1216);
+    let mut guard = official_ls_version_mode_cell()
+        .lock()
+        .map_err(|_| "官方 LS 版本模式锁失败".to_string())?;
+    *guard = next_mode;
+    Ok(())
+}
+
 #[derive(Debug, Clone)]
 struct PreparedStartContext {
     account_id: String,
@@ -1219,9 +1266,11 @@ async fn start_official_ls_process(
     let app_data_dir = official_ls_app_data_dir_name();
 
     let mut cmd = Command::new(&binary_path);
-    cmd.arg("--enable_lsp")
-        .arg("--random_port")
-        .arg("--csrf_token")
+    cmd.arg("--enable_lsp");
+    if official_ls_requires_random_port() {
+        cmd.arg("--random_port");
+    }
+    cmd.arg("--csrf_token")
         .arg(&ls_csrf)
         .arg("--extension_server_port")
         .arg(extension_server.port.to_string())

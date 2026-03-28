@@ -645,7 +645,8 @@
     "missing": {
       "title": "Cesta k aplikaci nebyla nalezena",
       "desc": "Nepodařilo se najít cestu k aplikaci {{app}}. Pro pokračování ji nyní nastavte.",
-      "action": "Nastavit nyní"
+      "action": "Nastavit nyní",
+      "codexLaunchHint": "Po vypnutí se přepnutí účtu a přepsání přihlášení stále provede, ale aplikace Codex se už nespustí a tato výzva k cestě se znovu nezobrazí."
     }
   },
   "accounts": {
@@ -815,7 +816,9 @@
       "editTitle": "Upravit skupinu",
       "ungrouped": "Bez skupiny",
       "currentGroupLabel": "Aktuální skupina",
-      "accountPickerEmpty": "Žádné odpovídající účty"
+      "accountPickerEmpty": "Žádné odpovídající účty",
+      "filterHint": "Pro filtrování je vybráno {{count}} skupin",
+      "filterToggle": "Zaškrtnutím filtrujete podle této skupiny"
     }
   },
   "overview": {
@@ -1020,7 +1023,10 @@
         "verifiedAt": "Čas ověření"
       },
       "filters": {
-        "all": "Vše"
+        "all": "Vše",
+        "typeShort": "Typ",
+        "tagsShort": "Štítky",
+        "groupsShort": "Skupiny"
       },
       "actions": {
         "selectAllAccounts": "Vybrat vše",
@@ -1577,6 +1583,15 @@
       "updatedAt": "Aktualizováno",
       "locationRunning": " (spuštěno)",
       "untitled": "Nepojmenovaná relace"
+    },
+    "api": {
+      "baseUrl": "Základní URL",
+      "baseUrlPlaceholder": "Ponechte prázdné pro použití oficiální výchozí hodnoty",
+      "validation": {
+        "apiKeyCannotBeUrl": "Klíč API nemůže být URL. Zkontrolujte, zda nejsou pole prohozená.",
+        "baseUrlInvalid": "Neplatná základní adresa URL. Zadejte prosím úplnou URL s http:// nebo https://.",
+        "apiKeyEqualsBaseUrl": "Klíč API nemůže být stejný jako základní URL."
+      }
     }
   },
   "githubCopilot": {

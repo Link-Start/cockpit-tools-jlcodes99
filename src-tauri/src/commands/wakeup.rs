@@ -2,7 +2,10 @@ use crate::modules;
 use tauri::AppHandle;
 
 #[tauri::command]
-pub fn wakeup_ensure_runtime_ready() -> Result<Option<String>, String> {
+pub fn wakeup_ensure_runtime_ready(
+    official_ls_version_mode: Option<String>,
+) -> Result<Option<String>, String> {
+    modules::wakeup::set_official_ls_version_mode(official_ls_version_mode.as_deref())?;
     modules::wakeup::ensure_wakeup_runtime_ready()
 }
 
@@ -13,9 +16,11 @@ pub async fn trigger_wakeup(
     prompt: Option<String>,
     max_output_tokens: Option<u32>,
     cancel_scope_id: Option<String>,
+    official_ls_version_mode: Option<String>,
 ) -> Result<modules::wakeup::WakeupResponse, String> {
     let final_prompt = prompt.unwrap_or_else(|| "hi".to_string());
     let final_tokens = max_output_tokens.unwrap_or(0);
+    modules::wakeup::set_official_ls_version_mode(official_ls_version_mode.as_deref())?;
     modules::wakeup::trigger_wakeup(
         &account_id,
         &model,
@@ -36,7 +41,9 @@ pub async fn wakeup_sync_state(
     app: AppHandle,
     enabled: bool,
     tasks: Vec<modules::wakeup_scheduler::WakeupTaskInput>,
+    official_ls_version_mode: Option<String>,
 ) -> Result<(), String> {
+    modules::wakeup::set_official_ls_version_mode(official_ls_version_mode.as_deref())?;
     modules::wakeup_scheduler::sync_state(enabled, tasks);
     modules::wakeup_scheduler::ensure_started(app);
     Ok(())
@@ -93,9 +100,16 @@ pub async fn wakeup_verification_run_batch(
     model: String,
     prompt: Option<String>,
     max_output_tokens: Option<u32>,
+    official_ls_version_mode: Option<String>,
 ) -> Result<modules::wakeup_verification::WakeupVerificationBatchResult, String> {
     let final_prompt = prompt.unwrap_or_else(|| "hi".to_string());
     let final_tokens = max_output_tokens.unwrap_or(0);
+    modules::wakeup::set_official_ls_version_mode(official_ls_version_mode.as_deref())?;
     modules::wakeup_verification::run_batch(&app, account_ids, &model, &final_prompt, final_tokens)
         .await
+}
+
+#[tauri::command]
+pub fn wakeup_set_official_ls_version_mode(mode: Option<String>) -> Result<(), String> {
+    modules::wakeup::set_official_ls_version_mode(mode.as_deref())
 }

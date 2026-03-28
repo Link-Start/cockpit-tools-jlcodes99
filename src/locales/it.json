@@ -645,7 +645,8 @@
     "missing": {
       "title": "Percorso dell’applicazione non trovato",
       "desc": "Impossibile trovare il percorso dell’applicazione {{app}}. Impostalo ora per continuare.",
-      "action": "Imposta ora"
+      "action": "Imposta ora",
+      "codexLaunchHint": "Se disattivato, il cambio account e la sovrascrittura del login continuano a funzionare, ma l'app Codex non verrà più avviata e questo avviso sul percorso non verrà più mostrato."
     }
   },
   "accounts": {
@@ -815,7 +816,9 @@
       "editTitle": "Modifica gruppo",
       "ungrouped": "Senza gruppo",
       "currentGroupLabel": "Gruppo attuale",
-      "accountPickerEmpty": "Nessun account corrispondente"
+      "accountPickerEmpty": "Nessun account corrispondente",
+      "filterHint": "{{count}} gruppi selezionati per il filtro",
+      "filterToggle": "Seleziona per filtrare per questo gruppo"
     }
   },
   "overview": {
@@ -1020,7 +1023,10 @@
         "verifiedAt": "Ora di verifica"
       },
       "filters": {
-        "all": "Tutti"
+        "all": "Tutti",
+        "typeShort": "Tipo",
+        "tagsShort": "Etichette",
+        "groupsShort": "Gruppi"
       },
       "actions": {
         "selectAllAccounts": "Seleziona tutto",
@@ -1577,6 +1583,15 @@
       "updatedAt": "Aggiornato",
       "locationRunning": " (in esecuzione)",
       "untitled": "Sessione senza titolo"
+    },
+    "api": {
+      "baseUrl": "URL di base",
+      "baseUrlPlaceholder": "Lascia vuoto per usare il valore predefinito ufficiale",
+      "validation": {
+        "apiKeyCannotBeUrl": "La chiave API non può essere un URL. Verifica se i campi sono invertiti.",
+        "baseUrlInvalid": "URL di base non valido. Inserisci un URL completo con http:// o https://.",
+        "apiKeyEqualsBaseUrl": "La chiave API non può coincidere con l'URL di base."
+      }
     }
   },
   "githubCopilot": {

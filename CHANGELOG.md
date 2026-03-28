@@ -7,6 +7,15 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [0.20.13] - 2026-03-28
+
+### Changed
+- **Codex wakeup now aligns official Language Server startup flags by selected client version mode**: Wakeup Tasks and Account Verification now expose an `>=1.21.6 / <1.21.6` selector, the selection is persisted locally and synchronized to desktop runtime, and the wakeup gateway now appends `--random_port` only for `<1.21.6` mode to match older official client behavior.
+- **Wakeup account pickers now support combined search + type/tag/group filtering with visible-scope batch selection**: task editing, manual tests, and account verification can all filter by account type, tags, and groups (including ungrouped), while “select all” now operates on the currently filtered result set.
+- **Codex API Key credential input now validates field intent before save/import**: API Key values that look like URLs are rejected, Base URL must be a valid HTTP(S) URL, and duplicate API Key/Base URL values are blocked to prevent swapped-input mistakes.
+- **Codex missing-path dialogs now support disabling launch-on-switch directly in place**: users can keep account switching/login-overwrite behavior while turning off automatic Codex app launch, and once disabled the missing-path prompt will no longer keep reappearing.
+
+---
 ## [0.20.12] - 2026-03-27
 
 ### Changed

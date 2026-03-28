@@ -645,7 +645,8 @@
     "missing": {
       "title": "Nie znaleziono ścieżki aplikacji",
       "desc": "Nie udało się znaleźć ścieżki aplikacji {{app}}. Ustaw ją teraz, aby kontynuować.",
-      "action": "Ustaw teraz"
+      "action": "Ustaw teraz",
+      "codexLaunchHint": "Po wyłączeniu przełączanie konta i nadpisanie logowania nadal będą działać, ale aplikacja Codex nie będzie już uruchamiana i ten monit o ścieżkę nie pojawi się ponownie."
     }
   },
   "accounts": {
@@ -815,7 +816,9 @@
       "editTitle": "Edytuj grupę",
       "ungrouped": "Bez grupy",
       "currentGroupLabel": "Bieżąca grupa",
-      "accountPickerEmpty": "Brak pasujących kont"
+      "accountPickerEmpty": "Brak pasujących kont",
+      "filterHint": "Wybrano {{count}} grup do filtrowania",
+      "filterToggle": "Zaznacz, aby filtrować według tej grupy"
     }
   },
   "overview": {
@@ -1020,7 +1023,10 @@
         "verifiedAt": "Czas weryfikacji"
       },
       "filters": {
-        "all": "Wszystkie"
+        "all": "Wszystkie",
+        "typeShort": "Typ",
+        "tagsShort": "Tagi",
+        "groupsShort": "Grupy"
       },
       "actions": {
         "selectAllAccounts": "Zaznacz wszystko",
@@ -1577,6 +1583,15 @@
       "updatedAt": "Zaktualizowano",
       "locationRunning": " (uruchomiona)",
       "untitled": "Sesja bez tytułu"
+    },
+    "api": {
+      "baseUrl": "Bazowy URL",
+      "baseUrlPlaceholder": "Pozostaw puste, aby użyć oficjalnej wartości domyślnej",
+      "validation": {
+        "apiKeyCannotBeUrl": "Klucz API nie może być adresem URL. Sprawdź, czy pola nie są zamienione.",
+        "baseUrlInvalid": "Nieprawidłowy bazowy URL. Wpisz pełny adres URL z http:// lub https://.",
+        "apiKeyEqualsBaseUrl": "Klucz API nie może być taki sam jak bazowy URL."
+      }
     }
   },
   "githubCopilot": {

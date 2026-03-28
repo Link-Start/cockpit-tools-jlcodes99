@@ -691,6 +691,7 @@
     "missing": {
       "title": "Application path not found",
       "desc": "Could not find the {{app}} application path. Please set it now to continue.",
+      "codexLaunchHint": "When turned off, account switching and login overwrite still run, but Codex App will no longer be launched and this path prompt will not appear again.",
       "action": "Set now"
     }
   },
@@ -1068,7 +1069,10 @@
         "verifiedAt": "Verification time"
       },
       "filters": {
-        "all": "All"
+        "all": "All",
+        "typeShort": "Type",
+        "tagsShort": "Tags",
+        "groupsShort": "Groups"
       },
       "actions": {
         "selectAllAccounts": "Select all",
@@ -1363,6 +1367,15 @@
     "token": {
       "desc": "Paste auth.json content or account JSON data",
       "placeholder": "Example: {\"tokens\":{\"id_token\":\"eyJ...\",\"access_token\":\"eyJ...\"}}"
+    },
+    "api": {
+      "baseUrl": "Base URL",
+      "baseUrlPlaceholder": "Leave blank to use official default",
+      "validation": {
+        "apiKeyCannotBeUrl": "API key cannot be a URL. Please check if the fields are swapped.",
+        "baseUrlInvalid": "Invalid Base URL. Please enter a full http:// or https:// URL.",
+        "apiKeyEqualsBaseUrl": "API key cannot be the same as Base URL."
+      }
     },
     "local": {
       "desc": "Import the currently logged-in account from ~/.codex/auth.json",

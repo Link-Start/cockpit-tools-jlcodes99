@@ -44,6 +44,7 @@ import {
   UPDATE_CHECK_RETRY_DELAYS_MS,
   UPDATE_DOWNLOAD_RETRY_DELAYS_MS,
 } from './utils/updaterRetry';
+import { loadWakeupOfficialLsVersionMode } from './utils/wakeupOfficialLsVersion';
 
 const DashboardPage = lazy(() =>
   import('./pages/DashboardPage').then((module) => ({ default: module.DashboardPage })),
@@ -139,6 +140,7 @@ interface GeneralConfig extends GeneralConfigTheme {
   opencode_app_path: string;
   antigravity_app_path: string;
   codex_app_path: string;
+  codex_launch_on_switch: boolean;
   vscode_app_path: string;
   windsurf_app_path: string;
   kiro_app_path: string;
@@ -395,6 +397,8 @@ function MainApp() {
   const [appPathDetecting, setAppPathDetecting] = useState(false);
   const [appPathDraft, setAppPathDraft] = useState('');
   const [appPathActionError, setAppPathActionError] = useState('');
+  const [appPathCodexLaunchOnSwitch, setAppPathCodexLaunchOnSwitch] = useState(true);
+  const [appPathCodexLaunchSetting, setAppPathCodexLaunchSetting] = useState(false);
   const [versionJumpInfo, setVersionJumpInfo] = useState<{
     previous_version: string;
     current_version: string;
@@ -1272,7 +1276,8 @@ function MainApp() {
         const enabled = localStorage.getItem(WAKEUP_ENABLED_KEY) === 'true';
         const tasksRaw = localStorage.getItem(TASKS_STORAGE_KEY);
         const tasks = tasksRaw ? JSON.parse(tasksRaw) : [];
-        await invoke('wakeup_sync_state', { enabled, tasks });
+        const officialLsVersionMode = loadWakeupOfficialLsVersionMode();
+        await invoke('wakeup_sync_state', { enabled, tasks, officialLsVersionMode });
       } catch (error) {
         console.error('唤醒任务状态同步失败:', error);
       }
@@ -2193,6 +2198,8 @@ function MainApp() {
       setAppPathDraft('');
       setAppPathDetecting(false);
       setAppPathActionError('');
+      setAppPathCodexLaunchOnSwitch(true);
+      setAppPathCodexLaunchSetting(false);
       return () => {
         active = false;
       };
@@ -2225,6 +2232,7 @@ function MainApp() {
               : config.antigravity_app_path;
         if (active) {
           setAppPathDraft(currentPath || '');
+          setAppPathCodexLaunchOnSwitch(config.codex_launch_on_switch ?? true);
         }
       } catch (error) {
         console.error('Failed to load app path config:', error);
@@ -2343,6 +2351,25 @@ function MainApp() {
       console.error('自动探测应用路径失败:', error);
     } finally {
       setAppPathDetecting(false);
+    }
+  };
+
+  const handleToggleCodexLaunchInMissingPath = async (enabled: boolean) => {
+    if (!appPathMissing || appPathMissing.app !== 'codex') return;
+    if (appPathSetting || appPathDetecting || appPathCodexLaunchSetting) return;
+    setAppPathCodexLaunchSetting(true);
+    setAppPathActionError('');
+    try {
+      await invoke('set_codex_launch_on_switch', { enabled });
+      setAppPathCodexLaunchOnSwitch(enabled);
+      if (!enabled) {
+        setAppPathMissing(null);
+      }
+    } catch (error) {
+      console.error('更新 Codex 自动启动配置失败:', error);
+      setAppPathActionError(String(error));
+    } finally {
+      setAppPathCodexLaunchSetting(false);
     }
   };
 
@@ -2479,6 +2506,7 @@ function MainApp() {
                 ? t('quickSettings.trae.appPath', 'Trae 路径')
               : t('quickSettings.antigravity.appPath', '启动路径')
     : t('quickSettings.antigravity.appPath', '启动路径');
+  const appPathMissingBusy = appPathSetting || appPathDetecting || appPathCodexLaunchSetting;
   const shouldRenderUpdateNotification = showUpdateNotification
     || (updateRemindersEnabled && updateAction.state !== 'hidden');
 
@@ -2547,6 +2575,7 @@ function MainApp() {
                 className="qs-close"
                 onClick={() => setAppPathMissing(null)}
                 aria-label={t('common.close', '关闭')}
+                disabled={appPathMissingBusy}
               >
                 <X size={16} />
               </button>
@@ -2561,6 +2590,31 @@ function MainApp() {
                 </p>
               </div>
 
+              {appPathMissing.app === 'codex' ? (
+                <div className="qs-section">
+                  <div className="qs-row">
+                    <div className="qs-row-label">
+                      {t('settings.general.codexLaunchOnSwitch', '切换 Codex 时自动启动 Codex App')}
+                    </div>
+                    <label className="qs-switch">
+                      <input
+                        type="checkbox"
+                        checked={appPathCodexLaunchOnSwitch}
+                        disabled={appPathMissingBusy}
+                        onChange={(e) => handleToggleCodexLaunchInMissingPath(e.target.checked)}
+                      />
+                      <span className="qs-switch-slider" />
+                    </label>
+                  </div>
+                  <p className="app-path-missing-hint">
+                    {t(
+                      'appPath.missing.codexLaunchHint',
+                      '关闭后仅执行切号与登录覆盖，不再尝试启动 Codex App，也不会再次要求设置启动路径。'
+                    )}
+                  </p>
+                </div>
+              ) : null}
+
               <div className="qs-section">
                 <div className="qs-section-header">
                   <FolderOpen size={15} />
@@ -2573,20 +2627,20 @@ function MainApp() {
                     value={appPathDraft}
                     placeholder={t('settings.general.codexAppPathPlaceholder', '默认路径')}
                     onChange={(e) => setAppPathDraft(e.target.value)}
-                    disabled={appPathSetting}
+                    disabled={appPathMissingBusy}
                   />
                   <div className="qs-path-actions">
                     <button
                       className="qs-btn"
                       onClick={handlePickMissingAppPath}
-                      disabled={appPathSetting || appPathDetecting}
+                      disabled={appPathMissingBusy}
                     >
                       {t('settings.general.codexPathSelect', '选择')}
                     </button>
                     <button
                       className="qs-btn"
                       onClick={handleResetMissingAppPath}
-                      disabled={appPathSetting || appPathDetecting}
+                      disabled={appPathMissingBusy}
                       title={
                         appPathDetecting
                           ? t('common.loading', '加载中...')
@@ -2627,14 +2681,14 @@ function MainApp() {
               <button
                 className="btn btn-secondary"
                 onClick={() => setAppPathMissing(null)}
-                disabled={appPathSetting || appPathDetecting}
+                disabled={appPathMissingBusy}
               >
                 {t('common.cancel', '取消')}
               </button>
               <button
                 className="btn btn-primary"
                 onClick={handleSaveMissingAppPath}
-                disabled={appPathSetting || appPathDetecting || !appPathDraft.trim()}
+                disabled={appPathMissingBusy || !appPathDraft.trim()}
               >
                 {t('common.save', '保存')}
               </button>

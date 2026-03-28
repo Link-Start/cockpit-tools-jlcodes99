@@ -645,7 +645,8 @@
     "missing": {
       "title": "Không tìm thấy đường dẫn ứng dụng",
       "desc": "Không tìm thấy đường dẫn ứng dụng {{app}}. Vui lòng đặt ngay để tiếp tục.",
-      "action": "Đặt ngay"
+      "action": "Đặt ngay",
+      "codexLaunchHint": "Khi tắt, thao tác chuyển tài khoản và ghi đè đăng nhập vẫn chạy, nhưng ứng dụng Codex sẽ không còn được khởi động và lời nhắc đường dẫn này cũng sẽ không xuất hiện lại."
     }
   },
   "accounts": {
@@ -815,7 +816,9 @@
       "editTitle": "Sửa nhóm",
       "ungrouped": "Chưa phân nhóm",
       "currentGroupLabel": "Nhóm hiện tại",
-      "accountPickerEmpty": "Không có tài khoản phù hợp"
+      "accountPickerEmpty": "Không có tài khoản phù hợp",
+      "filterHint": "Đã chọn {{count}} nhóm để lọc",
+      "filterToggle": "Chọn để lọc theo nhóm này"
     }
   },
   "overview": {
@@ -1020,7 +1023,10 @@
         "verifiedAt": "Thời gian xác minh"
       },
       "filters": {
-        "all": "Tất cả"
+        "all": "Tất cả",
+        "typeShort": "Loại",
+        "tagsShort": "Thẻ",
+        "groupsShort": "Nhóm"
       },
       "actions": {
         "selectAllAccounts": "Chọn tất cả",
@@ -1577,6 +1583,15 @@
       "updatedAt": "Đã cập nhật",
       "locationRunning": " (đang chạy)",
       "untitled": "Phiên chưa đặt tên"
+    },
+    "api": {
+      "baseUrl": "URL cơ sở",
+      "baseUrlPlaceholder": "Để trống để dùng giá trị mặc định chính thức",
+      "validation": {
+        "apiKeyCannotBeUrl": "API key không thể là URL. Hãy kiểm tra xem bạn có điền nhầm hai trường hay không.",
+        "baseUrlInvalid": "Base URL không hợp lệ. Vui lòng nhập URL đầy đủ bắt đầu bằng http:// hoặc https://.",
+        "apiKeyEqualsBaseUrl": "API key không được trùng với Base URL."
+      }
     }
   },
   "githubCopilot": {

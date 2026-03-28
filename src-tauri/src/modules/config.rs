@@ -1269,3 +1269,21 @@ pub fn init_server_status(actual_port: u16) -> Result<(), String> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::UserConfig;
+
+    #[test]
+    fn openclaw_auth_overwrite_default_is_disabled() {
+        let cfg = UserConfig::default();
+        assert!(!cfg.openclaw_auth_overwrite_on_switch);
+    }
+
+    #[test]
+    fn openclaw_auth_overwrite_missing_field_falls_back_to_disabled() {
+        let cfg: UserConfig = serde_json::from_value(serde_json::json!({}))
+            .expect("反序列化默认配置应成功");
+        assert!(!cfg.openclaw_auth_overwrite_on_switch);
+    }
+}

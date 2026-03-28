@@ -645,7 +645,8 @@
     "missing": {
       "title": "Chemin de l’application introuvable",
       "desc": "Impossible de trouver le chemin de l’application {{app}}. Veuillez le définir maintenant pour continuer.",
-      "action": "Définir maintenant"
+      "action": "Définir maintenant",
+      "codexLaunchHint": "Une fois désactivé, le changement de compte et l'écrasement de connexion continuent de s'exécuter, mais l'application Codex ne sera plus lancée et cette invite de chemin ne réapparaîtra pas."
     }
   },
   "accounts": {
@@ -815,7 +816,9 @@
       "editTitle": "Modifier le groupe",
       "ungrouped": "Non groupé",
       "currentGroupLabel": "Groupe actuel",
-      "accountPickerEmpty": "Aucun compte correspondant"
+      "accountPickerEmpty": "Aucun compte correspondant",
+      "filterHint": "{{count}} groupe(s) sélectionné(s) pour le filtrage",
+      "filterToggle": "Cochez pour filtrer par ce groupe"
     }
   },
   "overview": {
@@ -1020,7 +1023,10 @@
         "verifiedAt": "Heure de vérification"
       },
       "filters": {
-        "all": "Tous"
+        "all": "Tous",
+        "typeShort": "Type",
+        "tagsShort": "Étiquettes",
+        "groupsShort": "Groupes"
       },
       "actions": {
         "selectAllAccounts": "Tout sélectionner",
@@ -1577,6 +1583,15 @@
       "updatedAt": "Mis à jour",
       "locationRunning": " (en cours d’exécution)",
       "untitled": "Session sans titre"
+    },
+    "api": {
+      "baseUrl": "URL de base",
+      "baseUrlPlaceholder": "Laissez vide pour utiliser la valeur officielle par défaut",
+      "validation": {
+        "apiKeyCannotBeUrl": "La clé API ne peut pas être une URL. Vérifiez si les champs sont inversés.",
+        "baseUrlInvalid": "URL de base invalide. Veuillez saisir une URL complète commençant par http:// ou https://.",
+        "apiKeyEqualsBaseUrl": "La clé API ne peut pas être identique à l'URL de base."
+      }
     }
   },
   "githubCopilot": {

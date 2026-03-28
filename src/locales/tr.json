@@ -645,7 +645,8 @@
     "missing": {
       "title": "Uygulama yolu bulunamadı",
       "desc": "{{app}} uygulama yolu bulunamadı. Devam etmek için şimdi ayarlayın.",
-      "action": "Şimdi ayarla"
+      "action": "Şimdi ayarla",
+      "codexLaunchHint": "Kapattığınızda hesap değiştirme ve giriş üzerine yazma çalışmaya devam eder, ancak Codex uygulaması artık başlatılmaz ve bu yol istemi tekrar gösterilmez."
     }
   },
   "accounts": {
@@ -815,7 +816,9 @@
       "editTitle": "Grubu düzenle",
       "ungrouped": "Gruplanmamış",
       "currentGroupLabel": "Mevcut grup",
-      "accountPickerEmpty": "Eşleşen hesap yok"
+      "accountPickerEmpty": "Eşleşen hesap yok",
+      "filterHint": "Filtreleme için {{count}} grup seçildi",
+      "filterToggle": "Bu gruba göre filtrelemek için işaretleyin"
     }
   },
   "overview": {
@@ -1020,7 +1023,10 @@
         "verifiedAt": "Doğrulama zamanı"
       },
       "filters": {
-        "all": "Tümü"
+        "all": "Tümü",
+        "typeShort": "Tür",
+        "tagsShort": "Etiketler",
+        "groupsShort": "Gruplar"
       },
       "actions": {
         "selectAllAccounts": "Tümünü seç",
@@ -1577,6 +1583,15 @@
       "updatedAt": "Güncellendi",
       "locationRunning": " (çalışıyor)",
       "untitled": "Adsız oturum"
+    },
+    "api": {
+      "baseUrl": "Temel URL",
+      "baseUrlPlaceholder": "Resmi varsayılanı kullanmak için boş bırakın",
+      "validation": {
+        "apiKeyCannotBeUrl": "API anahtarı bir URL olamaz. Alanların yer değiştirmediğini kontrol edin.",
+        "baseUrlInvalid": "Geçersiz temel URL. Lütfen http:// veya https:// içeren tam bir URL girin.",
+        "apiKeyEqualsBaseUrl": "API anahtarı temel URL ile aynı olamaz."
+      }
     }
   },
   "githubCopilot": {

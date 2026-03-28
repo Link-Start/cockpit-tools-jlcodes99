@@ -880,6 +880,19 @@ pub fn set_app_path(app: String, path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn set_codex_launch_on_switch(enabled: bool) -> Result<(), String> {
+    let current = config::get_user_config();
+    if current.codex_launch_on_switch == enabled {
+        return Ok(());
+    }
+    let new_config = UserConfig {
+        codex_launch_on_switch: enabled,
+        ..current
+    };
+    config::save_user_config(&new_config)
+}
+
+#[tauri::command]
 pub fn detect_app_path(app: String, force: Option<bool>) -> Result<Option<String>, String> {
     let force = force.unwrap_or(false);
     match app.as_str() {

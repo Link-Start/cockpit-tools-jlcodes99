@@ -255,6 +255,7 @@ pub fn run() {
             commands::system::save_general_config,
             commands::system::save_tray_platform_layout,
             commands::system::set_app_path,
+            commands::system::set_codex_launch_on_switch,
             commands::system::detect_app_path,
             commands::system::set_wakeup_override,
             commands::system::handle_window_close,
@@ -275,6 +276,7 @@ pub fn run() {
             commands::logs::logs_open_log_directory,
             // Wakeup Commands
             commands::wakeup::wakeup_ensure_runtime_ready,
+            commands::wakeup::wakeup_set_official_ls_version_mode,
             commands::wakeup::trigger_wakeup,
             commands::wakeup::fetch_available_models,
             commands::wakeup::wakeup_sync_state,

@@ -645,6 +645,7 @@
     "missing": {
       "title": "找不到應用程式路徑",
       "desc": "找不到 {{app}} 的應用程式路徑。請立即設定以繼續。",
+      "codexLaunchHint": "關閉後僅執行切號與登入覆蓋，不再嘗試啟動 Codex App，也不會再次要求設定啟動路徑。",
       "action": "立即設定"
     }
   },
@@ -1022,7 +1023,10 @@
         "verifiedAt": "驗證時間"
       },
       "filters": {
-        "all": "全部"
+        "all": "全部",
+        "typeShort": "類型",
+        "tagsShort": "標籤",
+        "groupsShort": "分組"
       },
       "actions": {
         "selectAllAccounts": "全選",
@@ -1314,6 +1318,15 @@
     "token": {
       "desc": "貼上 auth.json 內容或帳號 JSON 資料",
       "placeholder": "範例：{\"tokens\":{\"id_token\":\"eyJ...\",\"access_token\":\"eyJ...\"}}"
+    },
+    "api": {
+      "baseUrl": "基礎網址",
+      "baseUrlPlaceholder": "未填寫則使用官方預設",
+      "validation": {
+        "apiKeyCannotBeUrl": "API Key 不能是 URL，請檢查是否填反",
+        "baseUrlInvalid": "Base URL 格式無效，請輸入完整的 http:// 或 https:// 位址",
+        "apiKeyEqualsBaseUrl": "API Key 不能與 Base URL 相同"
+      }
     },
     "local": {
       "desc": "從 ~/.codex/auth.json 匯入目前已登入的帳號",

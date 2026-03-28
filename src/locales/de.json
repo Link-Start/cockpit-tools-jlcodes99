@@ -645,7 +645,8 @@
     "missing": {
       "title": "Anwendungspfad nicht gefunden",
       "desc": "Der Anwendungspfad für {{app}} wurde nicht gefunden. Bitte jetzt festlegen, um fortzufahren.",
-      "action": "Jetzt festlegen"
+      "action": "Jetzt festlegen",
+      "codexLaunchHint": "Wenn deaktiviert, laufen Kontowechsel und Login-Überschreibung weiter, aber die Codex-App wird nicht mehr gestartet und dieser Pfadhinweis erscheint nicht erneut."
     }
   },
   "accounts": {
@@ -815,7 +816,9 @@
       "editTitle": "Gruppe bearbeiten",
       "ungrouped": "Nicht gruppiert",
       "currentGroupLabel": "Aktuelle Gruppe",
-      "accountPickerEmpty": "Keine passenden Konten"
+      "accountPickerEmpty": "Keine passenden Konten",
+      "filterHint": "{{count}} Gruppe(n) zum Filtern ausgewählt",
+      "filterToggle": "Aktivieren, um nach dieser Gruppe zu filtern"
     }
   },
   "overview": {
@@ -1020,7 +1023,10 @@
         "verifiedAt": "Verifizierungszeit"
       },
       "filters": {
-        "all": "Alle"
+        "all": "Alle",
+        "typeShort": "Typ",
+        "tagsShort": "Schlagwörter",
+        "groupsShort": "Gruppen"
       },
       "actions": {
         "selectAllAccounts": "Alle auswählen",
@@ -1577,6 +1583,15 @@
       "updatedAt": "Aktualisiert",
       "locationRunning": " (wird ausgeführt)",
       "untitled": "Unbenannte Sitzung"
+    },
+    "api": {
+      "baseUrl": "Basis-URL",
+      "baseUrlPlaceholder": "Leer lassen, um den offiziellen Standard zu verwenden",
+      "validation": {
+        "apiKeyCannotBeUrl": "Der API-Schlüssel darf keine URL sein. Bitte prüfen Sie, ob die Felder vertauscht wurden.",
+        "baseUrlInvalid": "Ungültige Basis-URL. Bitte geben Sie eine vollständige URL mit http:// oder https:// ein.",
+        "apiKeyEqualsBaseUrl": "Der API-Schlüssel darf nicht mit der Basis-URL identisch sein."
+      }
     }
   },
   "githubCopilot": {

@@ -255,21 +255,70 @@
 .verification-account-select-all {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 6px;
   padding: 2px 2px;
+  min-width: 0;
+  width: 100%;
+  overflow: visible;
+}
+
+.verification-account-filters {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: visible;
+  min-width: 0;
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+.verification-account-filters .account-filter-surface.tag-filter {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.verification-account-filters .account-filter-surface .tag-filter-btn {
+  width: auto;
+  height: 26px;
+  min-width: 66px;
+  padding: 0 4px;
+  border-radius: 7px;
+  justify-content: center;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.verification-account-filters .account-filter-surface .tag-filter-panel {
+  left: 0;
+  right: auto;
+  min-width: 180px;
+  z-index: 60;
+}
+
+.verification-account-filters .account-filter-surface.tag-filter:last-child .tag-filter-panel {
+  left: auto;
+  right: 0;
+}
+
+.verification-account-search-wrap {
+  min-width: 56px;
+  max-width: 78px;
+  width: 100%;
+  flex: 0 0 auto;
 }
 
 .verification-account-search {
-  flex: 1;
+  width: 100%;
   min-width: 0;
-  height: 30px;
-  padding: 0 10px;
+  height: 26px;
+  padding: 0 8px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 7px;
   background: var(--bg-tertiary);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: 11px;
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -297,16 +346,37 @@
 
 .verification-checkbox-row-head {
   color: var(--text-primary);
+  white-space: nowrap;
+  min-width: max-content;
 }
 
 .verification-account-select-count {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 2px 10px;
+  padding: 1px 7px;
   border-radius: 999px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-light);
+  white-space: nowrap;
+  margin-left: 2px;
+}
+
+@media (max-width: 980px) {
+  .verification-account-select-all {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .verification-account-search-wrap {
+    max-width: 107px;
+  }
+
+  .verification-account-filters {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
 }
 
 .verification-checkbox-input {
@@ -393,6 +463,7 @@
   gap: 8px;
   max-height: 280px;
   overflow: auto;
+  contain: content;
   padding: 10px;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -427,7 +498,10 @@
   min-width: 0;
   line-height: 1.3;
   color: inherit;
-  word-break: break-all;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .verification-run-hint {

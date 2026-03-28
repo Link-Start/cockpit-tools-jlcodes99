@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, Power, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAccountStore } from '../stores/useAccountStore';
 import { Page } from '../types/navigation';
+import { MultiSelectFilterDropdown, type MultiSelectFilterOption } from '../components/MultiSelectFilterDropdown';
 import {
   collectAntigravityQuotaModelKeys,
   filterAntigravityModelOptions,
@@ -13,10 +14,26 @@ import {
   type AntigravityModelOption,
 } from '../utils/antigravityModels';
 import {
+  accountMatchesTagFilters,
+  accountMatchesTypeFilters,
+  buildAccountTierCounts,
+  buildAccountTierFilterOptions,
+  collectAvailableAccountTags,
+  normalizeAccountTag,
+  type AccountFilterType,
+} from '../utils/accountFilters';
+import { getAccountGroups, type AccountGroup } from '../services/accountGroupService';
+import {
   isPrivacyModeEnabledByDefault,
   maskSensitiveValue,
   PRIVACY_MODE_CHANGED_EVENT,
 } from '../utils/privacy';
+import {
+  loadWakeupOfficialLsVersionMode,
+  saveWakeupOfficialLsVersionMode,
+  WAKEUP_OFFICIAL_LS_VERSION_CHANGED_EVENT,
+  type WakeupOfficialLsVersionMode,
+} from '../utils/wakeupOfficialLsVersion';
 import { ModalErrorMessage, useModalErrorState } from '../components/ModalErrorMessage';
 import { OverviewTabsHeader } from '../components/OverviewTabsHeader';
 
@@ -27,6 +44,7 @@ const LEGACY_SCHEDULE_KEY = 'agtools.wakeup.schedule';
 const MAX_HISTORY_ITEMS = 100;
 const WAKEUP_ERROR_JSON_PREFIX = 'AG_WAKEUP_ERROR_JSON:';
 const APP_PATH_NOT_FOUND_PREFIX = 'APP_PATH_NOT_FOUND:';
+const UNGROUPED_ACCOUNT_GROUP_FILTER_KEY = '__ungrouped__';
 
 const BASE_TIME_OPTIONS = [
   '06:00',
@@ -516,11 +534,25 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
   const [testSelectedAccounts, setTestSelectedAccounts] = useState<string[]>([]);
   const [testCustomPrompt, setTestCustomPrompt] = useState('');
   const [testMaxOutputTokens, setTestMaxOutputTokens] = useState(0);
+  const [accountGroups, setAccountGroups] = useState<AccountGroup[]>([]);
+  const [testAccountSearchQuery, setTestAccountSearchQuery] = useState('');
+  const [testTypeFilter, setTestTypeFilter] = useState<AccountFilterType[]>([]);
+  const [testTagFilter, setTestTagFilter] = useState<string[]>([]);
+  const [testGroupFilter, setTestGroupFilter] = useState<string[]>([]);
+  const [formAccountSearchQuery, setFormAccountSearchQuery] = useState('');
+  const [formTypeFilter, setFormTypeFilter] = useState<AccountFilterType[]>([]);
+  const [formTagFilter, setFormTagFilter] = useState<string[]>([]);
+  const [formGroupFilter, setFormGroupFilter] = useState<string[]>([]);
+  const [officialLsVersionMode, setOfficialLsVersionMode] = useState<WakeupOfficialLsVersionMode>(
+    () => loadWakeupOfficialLsVersionMode(),
+  );
 
   const tasksRef = useRef(tasks);
   const wakeupEnabledRef = useRef(wakeupEnabled);
   const activeTestRunTokenRef = useRef(0);
   const activeTestScopeIdRef = useRef<string | null>(null);
+  const testAccountSelectAllRef = useRef<HTMLInputElement | null>(null);
+  const formAccountSelectAllRef = useRef<HTMLInputElement | null>(null);
   const accountEmails = useMemo(() => accounts.map((account) => account.email), [accounts]);
   const accountByEmail = useMemo(() => {
     const map = new Map<string, (typeof accounts)[number]>();
@@ -529,7 +561,188 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
     });
     return map;
   }, [accounts]);
+  const accountById = useMemo(() => {
+    const map = new Map<string, (typeof accounts)[number]>();
+    accounts.forEach((account) => {
+      map.set(account.id, account);
+    });
+    return map;
+  }, [accounts]);
+  const availableFilterTags = useMemo(() => collectAvailableAccountTags(accounts), [accounts]);
+  const availableFilterTagOptions = useMemo<MultiSelectFilterOption[]>(
+    () =>
+      availableFilterTags.map((tag) => ({
+        value: tag,
+        label: tag,
+      })),
+    [availableFilterTags],
+  );
+  const tierCounts = useMemo(
+    () => buildAccountTierCounts(accounts, {}),
+    [accounts],
+  );
+  const typeFilterOptions = useMemo<MultiSelectFilterOption[]>(
+    () => buildAccountTierFilterOptions(t, tierCounts),
+    [t, tierCounts],
+  );
+  const groupIdsByAccountId = useMemo(() => {
+    const map = new Map<string, string[]>();
+    accountGroups.forEach((group) => {
+      group.accountIds.forEach((accountId) => {
+        const current = map.get(accountId);
+        if (!current) {
+          map.set(accountId, [group.id]);
+          return;
+        }
+        current.push(group.id);
+      });
+    });
+    return map;
+  }, [accountGroups]);
+  const accountIdsInAnyGroup = useMemo(() => {
+    const ids = new Set<string>();
+    accountGroups.forEach((group) => {
+      group.accountIds.forEach((accountId) => ids.add(accountId));
+    });
+    return ids;
+  }, [accountGroups]);
+  const groupFilterOptions = useMemo<MultiSelectFilterOption[]>(() => {
+    const groupOptions = accountGroups
+      .map((group) => {
+        const count = group.accountIds.filter((id) => accountById.has(id)).length;
+        return {
+          value: group.id,
+          label: `${group.name} (${count})`,
+        };
+      })
+      .sort((left, right) => left.label.localeCompare(right.label));
+    const ungroupedCount = accounts.reduce(
+      (count, account) => (accountIdsInAnyGroup.has(account.id) ? count : count + 1),
+      0,
+    );
+    return [
+      ...groupOptions,
+      {
+        value: UNGROUPED_ACCOUNT_GROUP_FILTER_KEY,
+        label: `${t('accounts.groups.ungrouped')} (${ungroupedCount})`,
+      },
+    ];
+  }, [accountById, accountGroups, accountIdsInAnyGroup, accounts, t]);
+
   const activeAccountEmail = currentAccount?.email || accountEmails[0] || '';
+  const filteredTestAccounts = useMemo(() => {
+    const query = testAccountSearchQuery.trim().toLowerCase();
+    const selectedTypes = new Set<AccountFilterType>(testTypeFilter);
+    const selectedTags = new Set(testTagFilter.map(normalizeAccountTag));
+    const selectedGroups = new Set(testGroupFilter);
+
+    return accounts
+      .filter((account) => {
+        const email = (account.email || '').toLowerCase();
+        if (query && !email.includes(query)) {
+          return false;
+        }
+        if (!accountMatchesTypeFilters(account, selectedTypes, {})) {
+          return false;
+        }
+        if (!accountMatchesTagFilters(account, selectedTags)) {
+          return false;
+        }
+        if (selectedGroups.size > 0) {
+          const groupIds = groupIdsByAccountId.get(account.id) || [];
+          const matchesGrouped = groupIds.some((groupId) => selectedGroups.has(groupId));
+          const matchesUngrouped =
+            groupIds.length === 0 && selectedGroups.has(UNGROUPED_ACCOUNT_GROUP_FILTER_KEY);
+          if (!matchesGrouped && !matchesUngrouped) {
+            return false;
+          }
+        }
+        return true;
+      })
+      .sort((left, right) => left.email.localeCompare(right.email));
+  }, [accounts, groupIdsByAccountId, testAccountSearchQuery, testGroupFilter, testTagFilter, testTypeFilter]);
+  const filteredTestAccountEmails = useMemo(
+    () => filteredTestAccounts.map((account) => account.email),
+    [filteredTestAccounts],
+  );
+  const testSelectedAccountSet = useMemo(() => new Set(testSelectedAccounts), [testSelectedAccounts]);
+  const testSelectedVisibleAccountsCount = useMemo(
+    () =>
+      filteredTestAccountEmails.reduce(
+        (count, email) => (testSelectedAccountSet.has(email) ? count + 1 : count),
+        0,
+      ),
+    [filteredTestAccountEmails, testSelectedAccountSet],
+  );
+  const allVisibleTestAccountsSelected = useMemo(
+    () =>
+      filteredTestAccountEmails.length > 0
+      && testSelectedVisibleAccountsCount === filteredTestAccountEmails.length,
+    [filteredTestAccountEmails.length, testSelectedVisibleAccountsCount],
+  );
+  const partiallyVisibleTestAccountsSelected = useMemo(
+    () =>
+      testSelectedVisibleAccountsCount > 0
+      && testSelectedVisibleAccountsCount < filteredTestAccountEmails.length,
+    [filteredTestAccountEmails.length, testSelectedVisibleAccountsCount],
+  );
+
+  const filteredFormAccounts = useMemo(() => {
+    const query = formAccountSearchQuery.trim().toLowerCase();
+    const selectedTypes = new Set<AccountFilterType>(formTypeFilter);
+    const selectedTags = new Set(formTagFilter.map(normalizeAccountTag));
+    const selectedGroups = new Set(formGroupFilter);
+
+    return accounts
+      .filter((account) => {
+        const email = (account.email || '').toLowerCase();
+        if (query && !email.includes(query)) {
+          return false;
+        }
+        if (!accountMatchesTypeFilters(account, selectedTypes, {})) {
+          return false;
+        }
+        if (!accountMatchesTagFilters(account, selectedTags)) {
+          return false;
+        }
+        if (selectedGroups.size > 0) {
+          const groupIds = groupIdsByAccountId.get(account.id) || [];
+          const matchesGrouped = groupIds.some((groupId) => selectedGroups.has(groupId));
+          const matchesUngrouped =
+            groupIds.length === 0 && selectedGroups.has(UNGROUPED_ACCOUNT_GROUP_FILTER_KEY);
+          if (!matchesGrouped && !matchesUngrouped) {
+            return false;
+          }
+        }
+        return true;
+      })
+      .sort((left, right) => left.email.localeCompare(right.email));
+  }, [accounts, formAccountSearchQuery, formGroupFilter, formTagFilter, formTypeFilter, groupIdsByAccountId]);
+  const filteredFormAccountEmails = useMemo(
+    () => filteredFormAccounts.map((account) => account.email),
+    [filteredFormAccounts],
+  );
+  const formSelectedAccountSet = useMemo(() => new Set(formSelectedAccounts), [formSelectedAccounts]);
+  const formSelectedVisibleAccountsCount = useMemo(
+    () =>
+      filteredFormAccountEmails.reduce(
+        (count, email) => (formSelectedAccountSet.has(email) ? count + 1 : count),
+        0,
+      ),
+    [filteredFormAccountEmails, formSelectedAccountSet],
+  );
+  const allVisibleFormAccountsSelected = useMemo(
+    () =>
+      filteredFormAccountEmails.length > 0
+      && formSelectedVisibleAccountsCount === filteredFormAccountEmails.length,
+    [filteredFormAccountEmails.length, formSelectedVisibleAccountsCount],
+  );
+  const partiallyVisibleFormAccountsSelected = useMemo(
+    () =>
+      formSelectedVisibleAccountsCount > 0
+      && formSelectedVisibleAccountsCount < filteredFormAccountEmails.length,
+    [filteredFormAccountEmails.length, formSelectedVisibleAccountsCount],
+  );
 
   const quotaModelKeys = useMemo(() => collectAntigravityQuotaModelKeys(accounts), [accounts]);
   const filteredModels = useMemo(
@@ -577,6 +790,14 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
     (value?: string | null) => maskSensitiveValue(value, privacyModeEnabled),
     [privacyModeEnabled],
   );
+  const handleOfficialLsVersionModeChange = useCallback((value: string) => {
+    const nextMode =
+      value === 'lt_1_21_6'
+        ? 'lt_1_21_6'
+        : 'gte_1_21_6';
+    setOfficialLsVersionMode(nextMode);
+    saveWakeupOfficialLsVersionMode(nextMode);
+  }, []);
 
   useEffect(() => {
     tasksRef.current = tasks;
@@ -594,6 +815,53 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
     fetchAccounts();
     fetchCurrentAccount();
   }, [fetchAccounts, fetchCurrentAccount]);
+
+  useEffect(() => {
+    const syncMode = () => {
+      setOfficialLsVersionMode(loadWakeupOfficialLsVersionMode());
+    };
+    const handleModeChanged = (event: Event) => {
+      const detail = (event as CustomEvent<WakeupOfficialLsVersionMode>).detail;
+      if (detail === 'lt_1_21_6' || detail === 'gte_1_21_6') {
+        setOfficialLsVersionMode(detail);
+        return;
+      }
+      syncMode();
+    };
+
+    window.addEventListener(
+      WAKEUP_OFFICIAL_LS_VERSION_CHANGED_EVENT,
+      handleModeChanged as EventListener,
+    );
+    window.addEventListener('focus', syncMode);
+    return () => {
+      window.removeEventListener(
+        WAKEUP_OFFICIAL_LS_VERSION_CHANGED_EVENT,
+        handleModeChanged as EventListener,
+      );
+      window.removeEventListener('focus', syncMode);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showModal && !showTestModal) return;
+    let active = true;
+    const loadAccountGroups = async () => {
+      try {
+        const groups = await getAccountGroups();
+        if (!active) return;
+        setAccountGroups(groups || []);
+      } catch (error) {
+        console.error('加载账号分组失败:', error);
+        if (!active) return;
+        setAccountGroups([]);
+      }
+    };
+    void loadAccountGroups();
+    return () => {
+      active = false;
+    };
+  }, [showModal, showTestModal]);
 
   useEffect(() => {
     localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
@@ -615,6 +883,22 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
       console.error('唤醒互斥通知失败:', error);
     });
   }, [wakeupEnabled]);
+
+  useEffect(() => {
+    invoke('wakeup_set_official_ls_version_mode', { mode: officialLsVersionMode }).catch((error) => {
+      console.error('同步官方 LS 版本模式失败:', error);
+    });
+  }, [officialLsVersionMode]);
+
+  useEffect(() => {
+    const validGroupIds = new Set(accountGroups.map((group) => group.id));
+    setTestGroupFilter((prev) =>
+      prev.filter((value) => value === UNGROUPED_ACCOUNT_GROUP_FILTER_KEY || validGroupIds.has(value)),
+    );
+    setFormGroupFilter((prev) =>
+      prev.filter((value) => value === UNGROUPED_ACCOUNT_GROUP_FILTER_KEY || validGroupIds.has(value)),
+    );
+  }, [accountGroups]);
 
   useEffect(() => {
     const syncPrivacyMode = () => {
@@ -639,10 +923,14 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
   }, []);
 
   useEffect(() => {
-    invoke('wakeup_sync_state', { enabled: wakeupEnabled, tasks }).catch((error) => {
+    invoke('wakeup_sync_state', {
+      enabled: wakeupEnabled,
+      tasks,
+      officialLsVersionMode,
+    }).catch((error) => {
       console.error('[WakeupTasks] 同步唤醒任务状态失败:', error);
     });
-  }, [tasks, wakeupEnabled]);
+  }, [officialLsVersionMode, tasks, wakeupEnabled]);
 
   useEffect(() => {
     const handleTaskResult = (event: Event) => {
@@ -760,6 +1048,16 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
     });
   }, [accountEmails, activeAccountEmail]);
 
+  useEffect(() => {
+    if (!testAccountSelectAllRef.current) return;
+    testAccountSelectAllRef.current.indeterminate = partiallyVisibleTestAccountsSelected;
+  }, [partiallyVisibleTestAccountsSelected]);
+
+  useEffect(() => {
+    if (!formAccountSelectAllRef.current) return;
+    formAccountSelectAllRef.current.indeterminate = partiallyVisibleFormAccountsSelected;
+  }, [partiallyVisibleFormAccountsSelected]);
+
   function appendHistoryRecords(records: WakeupHistoryRecord[]) {
     if (records.length === 0) return;
     setHistoryRecords((prev) => {
@@ -808,7 +1106,7 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
 
   const ensureWakeupRuntimeReady = async (options?: { reportToTestModal?: boolean }): Promise<boolean> => {
     try {
-      await invoke('wakeup_ensure_runtime_ready');
+      await invoke('wakeup_ensure_runtime_ready', { officialLsVersionMode });
       return true;
     } catch (error) {
       const message = formatErrorMessage(error);
@@ -975,6 +1273,7 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
             prompt: trimmedPrompt,
             maxOutputTokens: resolvedMaxTokens,
             cancelScopeId,
+            officialLsVersionMode,
           }),
         });
       });
@@ -1118,6 +1417,10 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
     setFormIntervalEnd('22:00');
     setFormSelectedModels(filteredModels.length ? [filteredModels[0].id] : []);
     setFormSelectedAccounts(accountEmails.length ? [accountEmails[0]] : []);
+    setFormAccountSearchQuery('');
+    setFormTypeFilter([]);
+    setFormTagFilter([]);
+    setFormGroupFilter([]);
     setFormCustomPrompt('');
     setFormMaxOutputTokens(0);
     setFormCrontab('');
@@ -1154,6 +1457,10 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
     setFormSelectedAccounts(
       schedule.selectedAccounts.length ? schedule.selectedAccounts.filter((email) => accountEmails.includes(email)) : []
     );
+    setFormAccountSearchQuery('');
+    setFormTypeFilter([]);
+    setFormTagFilter([]);
+    setFormGroupFilter([]);
     setFormCustomPrompt(schedule.customPrompt || '');
     setFormMaxOutputTokens(schedule.maxOutputTokens ?? 0);
     setFormCrontab(schedule.crontab || '');
@@ -1181,6 +1488,146 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
     }
     return [...list, value];
   };
+
+  const toggleTestTypeFilterValue = useCallback((value: string) => {
+    setTestTypeFilter((prev) => {
+      if (prev.includes(value as AccountFilterType)) {
+        return prev.filter((item) => item !== value);
+      }
+      return [...prev, value as AccountFilterType];
+    });
+  }, []);
+
+  const clearTestTypeFilter = useCallback(() => {
+    setTestTypeFilter([]);
+  }, []);
+
+  const toggleTestTagFilterValue = useCallback((value: string) => {
+    setTestTagFilter((prev) => {
+      if (prev.includes(value)) {
+        return prev.filter((item) => item !== value);
+      }
+      return [...prev, value];
+    });
+  }, []);
+
+  const clearTestTagFilter = useCallback(() => {
+    setTestTagFilter([]);
+  }, []);
+
+  const toggleTestGroupFilterValue = useCallback((value: string) => {
+    setTestGroupFilter((prev) => {
+      if (prev.includes(value)) {
+        return prev.filter((item) => item !== value);
+      }
+      return [...prev, value];
+    });
+  }, []);
+
+  const clearTestGroupFilter = useCallback(() => {
+    setTestGroupFilter([]);
+  }, []);
+
+  const selectVisibleTestAccounts = useCallback(() => {
+    setTestSelectedAccounts((prev) => {
+      const next = new Set(prev);
+      filteredTestAccountEmails.forEach((email) => next.add(email));
+      return Array.from(next);
+    });
+  }, [filteredTestAccountEmails]);
+
+  const clearVisibleTestAccounts = useCallback(() => {
+    setTestSelectedAccounts((prev) => {
+      if (prev.length === 0) return prev;
+      const next = new Set(prev);
+      filteredTestAccountEmails.forEach((email) => next.delete(email));
+      return Array.from(next);
+    });
+  }, [filteredTestAccountEmails]);
+
+  const toggleAllTestAccountsSelection = useCallback(() => {
+    if (filteredTestAccountEmails.length === 0) return;
+    if (allVisibleTestAccountsSelected) {
+      clearVisibleTestAccounts();
+      return;
+    }
+    selectVisibleTestAccounts();
+  }, [
+    allVisibleTestAccountsSelected,
+    clearVisibleTestAccounts,
+    filteredTestAccountEmails.length,
+    selectVisibleTestAccounts,
+  ]);
+
+  const toggleFormTypeFilterValue = useCallback((value: string) => {
+    setFormTypeFilter((prev) => {
+      if (prev.includes(value as AccountFilterType)) {
+        return prev.filter((item) => item !== value);
+      }
+      return [...prev, value as AccountFilterType];
+    });
+  }, []);
+
+  const clearFormTypeFilter = useCallback(() => {
+    setFormTypeFilter([]);
+  }, []);
+
+  const toggleFormTagFilterValue = useCallback((value: string) => {
+    setFormTagFilter((prev) => {
+      if (prev.includes(value)) {
+        return prev.filter((item) => item !== value);
+      }
+      return [...prev, value];
+    });
+  }, []);
+
+  const clearFormTagFilter = useCallback(() => {
+    setFormTagFilter([]);
+  }, []);
+
+  const toggleFormGroupFilterValue = useCallback((value: string) => {
+    setFormGroupFilter((prev) => {
+      if (prev.includes(value)) {
+        return prev.filter((item) => item !== value);
+      }
+      return [...prev, value];
+    });
+  }, []);
+
+  const clearFormGroupFilter = useCallback(() => {
+    setFormGroupFilter([]);
+  }, []);
+
+  const selectVisibleFormAccounts = useCallback(() => {
+    setFormSelectedAccounts((prev) => {
+      const next = new Set(prev);
+      filteredFormAccountEmails.forEach((email) => next.add(email));
+      return Array.from(next);
+    });
+  }, [filteredFormAccountEmails]);
+
+  const clearVisibleFormAccounts = useCallback(() => {
+    setFormSelectedAccounts((prev) => {
+      if (prev.length === 0) return prev;
+      const next = new Set(prev);
+      filteredFormAccountEmails.forEach((email) => next.delete(email));
+      return Array.from(next);
+    });
+  }, [filteredFormAccountEmails]);
+
+  const toggleAllFormAccountsSelection = useCallback(() => {
+    if (filteredFormAccountEmails.length === 0) return;
+    if (allVisibleFormAccountsSelected) {
+      clearVisibleFormAccounts();
+      return;
+    }
+    selectVisibleFormAccounts();
+  }, [
+    allVisibleFormAccountsSelected,
+    clearVisibleFormAccounts,
+    filteredFormAccountEmails.length,
+    selectVisibleFormAccounts,
+  ]);
 
   const getPendingCustomTime = (mode: 'daily' | 'weekly' | 'fallback') => {
     if (mode === 'daily') return normalizeTimeInput(customDailyTime);
@@ -1437,6 +1884,10 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
     const runtimeReady = await ensureWakeupRuntimeReady();
     if (!runtimeReady) return;
 
+    setTestAccountSearchQuery('');
+    setTestTypeFilter([]);
+    setTestTagFilter([]);
+    setTestGroupFilter([]);
     setShowTestModal(true);
   };
 
@@ -1675,6 +2126,17 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
             </div>
             <div className="modal-body">
               <div className="wakeup-form-group">
+                <label>Antigravity Version</label>
+                <select
+                  className="wakeup-input wakeup-select"
+                  value={officialLsVersionMode}
+                  onChange={(event) => handleOfficialLsVersionModeChange(event.target.value)}
+                >
+                  <option value="gte_1_21_6">&gt;=1.21.6</option>
+                  <option value="lt_1_21_6">&lt;1.21.6</option>
+                </select>
+              </div>
+              <div className="wakeup-form-group">
                 <label>{t('wakeup.test.modelsLabel')}</label>
                 <div className="wakeup-chip-list">
                   {modelsLoading && <span className="wakeup-hint">{t('common.loading')}</span>}
@@ -1699,20 +2161,104 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
               <div className="wakeup-form-group">
                 <label>{t('wakeup.test.accountsLabel')}</label>
                 <p className="wakeup-hint">{t('wakeup.test.accountsHint')}</p>
-                <div className="wakeup-chip-list">
-                  {accountEmails.length === 0 && <span className="wakeup-hint">{t('wakeup.form.accountsEmpty')}</span>}
-                  {accountEmails.map((email) => (
-                    <button
-                      key={email}
-                      type="button"
-                      className={`wakeup-chip ${testSelectedAccounts.includes(email) ? 'selected' : ''}`}
-                      onClick={() =>
-                        setTestSelectedAccounts((prev) => toggleListValue(prev, email, { allowEmpty: true }))
-                      }
-                    >
-                      {maskAccountText(email)}
-                    </button>
-                  ))}
+                <div className="wakeup-account-selector">
+                  <div className="verification-account-select-all wakeup-account-select-toolbar">
+                    <label className="verification-checkbox-row verification-checkbox-row-head">
+                      <input
+                        ref={testAccountSelectAllRef}
+                        type="checkbox"
+                        className="verification-checkbox-input"
+                        checked={allVisibleTestAccountsSelected}
+                        disabled={filteredTestAccountEmails.length === 0}
+                        onChange={toggleAllTestAccountsSelection}
+                      />
+                      <span className="verification-checkbox-ui" aria-hidden="true" />
+                      <span className="verification-checkbox-label">{t('wakeup.verification.actions.selectAllAccounts')}</span>
+                    </label>
+                    <div className="verification-account-search-wrap wakeup-account-search-wrap">
+                      <input
+                        type="text"
+                        className="verification-account-search"
+                        placeholder={t('accounts.search')}
+                        value={testAccountSearchQuery}
+                        onChange={(event) => setTestAccountSearchQuery(event.target.value)}
+                      />
+                    </div>
+                    <div className="verification-account-filters wakeup-account-filter-row">
+                      <MultiSelectFilterDropdown
+                        options={typeFilterOptions}
+                        selectedValues={testTypeFilter}
+                        allLabel={t('wakeup.verification.filters.typeShort')}
+                        filterLabel={t('wakeup.verification.filters.typeShort')}
+                        clearLabel={t('accounts.clearFilter')}
+                        emptyLabel={t('common.none')}
+                        ariaLabel={t('wakeup.verification.filters.typeShort')}
+                        onToggleValue={toggleTestTypeFilterValue}
+                        onClear={clearTestTypeFilter}
+                      />
+                      <MultiSelectFilterDropdown
+                        options={availableFilterTagOptions}
+                        selectedValues={testTagFilter}
+                        allLabel={t('wakeup.verification.filters.tagsShort')}
+                        filterLabel={t('wakeup.verification.filters.tagsShort')}
+                        clearLabel={t('accounts.clearFilter')}
+                        emptyLabel={t('accounts.noAvailableTags')}
+                        ariaLabel={t('wakeup.verification.filters.tagsShort')}
+                        onToggleValue={toggleTestTagFilterValue}
+                        onClear={clearTestTagFilter}
+                      />
+                      <MultiSelectFilterDropdown
+                        options={groupFilterOptions}
+                        selectedValues={testGroupFilter}
+                        allLabel={t('wakeup.verification.filters.groupsShort')}
+                        filterLabel={t('wakeup.verification.filters.groupsShort')}
+                        clearLabel={t('accounts.clearFilter')}
+                        emptyLabel={t('accounts.groups.noGroups')}
+                        ariaLabel={t('wakeup.verification.filters.groupsShort')}
+                        onToggleValue={toggleTestGroupFilterValue}
+                        onClear={clearTestGroupFilter}
+                      />
+                    </div>
+                    <span className="verification-account-select-count wakeup-account-select-count">
+                      {testSelectedVisibleAccountsCount}/{filteredTestAccountEmails.length}
+                      {filteredTestAccountEmails.length !== accountEmails.length
+                        ? ` · ${testSelectedAccounts.length}/${accountEmails.length}`
+                        : ''}
+                    </span>
+                  </div>
+                  <div className="verification-account-list wakeup-account-list">
+                    {accountEmails.length === 0 ? (
+                      <span className="wakeup-hint wakeup-account-empty">{t('wakeup.form.accountsEmpty')}</span>
+                    ) : filteredTestAccounts.length === 0 ? (
+                      <span className="wakeup-hint wakeup-account-empty">{t('accounts.noMatch.title')}</span>
+                    ) : (
+                      filteredTestAccounts.map((account) => {
+                        const maskedEmail = maskAccountText(account.email);
+                        const isSelected = testSelectedAccountSet.has(account.email);
+                        return (
+                          <label
+                            key={account.id}
+                            className={`verification-account-item ${isSelected ? 'selected' : ''}`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="verification-checkbox-input"
+                              checked={isSelected}
+                              onChange={() =>
+                                setTestSelectedAccounts((prev) =>
+                                  toggleListValue(prev, account.email, { allowEmpty: true }),
+                                )
+                              }
+                            />
+                            <span className="verification-checkbox-ui" aria-hidden="true" />
+                            <span className="verification-account-item-email" title={maskedEmail}>
+                              {maskedEmail}
+                            </span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="wakeup-form-group">
@@ -1850,6 +2396,17 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
             </div>
             <div className="modal-body">
               <div className="wakeup-form-group">
+                <label>Antigravity Version</label>
+                <select
+                  className="wakeup-input wakeup-select"
+                  value={officialLsVersionMode}
+                  onChange={(event) => handleOfficialLsVersionModeChange(event.target.value)}
+                >
+                  <option value="gte_1_21_6">&gt;=1.21.6</option>
+                  <option value="lt_1_21_6">&lt;1.21.6</option>
+                </select>
+              </div>
+              <div className="wakeup-form-group">
                 <label>{t('wakeup.form.taskName')}</label>
                 <input
                   className="wakeup-input"
@@ -1929,24 +2486,107 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
                     ))}
                 </div>
               </div>
-
               <div className="wakeup-form-group">
                 <label>{t('wakeup.form.accountSelect')}</label>
                 <p className="wakeup-hint">{t('wakeup.form.accountHint')}</p>
-                <div className="wakeup-chip-list">
-                  {accountEmails.length === 0 && <span className="wakeup-hint">{t('wakeup.form.accountsEmpty')}</span>}
-                  {accountEmails.map((email) => (
-                    <button
-                      key={email}
-                      type="button"
-                      className={`wakeup-chip ${formSelectedAccounts.includes(email) ? 'selected' : ''}`}
-                      onClick={() =>
-                        setFormSelectedAccounts((prev) => toggleListValue(prev, email, { allowEmpty: true }))
-                      }
-                    >
-                      {maskAccountText(email)}
-                    </button>
-                  ))}
+                <div className="wakeup-account-selector">
+                  <div className="verification-account-select-all wakeup-account-select-toolbar">
+                    <label className="verification-checkbox-row verification-checkbox-row-head">
+                      <input
+                        ref={formAccountSelectAllRef}
+                        type="checkbox"
+                        className="verification-checkbox-input"
+                        checked={allVisibleFormAccountsSelected}
+                        disabled={filteredFormAccountEmails.length === 0}
+                        onChange={toggleAllFormAccountsSelection}
+                      />
+                      <span className="verification-checkbox-ui" aria-hidden="true" />
+                      <span className="verification-checkbox-label">{t('wakeup.verification.actions.selectAllAccounts')}</span>
+                    </label>
+                    <div className="verification-account-search-wrap wakeup-account-search-wrap">
+                      <input
+                        type="text"
+                        className="verification-account-search"
+                        placeholder={t('accounts.search')}
+                        value={formAccountSearchQuery}
+                        onChange={(event) => setFormAccountSearchQuery(event.target.value)}
+                      />
+                    </div>
+                    <div className="verification-account-filters wakeup-account-filter-row">
+                      <MultiSelectFilterDropdown
+                        options={typeFilterOptions}
+                        selectedValues={formTypeFilter}
+                        allLabel={t('wakeup.verification.filters.typeShort')}
+                        filterLabel={t('wakeup.verification.filters.typeShort')}
+                        clearLabel={t('accounts.clearFilter')}
+                        emptyLabel={t('common.none')}
+                        ariaLabel={t('wakeup.verification.filters.typeShort')}
+                        onToggleValue={toggleFormTypeFilterValue}
+                        onClear={clearFormTypeFilter}
+                      />
+                      <MultiSelectFilterDropdown
+                        options={availableFilterTagOptions}
+                        selectedValues={formTagFilter}
+                        allLabel={t('wakeup.verification.filters.tagsShort')}
+                        filterLabel={t('wakeup.verification.filters.tagsShort')}
+                        clearLabel={t('accounts.clearFilter')}
+                        emptyLabel={t('accounts.noAvailableTags')}
+                        ariaLabel={t('wakeup.verification.filters.tagsShort')}
+                        onToggleValue={toggleFormTagFilterValue}
+                        onClear={clearFormTagFilter}
+                      />
+                      <MultiSelectFilterDropdown
+                        options={groupFilterOptions}
+                        selectedValues={formGroupFilter}
+                        allLabel={t('wakeup.verification.filters.groupsShort')}
+                        filterLabel={t('wakeup.verification.filters.groupsShort')}
+                        clearLabel={t('accounts.clearFilter')}
+                        emptyLabel={t('accounts.groups.noGroups')}
+                        ariaLabel={t('wakeup.verification.filters.groupsShort')}
+                        onToggleValue={toggleFormGroupFilterValue}
+                        onClear={clearFormGroupFilter}
+                      />
+                    </div>
+                    <span className="verification-account-select-count wakeup-account-select-count">
+                      {formSelectedVisibleAccountsCount}/{filteredFormAccountEmails.length}
+                      {filteredFormAccountEmails.length !== accountEmails.length
+                        ? ` · ${formSelectedAccounts.length}/${accountEmails.length}`
+                        : ''}
+                    </span>
+                  </div>
+                  <div className="verification-account-list wakeup-account-list">
+                    {accountEmails.length === 0 ? (
+                      <span className="wakeup-hint wakeup-account-empty">{t('wakeup.form.accountsEmpty')}</span>
+                    ) : filteredFormAccounts.length === 0 ? (
+                      <span className="wakeup-hint wakeup-account-empty">{t('accounts.noMatch.title')}</span>
+                    ) : (
+                      filteredFormAccounts.map((account) => {
+                        const maskedEmail = maskAccountText(account.email);
+                        const isSelected = formSelectedAccountSet.has(account.email);
+                        return (
+                          <label
+                            key={account.id}
+                            className={`verification-account-item ${isSelected ? 'selected' : ''}`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="verification-checkbox-input"
+                              checked={isSelected}
+                              onChange={() =>
+                                setFormSelectedAccounts((prev) =>
+                                  toggleListValue(prev, account.email, { allowEmpty: true }),
+                                )
+                              }
+                            />
+                            <span className="verification-checkbox-ui" aria-hidden="true" />
+                            <span className="verification-account-item-email" title={maskedEmail}>
+                              {maskedEmail}
+                            </span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               </div>
 

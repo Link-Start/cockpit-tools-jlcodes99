@@ -691,7 +691,8 @@
     "missing": {
       "title": "لم يتم العثور على مسار التطبيق",
       "desc": "تعذر العثور على مسار تطبيق {{app}}. الرجاء تعيينه الآن للمتابعة.",
-      "action": "تعيين الآن"
+      "action": "تعيين الآن",
+      "codexLaunchHint": "عند إيقافه، يستمر تبديل الحساب واستبدال تسجيل الدخول، لكن لن يتم تشغيل تطبيق Codex بعد الآن ولن يظهر هذا التنبيه لمسار التشغيل مرة أخرى."
     }
   },
   "accounts": {
@@ -861,7 +862,9 @@
       "editTitle": "تحرير المجموعة",
       "ungrouped": "غير مجمّع",
       "currentGroupLabel": "المجموعة الحالية",
-      "accountPickerEmpty": "لا توجد حسابات مطابقة"
+      "accountPickerEmpty": "لا توجد حسابات مطابقة",
+      "filterHint": "تم تحديد {{count}} مجموعة للتصفية",
+      "filterToggle": "حدّد للتصفية حسب هذه المجموعة"
     }
   },
   "overview": {
@@ -1066,7 +1069,10 @@
         "verifiedAt": "وقت التحقق"
       },
       "filters": {
-        "all": "الكل"
+        "all": "الكل",
+        "typeShort": "النوع",
+        "tagsShort": "الوسوم",
+        "groupsShort": "المجموعات"
       },
       "actions": {
         "selectAllAccounts": "تحديد الكل",
@@ -1623,6 +1629,15 @@
       "updatedAt": "تم التحديث",
       "locationRunning": " (قيد التشغيل)",
       "untitled": "جلسة بدون عنوان"
+    },
+    "api": {
+      "baseUrl": "عنوان URL الأساسي",
+      "baseUrlPlaceholder": "اتركه فارغًا لاستخدام الإعداد الرسمي الافتراضي",
+      "validation": {
+        "apiKeyCannotBeUrl": "لا يمكن أن يكون مفتاح API عبارة عن عنوان URL. يرجى التحقق مما إذا تم تبديل الحقول.",
+        "baseUrlInvalid": "عنوان Base URL غير صالح. يرجى إدخال رابط كامل يبدأ بـ http:// أو https://.",
+        "apiKeyEqualsBaseUrl": "لا يمكن أن يكون مفتاح API مطابقًا لـ Base URL."
+      }
     }
   },
   "githubCopilot": {

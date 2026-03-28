@@ -51,6 +51,43 @@ fn normalize_api_base_url(raw: Option<&str>) -> Option<String> {
     Some(trimmed.trim_end_matches('/').to_string())
 }
 
+fn is_http_like_url(raw: &str) -> bool {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    if let Ok(parsed) = reqwest::Url::parse(trimmed) {
+        return matches!(parsed.scheme(), "http" | "https");
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    lower.starts_with("http://") || lower.starts_with("https://")
+}
+
+fn validate_api_key_credentials(
+    api_key: &str,
+    api_base_url: Option<&str>,
+) -> Result<(String, Option<String>), String> {
+    let normalized_key = normalize_api_key(api_key).ok_or("API Key 不能为空")?;
+    if is_http_like_url(&normalized_key) {
+        return Err("API Key 不能是 URL，请检查是否填反".to_string());
+    }
+
+    let normalized_base_url = normalize_api_base_url(api_base_url);
+    if let Some(base_url) = normalized_base_url.as_ref() {
+        let parsed = reqwest::Url::parse(base_url).map_err(|_| {
+            "Base URL 格式无效，请输入完整的 http:// 或 https:// 地址".to_string()
+        })?;
+        if !matches!(parsed.scheme(), "http" | "https") {
+            return Err("Base URL 仅支持 http 或 https 协议".to_string());
+        }
+        if base_url == &normalized_key {
+            return Err("API Key 不能与 Base URL 相同".to_string());
+        }
+    }
+
+    Ok((normalized_key, normalized_base_url))
+}
+
 fn build_api_key_email(api_key: &str) -> String {
     let hash = format!("{:x}", md5::compute(api_key.as_bytes()));
     format!("{}-{}", API_KEY_EMAIL_PREFIX, &hash[..8])
@@ -940,8 +977,7 @@ pub fn upsert_api_key_account(
     api_key: String,
     api_base_url: Option<String>,
 ) -> Result<CodexAccount, String> {
-    let api_key = normalize_api_key(&api_key).ok_or("API Key 不能为空")?;
-    let api_base_url = normalize_api_base_url(api_base_url.as_deref());
+    let (api_key, api_base_url) = validate_api_key_credentials(&api_key, api_base_url.as_deref())?;
     let account_id = build_api_key_account_id(&api_key);
     let mut index = load_account_index();
     let existing = index.accounts.iter().position(|item| item.id == account_id);
@@ -1722,7 +1758,7 @@ mod tests {
     use super::{
         extract_codex_tokens_from_value, get_accounts_dir, get_accounts_storage_path,
         list_accounts_checked, load_account_index, read_api_base_url_from_config_toml,
-        write_api_base_url_to_config_toml,
+        validate_api_key_credentials, write_api_base_url_to_config_toml,
     };
     use std::fs;
 
@@ -1790,6 +1826,29 @@ mod tests {
         );
 
         fs::remove_dir_all(&base_dir).expect("cleanup temp dir");
+    }
+
+    #[test]
+    fn validate_api_key_credentials_rejects_url_api_key() {
+        let err = validate_api_key_credentials("http://127.0.0.1:3000/v1", None)
+            .expect_err("url should be rejected as api key");
+        assert!(err.contains("API Key 不能是 URL"));
+    }
+
+    #[test]
+    fn validate_api_key_credentials_rejects_invalid_base_url() {
+        let err = validate_api_key_credentials("sk-test-key", Some("not-a-url"))
+            .expect_err("invalid base url should be rejected");
+        assert!(err.contains("Base URL 格式无效"));
+    }
+
+    #[test]
+    fn validate_api_key_credentials_accepts_valid_values() {
+        let (api_key, api_base_url) =
+            validate_api_key_credentials("  sk-test-key  ", Some("https://relay.local/v1/"))
+                .expect("valid api key + base url should pass");
+        assert_eq!(api_key, "sk-test-key");
+        assert_eq!(api_base_url.as_deref(), Some("https://relay.local/v1"));
     }
 
     #[test]
@@ -1965,8 +2024,8 @@ pub fn update_api_key_credentials(
         return Err("仅 API Key 账号支持编辑凭据".to_string());
     }
 
-    let normalized_key = normalize_api_key(&api_key).ok_or("API Key 不能为空")?;
-    let normalized_base_url = normalize_api_base_url(api_base_url.as_deref());
+    let (normalized_key, normalized_base_url) =
+        validate_api_key_credentials(&api_key, api_base_url.as_deref())?;
     let old_id = account.id.clone();
     let new_id = build_api_key_account_id(&normalized_key);
     let mut index = load_account_index();

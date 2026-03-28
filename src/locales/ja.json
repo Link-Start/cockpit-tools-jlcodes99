@@ -645,7 +645,8 @@
     "missing": {
       "title": "アプリのパスが見つかりません",
       "desc": "{{app}} のアプリパスが見つかりません。続行するには今すぐ設定してください。",
-      "action": "今すぐ設定"
+      "action": "今すぐ設定",
+      "codexLaunchHint": "オフにすると、アカウント切替とログイン上書きは引き続き実行されますが、Codex アプリは起動されず、この起動パスの案内も再表示されません。"
     }
   },
   "accounts": {
@@ -815,7 +816,9 @@
       "editTitle": "グループを編集",
       "ungrouped": "未分類",
       "currentGroupLabel": "現在のグループ",
-      "accountPickerEmpty": "条件に一致するアカウントはありません"
+      "accountPickerEmpty": "条件に一致するアカウントはありません",
+      "filterHint": "フィルター対象に {{count}} 件のグループを選択中",
+      "filterToggle": "このグループで絞り込む"
     }
   },
   "overview": {
@@ -1020,7 +1023,10 @@
         "verifiedAt": "検証時間"
       },
       "filters": {
-        "all": "すべて"
+        "all": "すべて",
+        "typeShort": "種類",
+        "tagsShort": "タグ",
+        "groupsShort": "グループ"
       },
       "actions": {
         "selectAllAccounts": "すべて選択",
@@ -1577,6 +1583,15 @@
       "updatedAt": "更新済み",
       "locationRunning": "（実行中）",
       "untitled": "無題のセッション"
+    },
+    "api": {
+      "baseUrl": "ベース URL",
+      "baseUrlPlaceholder": "空欄のままにすると公式の既定値を使用します",
+      "validation": {
+        "apiKeyCannotBeUrl": "API キーに URL は設定できません。入力欄が逆になっていないか確認してください。",
+        "baseUrlInvalid": "ベース URL の形式が正しくありません。http:// または https:// を含む完全な URL を入力してください。",
+        "apiKeyEqualsBaseUrl": "API キーをベース URL と同じ値にはできません。"
+      }
     }
   },
   "githubCopilot": {

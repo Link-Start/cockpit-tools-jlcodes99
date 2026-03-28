@@ -61,6 +61,13 @@
   line-height: 1.5;
 }
 
+.app-path-missing-hint {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .update-quick-action {
   position: fixed;
   top: 56px;

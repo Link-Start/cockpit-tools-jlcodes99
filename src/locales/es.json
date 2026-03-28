@@ -645,7 +645,8 @@
     "missing": {
       "title": "No se encontró la ruta de la aplicación",
       "desc": "No se pudo encontrar la ruta de la aplicación {{app}}. Establécela ahora para continuar.",
-      "action": "Establecer ahora"
+      "action": "Establecer ahora",
+      "codexLaunchHint": "Al desactivarlo, el cambio de cuenta y la sobrescritura de inicio de sesión seguirán ejecutándose, pero ya no se iniciará Codex App y este aviso de ruta no volverá a mostrarse."
     }
   },
   "accounts": {
@@ -815,7 +816,9 @@
       "editTitle": "Editar grupo",
       "ungrouped": "Sin grupo",
       "currentGroupLabel": "Grupo actual",
-      "accountPickerEmpty": "No hay cuentas coincidentes"
+      "accountPickerEmpty": "No hay cuentas coincidentes",
+      "filterHint": "{{count}} grupo(s) seleccionado(s) para filtrar",
+      "filterToggle": "Marca para filtrar por este grupo"
     }
   },
   "overview": {
@@ -1020,7 +1023,10 @@
         "verifiedAt": "Hora de verificación"
       },
       "filters": {
-        "all": "Todos"
+        "all": "Todos",
+        "typeShort": "Tipo",
+        "tagsShort": "Etiquetas",
+        "groupsShort": "Grupos"
       },
       "actions": {
         "selectAllAccounts": "Seleccionar todo",
@@ -1577,6 +1583,15 @@
       "updatedAt": "Actualizado",
       "locationRunning": " (en ejecución)",
       "untitled": "Sesión sin título"
+    },
+    "api": {
+      "baseUrl": "URL base",
+      "baseUrlPlaceholder": "Déjalo en blanco para usar el valor oficial predeterminado",
+      "validation": {
+        "apiKeyCannotBeUrl": "La clave de API no puede ser una URL. Verifica si los campos están intercambiados.",
+        "baseUrlInvalid": "URL base no válida. Introduce una URL completa con http:// o https://.",
+        "apiKeyEqualsBaseUrl": "La clave de API no puede ser igual a la URL base."
+      }
     }
   },
   "githubCopilot": {

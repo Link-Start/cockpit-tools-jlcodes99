@@ -7,6 +7,7 @@ import { ShieldCheck, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ModalErrorMessage, useModalErrorState } from '../components/ModalErrorMessage';
 import { OverviewTabsHeader } from '../components/OverviewTabsHeader';
+import { MultiSelectFilterDropdown, type MultiSelectFilterOption } from '../components/MultiSelectFilterDropdown';
 import { useAccountStore } from '../stores/useAccountStore';
 import { Page } from '../types/navigation';
 import {
@@ -15,12 +16,28 @@ import {
   getAntigravityModelDisplayName,
   type AntigravityModelOption,
 } from '../utils/antigravityModels';
+import {
+  accountMatchesTagFilters,
+  accountMatchesTypeFilters,
+  buildAccountTierCounts,
+  buildAccountTierFilterOptions,
+  collectAvailableAccountTags,
+  normalizeAccountTag,
+  type AccountFilterType,
+} from '../utils/accountFilters';
 import { getAntigravityTierBadge } from '../utils/account';
+import { getAccountGroups, type AccountGroup } from '../services/accountGroupService';
 import {
   isPrivacyModeEnabledByDefault,
   maskSensitiveValue,
   PRIVACY_MODE_CHANGED_EVENT,
 } from '../utils/privacy';
+import {
+  loadWakeupOfficialLsVersionMode,
+  saveWakeupOfficialLsVersionMode,
+  WAKEUP_OFFICIAL_LS_VERSION_CHANGED_EVENT,
+  type WakeupOfficialLsVersionMode,
+} from '../utils/wakeupOfficialLsVersion';
 
 interface WakeupVerificationPageProps {
   onNavigate?: (page: Page) => void;
@@ -93,6 +110,7 @@ const STATUS_VERIFICATION_REQUIRED = 'verification_required';
 const STATUS_TOS_VIOLATION = 'tos_violation';
 const STATUS_AUTH_EXPIRED = 'auth_expired';
 const STATUS_FAILED = 'failed';
+const UNGROUPED_ACCOUNT_GROUP_FILTER_KEY = '__ungrouped__';
 
 const formatErrorMessage = (error: unknown) => {
   if (error instanceof Error) return error.message;
@@ -200,6 +218,13 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
   );
 
   const [accountSearchQuery, setAccountSearchQuery] = useState('');
+  const [configTypeFilter, setConfigTypeFilter] = useState<AccountFilterType[]>([]);
+  const [configTagFilter, setConfigTagFilter] = useState<string[]>([]);
+  const [configGroupFilter, setConfigGroupFilter] = useState<string[]>([]);
+  const [accountGroups, setAccountGroups] = useState<AccountGroup[]>([]);
+  const [officialLsVersionMode, setOfficialLsVersionMode] = useState<WakeupOfficialLsVersionMode>(
+    () => loadWakeupOfficialLsVersionMode(),
+  );
 
   const activeBatchIdRef = useRef<string | null>(null);
   const accountSelectAllRef = useRef<HTMLInputElement | null>(null);
@@ -210,27 +235,131 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
     return map;
   }, [accounts]);
   const accountIds = useMemo(() => accounts.map((account) => account.id), [accounts]);
-  const filteredConfigAccounts = useMemo(
+  const availableFilterTags = useMemo(() => collectAvailableAccountTags(accounts), [accounts]);
+  const availableFilterTagOptions = useMemo<MultiSelectFilterOption[]>(
     () =>
-      accountSearchQuery.trim()
-        ? accounts.filter((account) =>
-          account.email.toLowerCase().includes(accountSearchQuery.trim().toLowerCase()),
-        )
-        : accounts,
-    [accounts, accountSearchQuery],
+      availableFilterTags.map((tag) => ({
+        value: tag,
+        label: tag,
+      })),
+    [availableFilterTags],
+  );
+  const tierCounts = useMemo(
+    () => buildAccountTierCounts(accounts, {}),
+    [accounts],
+  );
+  const typeFilterOptions = useMemo<MultiSelectFilterOption[]>(
+    () => buildAccountTierFilterOptions(t, tierCounts),
+    [t, tierCounts],
+  );
+  const groupIdsByAccountId = useMemo(() => {
+    const map = new Map<string, string[]>();
+    accountGroups.forEach((group) => {
+      group.accountIds.forEach((accountId) => {
+        const current = map.get(accountId);
+        if (!current) {
+          map.set(accountId, [group.id]);
+          return;
+        }
+        current.push(group.id);
+      });
+    });
+    return map;
+  }, [accountGroups]);
+  const accountIdsInAnyGroup = useMemo(() => {
+    const ids = new Set<string>();
+    accountGroups.forEach((group) => {
+      group.accountIds.forEach((accountId) => ids.add(accountId));
+    });
+    return ids;
+  }, [accountGroups]);
+  const groupFilterOptions = useMemo<MultiSelectFilterOption[]>(() => {
+    const groupOptions = accountGroups
+      .map((group) => {
+        const count = group.accountIds.filter((id) => accountById.has(id)).length;
+        return {
+          value: group.id,
+          label: `${group.name} (${count})`,
+        };
+      })
+      .sort((left, right) => left.label.localeCompare(right.label));
+    const ungroupedCount = accounts.reduce(
+      (count, account) => (accountIdsInAnyGroup.has(account.id) ? count : count + 1),
+      0,
+    );
+    return [
+      ...groupOptions,
+      {
+        value: UNGROUPED_ACCOUNT_GROUP_FILTER_KEY,
+        label: `${t('accounts.groups.ungrouped', '未分组')} (${ungroupedCount})`,
+      },
+    ];
+  }, [accountById, accountGroups, accountIdsInAnyGroup, accounts, t]);
+  const filteredConfigAccounts = useMemo(
+    () => {
+      const query = accountSearchQuery.trim().toLowerCase();
+      const selectedTypes = new Set<AccountFilterType>(configTypeFilter);
+      const selectedTags = new Set(configTagFilter.map(normalizeAccountTag));
+      const selectedGroups = new Set(configGroupFilter);
+
+      return accounts
+        .filter((account) => {
+          const email = (account.email || '').toLowerCase();
+          if (query && !email.includes(query)) {
+            return false;
+          }
+          if (!accountMatchesTypeFilters(account, selectedTypes, {})) {
+            return false;
+          }
+          if (!accountMatchesTagFilters(account, selectedTags)) {
+            return false;
+          }
+          if (selectedGroups.size > 0) {
+            const groupIds = groupIdsByAccountId.get(account.id) || [];
+            const matchesGrouped = groupIds.some((groupId) => selectedGroups.has(groupId));
+            const matchesUngrouped =
+              groupIds.length === 0 && selectedGroups.has(UNGROUPED_ACCOUNT_GROUP_FILTER_KEY);
+            if (!matchesGrouped && !matchesUngrouped) {
+              return false;
+            }
+          }
+          return true;
+        })
+        .sort((left, right) => left.email.localeCompare(right.email));
+    },
+    [
+      accountSearchQuery,
+      accounts,
+      configGroupFilter,
+      configTagFilter,
+      configTypeFilter,
+      groupIdsByAccountId,
+    ],
+  );
+  const filteredConfigAccountIds = useMemo(
+    () => filteredConfigAccounts.map((account) => account.id),
+    [filteredConfigAccounts],
   );
   const selectedAccountSet = useMemo(() => new Set(selectedAccounts), [selectedAccounts]);
-  const allAccountsSelected = useMemo(
-    () => accountIds.length > 0 && accountIds.every((id) => selectedAccountSet.has(id)),
-    [accountIds, selectedAccountSet],
+  const selectedVisibleAccountsCount = useMemo(
+    () =>
+      filteredConfigAccountIds.reduce(
+        (count, id) => (selectedAccountSet.has(id) ? count + 1 : count),
+        0,
+      ),
+    [filteredConfigAccountIds, selectedAccountSet],
   );
-  const hasSelectedAccounts = useMemo(
-    () => accountIds.some((id) => selectedAccountSet.has(id)),
-    [accountIds, selectedAccountSet],
+  const allVisibleAccountsSelected = useMemo(
+    () =>
+      filteredConfigAccountIds.length > 0
+      && selectedVisibleAccountsCount === filteredConfigAccountIds.length,
+    [filteredConfigAccountIds.length, selectedVisibleAccountsCount],
   );
-  const partiallyAccountsSelected = useMemo(
-    () => hasSelectedAccounts && !allAccountsSelected,
-    [hasSelectedAccounts, allAccountsSelected],
+  const partiallyVisibleAccountsSelected = useMemo(
+    () =>
+      selectedVisibleAccountsCount > 0
+      && selectedVisibleAccountsCount < filteredConfigAccountIds.length,
+    [filteredConfigAccountIds.length, selectedVisibleAccountsCount],
   );
 
   const quotaModelKeys = useMemo(() => collectAntigravityQuotaModelKeys(accounts), [accounts]);
@@ -368,6 +497,14 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
     (value?: string | null) => maskSensitiveValue(value, privacyModeEnabled),
     [privacyModeEnabled],
   );
+  const handleOfficialLsVersionModeChange = useCallback((value: string) => {
+    const nextMode =
+      value === 'lt_1_21_6'
+        ? 'lt_1_21_6'
+        : 'gte_1_21_6';
+    setOfficialLsVersionMode(nextMode);
+    saveWakeupOfficialLsVersionMode(nextMode);
+  }, []);
   const resolveAccountPlanBadge = useCallback(
     (accountId?: string | null) => {
       if (!accountId) return null;
@@ -404,6 +541,16 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
     }
   };
 
+  const fetchAccountGroups = useCallback(async () => {
+    try {
+      const groups = await getAccountGroups();
+      setAccountGroups(groups || []);
+    } catch (error) {
+      console.error('加载账号分组失败:', error);
+      setAccountGroups([]);
+    }
+  }, []);
+
   useEffect(() => {
     let active = true;
     const initPage = async () => {
@@ -424,10 +571,48 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
   }, [fetchAccounts]);
 
   useEffect(() => {
+    const syncMode = () => {
+      setOfficialLsVersionMode(loadWakeupOfficialLsVersionMode());
+    };
+    const handleModeChanged = (event: Event) => {
+      const detail = (event as CustomEvent<WakeupOfficialLsVersionMode>).detail;
+      if (detail === 'lt_1_21_6' || detail === 'gte_1_21_6') {
+        setOfficialLsVersionMode(detail);
+        return;
+      }
+      syncMode();
+    };
+
+    window.addEventListener(
+      WAKEUP_OFFICIAL_LS_VERSION_CHANGED_EVENT,
+      handleModeChanged as EventListener,
+    );
+    window.addEventListener('focus', syncMode);
+    return () => {
+      window.removeEventListener(
+        WAKEUP_OFFICIAL_LS_VERSION_CHANGED_EVENT,
+        handleModeChanged as EventListener,
+      );
+      window.removeEventListener('focus', syncMode);
+    };
+  }, []);
+
+  useEffect(() => {
+    invoke('wakeup_set_official_ls_version_mode', { mode: officialLsVersionMode }).catch((error) => {
+      console.error('同步官方 LS 版本模式失败:', error);
+    });
+  }, [officialLsVersionMode]);
+
+  useEffect(() => {
     if (!selectedModel && preferredDefaultModelId) {
       setSelectedModel(preferredDefaultModelId);
     }
   }, [preferredDefaultModelId, selectedModel]);
+
+  useEffect(() => {
+    if (!showConfigModal) return;
+    void fetchAccountGroups();
+  }, [fetchAccountGroups, showConfigModal]);
 
   useEffect(() => {
     const validIds = new Set(historyBatches.map((item) => item.batchId));
@@ -437,6 +622,21 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
       setDetailBatchId(null);
     }
   }, [historyBatches, detailBatchId, detailMode]);
+
+  useEffect(() => {
+    const validAccountIds = new Set(accountIds);
+    setSelectedAccounts((prev) => prev.filter((id) => validAccountIds.has(id)));
+  }, [accountIds]);
+
+  useEffect(() => {
+    const validGroupIds = new Set(accountGroups.map((group) => group.id));
+    setConfigGroupFilter((prev) =>
+      prev.filter(
+        (value) =>
+          value === UNGROUPED_ACCOUNT_GROUP_FILTER_KEY || validGroupIds.has(value),
+      ),
+    );
+  }, [accountGroups]);
 
   useEffect(() => {
     const syncPrivacyMode = () => {
@@ -462,8 +662,8 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
 
   useEffect(() => {
     if (!accountSelectAllRef.current) return;
-    accountSelectAllRef.current.indeterminate = partiallyAccountsSelected;
-  }, [partiallyAccountsSelected]);
+    accountSelectAllRef.current.indeterminate = partiallyVisibleAccountsSelected;
+  }, [partiallyVisibleAccountsSelected]);
 
   useEffect(() => {
     let unlisten: UnlistenFn | undefined;
@@ -509,6 +709,10 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
 
   const openConfigModal = () => {
     setSelectedAccounts(accounts.map((account) => account.id));
+    setAccountSearchQuery('');
+    setConfigTypeFilter([]);
+    setConfigTagFilter([]);
+    setConfigGroupFilter([]);
     if (!selectedModel && preferredDefaultModelId) {
       setSelectedModel(preferredDefaultModelId);
     }
@@ -525,28 +729,85 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
 
   const toggleAccountSelection = (accountId: string) => {
     setSelectedAccounts((prev) => {
-      if (prev.includes(accountId)) {
-        return prev.filter((id) => id !== accountId);
+      const next = new Set(prev);
+      if (next.has(accountId)) {
+        next.delete(accountId);
+      } else {
+        next.add(accountId);
       }
-      return [...prev, accountId];
+      return Array.from(next);
     });
   };
 
-  const selectAllAccounts = () => {
-    setSelectedAccounts(accountIds);
-  };
+  const toggleConfigFilterTypeValue = useCallback((value: string) => {
+    setConfigTypeFilter((prev) => {
+      if (prev.includes(value as AccountFilterType)) {
+        return prev.filter((item) => item !== value);
+      }
+      return [...prev, value as AccountFilterType];
+    });
+  }, []);
 
-  const clearSelectedAccounts = () => {
-    setSelectedAccounts([]);
-  };
+  const clearConfigTypeFilter = useCallback(() => {
+    setConfigTypeFilter([]);
+  }, []);
 
-  const toggleAllAccountsSelection = () => {
-    if (allAccountsSelected) {
-      clearSelectedAccounts();
+  const toggleConfigTagFilterValue = useCallback((value: string) => {
+    setConfigTagFilter((prev) => {
+      if (prev.includes(value)) {
+        return prev.filter((item) => item !== value);
+      }
+      return [...prev, value];
+    });
+  }, []);
+
+  const clearConfigTagFilter = useCallback(() => {
+    setConfigTagFilter([]);
+  }, []);
+
+  const toggleConfigGroupFilterValue = useCallback((value: string) => {
+    setConfigGroupFilter((prev) => {
+      if (prev.includes(value)) {
+        return prev.filter((item) => item !== value);
+      }
+      return [...prev, value];
+    });
+  }, []);
+
+  const clearConfigGroupFilter = useCallback(() => {
+    setConfigGroupFilter([]);
+  }, []);
+
+  const selectVisibleAccounts = useCallback(() => {
+    setSelectedAccounts((prev) => {
+      const next = new Set(prev);
+      filteredConfigAccountIds.forEach((accountId) => next.add(accountId));
+      return Array.from(next);
+    });
+  }, [filteredConfigAccountIds]);
+
+  const clearVisibleAccounts = useCallback(() => {
+    setSelectedAccounts((prev) => {
+      if (prev.length === 0) return prev;
+      const next = new Set(prev);
+      filteredConfigAccountIds.forEach((accountId) => next.delete(accountId));
+      return Array.from(next);
+    });
+  }, [filteredConfigAccountIds]);
+
+  const toggleAllAccountsSelection = useCallback(() => {
+    if (filteredConfigAccountIds.length === 0) return;
+    if (allVisibleAccountsSelected) {
+      clearVisibleAccounts();
       return;
     }
-    selectAllAccounts();
-  };
+    selectVisibleAccounts();
+  }, [
+    allVisibleAccountsSelected,
+    clearVisibleAccounts,
+    filteredConfigAccountIds.length,
+    selectVisibleAccounts,
+  ]);
 
   const toggleBatchSelection = (batchId: string) => {
     setSelectedBatchIds((prev) => {
@@ -660,7 +921,7 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
 
   const ensureWakeupRuntimeReady = useCallback(async (options?: { reportToConfigModal?: boolean }): Promise<boolean> => {
     try {
-      await invoke('wakeup_ensure_runtime_ready');
+      await invoke('wakeup_ensure_runtime_ready', { officialLsVersionMode });
       return true;
     } catch (error) {
       const message = formatErrorMessage(error);
@@ -685,7 +946,7 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
       }
       return false;
     }
-  }, [reportConfigModalError, t]);
+  }, [officialLsVersionMode, reportConfigModalError, t]);
 
   const startBatchVerification = async () => {
     if (running) return;
@@ -753,6 +1014,7 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
         model: selectedModel,
         prompt: DEFAULT_PROMPT,
         maxOutputTokens: 0,
+        officialLsVersionMode,
       });
 
       const finalBatch: WakeupVerificationBatchHistoryItem = {
@@ -1002,6 +1264,19 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
             <div className="modal-body verification-modal-body">
               <ModalErrorMessage message={configModalError} scrollKey={configModalErrorScrollKey} />
               <div className="wakeup-form-group">
+                <label>Antigravity Version</label>
+                <div className="verification-select-wrap">
+                  <select
+                    className="wakeup-input verification-select"
+                    value={officialLsVersionMode}
+                    onChange={(event) => handleOfficialLsVersionModeChange(event.target.value)}
+                  >
+                    <option value="gte_1_21_6">&gt;=1.21.6</option>
+                    <option value="lt_1_21_6">&lt;1.21.6</option>
+                  </select>
+                </div>
+              </div>
+              <div className="wakeup-form-group">
                 <label>{t('wakeup.form.modelSelect')}</label>
                 <div className="verification-select-wrap">
                   <select
@@ -1038,41 +1313,86 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
                       ref={accountSelectAllRef}
                       type="checkbox"
                       className="verification-checkbox-input"
-                      checked={allAccountsSelected}
-                      disabled={running || accountIds.length === 0}
+                      checked={allVisibleAccountsSelected}
+                      disabled={running || filteredConfigAccountIds.length === 0}
                       onChange={toggleAllAccountsSelection}
                     />
                     <span className="verification-checkbox-ui" aria-hidden="true" />
                     <span className="verification-checkbox-label">{t('wakeup.verification.actions.selectAllAccounts')}</span>
                   </label>
-                  <input
-                    type="text"
-                    className="verification-account-search"
-                    placeholder={t('accounts.search.placeholder', '搜索账号...')}
-                    value={accountSearchQuery}
-                    onChange={(e) => setAccountSearchQuery(e.target.value)}
-                  />
+                  <div className="verification-account-search-wrap">
+                    <input
+                      type="text"
+                      className="verification-account-search"
+                      placeholder={t('accounts.search.placeholder', '搜索账号...')}
+                      value={accountSearchQuery}
+                      onChange={(e) => setAccountSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <div className="verification-account-filters">
+                    <MultiSelectFilterDropdown
+                      options={typeFilterOptions}
+                      selectedValues={configTypeFilter}
+                      allLabel={t('wakeup.verification.filters.typeShort', '类型')}
+                      filterLabel={t('wakeup.verification.filters.typeShort', '类型')}
+                      clearLabel={t('accounts.clearFilter', '清空筛选')}
+                      emptyLabel={t('common.none', '暂无')}
+                      ariaLabel={t('wakeup.verification.filters.typeShort', '类型')}
+                      onToggleValue={toggleConfigFilterTypeValue}
+                      onClear={clearConfigTypeFilter}
+                    />
+                    <MultiSelectFilterDropdown
+                      options={availableFilterTagOptions}
+                      selectedValues={configTagFilter}
+                      allLabel={t('wakeup.verification.filters.tagsShort', '标签')}
+                      filterLabel={t('wakeup.verification.filters.tagsShort', '标签')}
+                      clearLabel={t('accounts.clearFilter', '清空筛选')}
+                      emptyLabel={t('accounts.noAvailableTags', '暂无可用标签')}
+                      ariaLabel={t('wakeup.verification.filters.tagsShort', '标签')}
+                      onToggleValue={toggleConfigTagFilterValue}
+                      onClear={clearConfigTagFilter}
+                    />
+                    <MultiSelectFilterDropdown
+                      options={groupFilterOptions}
+                      selectedValues={configGroupFilter}
+                      allLabel={t('wakeup.verification.filters.groupsShort', '分组')}
+                      filterLabel={t('wakeup.verification.filters.groupsShort', '分组')}
+                      clearLabel={t('accounts.clearFilter', '清空筛选')}
+                      emptyLabel={t('accounts.groups.noGroups', '暂无分组')}
+                      ariaLabel={t('wakeup.verification.filters.groupsShort', '分组')}
+                      onToggleValue={toggleConfigGroupFilterValue}
+                      onClear={clearConfigGroupFilter}
+                    />
+                  </div>
                   <span className="verification-account-select-count">
-                    {selectedAccounts.length}/{accountIds.length}
+                    {selectedVisibleAccountsCount}/{filteredConfigAccountIds.length}
+                    {filteredConfigAccountIds.length !== accountIds.length
+                      ? ` · ${selectedAccounts.length}/${accountIds.length}`
+                      : ''}
                   </span>
                 </div>
                 <div className="verification-account-list">
-                  {filteredConfigAccounts.map((account) => (
-                    <label
-                      key={account.id}
-                      className={`verification-account-item ${selectedAccounts.includes(account.id) ? 'selected' : ''
-                        }`}
-                    >
-                      <input
-                        type="checkbox"
-                        className="verification-checkbox-input"
-                        checked={selectedAccounts.includes(account.id)}
-                        onChange={() => toggleAccountSelection(account.id)}
-                      />
-                      <span className="verification-checkbox-ui" aria-hidden="true" />
-                      <span className="verification-account-item-email">{maskAccountText(account.email)}</span>
-                    </label>
-                  ))}
+                  {filteredConfigAccounts.map((account) => {
+                    const maskedEmail = maskAccountText(account.email);
+                    const isSelected = selectedAccountSet.has(account.id);
+                    return (
+                      <label
+                        key={account.id}
+                        className={`verification-account-item ${isSelected ? 'selected' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="verification-checkbox-input"
+                          checked={isSelected}
+                          onChange={() => toggleAccountSelection(account.id)}
+                        />
+                        <span className="verification-checkbox-ui" aria-hidden="true" />
+                        <span className="verification-account-item-email" title={maskedEmail}>
+                          {maskedEmail}
+                        </span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
             </div>

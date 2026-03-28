@@ -603,6 +603,10 @@ pub fn wakeup_requires_official_ls() -> bool {
     )
 }
 
+pub fn set_official_ls_version_mode(mode: Option<&str>) -> Result<(), String> {
+    crate::modules::wakeup_gateway::set_official_ls_version_mode(mode)
+}
+
 pub fn ensure_wakeup_runtime_ready() -> Result<Option<String>, String> {
     if !wakeup_requires_official_ls() {
         return Ok(None);
