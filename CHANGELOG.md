@@ -7,6 +7,20 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [0.20.16] - 2026-03-31
+
+### Added
+- **Gemini accounts now support per-account GCP project selection from live cloud projects**: account cards/tables now provide a project settings dialog that lists accessible projects, supports switching back to automatic project resolution, and persists the selected project id.
+- **Codex instances now auto-link shared Skills/Rules/AGENTS resources during create/start flows**: `skills`, `rules`, `vendor_imports/skills`, and `AGENTS.md` are synchronized against default Codex Home with migration and conflict guards.
+
+### Changed
+- **Gemini quota refresh and CLI launch now prefer the configured project id when available**: project selection is refreshed after save, project id is shown in account rows/cards, and launch commands inject `GOOGLE_CLOUD_PROJECT`.
+- **Current-account-first ordering is now unified across account pages and instance pickers**: active current accounts are promoted before other sort keys in Antigravity, Codex, Gemini, Cursor, Windsurf, Kiro, Qoder, Trae, Zed, GitHub Copilot, CodeBuddy CN, and WorkBuddy views.
+- **OpenCode switch-related defaults are now disabled by default**: `sync_on_switch` and `auth_overwrite_on_switch` now default to off in config loading, settings initialization, and wakeup task context.
+- **Codex code-review quota visibility now defaults to hidden**: local preference now requires explicit opt-in to show this metric.
+- **Updater dependency graph now includes reqwest socks capability for the updater path**: improves compatibility when global proxy is configured as `socks5://`.
+
+---
 ## [0.20.15] - 2026-03-30
 
 ### Added

@@ -16,6 +16,10 @@ static CODEX_INSTANCE_STORE_LOCK: std::sync::LazyLock<Mutex<()>> =
     std::sync::LazyLock::new(|| Mutex::new(()));
 
 const CODEX_INSTANCES_FILE: &str = "codex_instances.json";
+const CODEX_SHARED_SKILLS_DIR_NAME: &str = "skills";
+const CODEX_SHARED_RULES_DIR_NAME: &str = "rules";
+const CODEX_SHARED_AGENTS_FILE_NAME: &str = "AGENTS.md";
+const CODEX_SHARED_VENDOR_IMPORTS_SKILLS_DIR: &str = "vendor_imports/skills";
 
 fn instances_path() -> Result<PathBuf, String> {
     let data_dir = modules::account::get_data_dir()?;
@@ -93,6 +97,425 @@ pub fn get_instance_defaults() -> Result<InstanceDefaults, String> {
         root_dir: root_dir.to_string_lossy().to_string(),
         default_user_data_dir: default_user_data_dir.to_string_lossy().to_string(),
     })
+}
+
+#[cfg(unix)]
+fn create_directory_symlink(source: &Path, target: &Path) -> Result<(), String> {
+    std::os::unix::fs::symlink(source, target).map_err(|e| format!("创建目录共享链接失败: {}", e))
+}
+
+#[cfg(windows)]
+fn create_directory_symlink(source: &Path, target: &Path) -> Result<(), String> {
+    std::os::windows::fs::symlink_dir(source, target)
+        .map_err(|e| format!("创建目录共享链接失败: {}", e))
+}
+
+#[cfg(not(any(unix, windows)))]
+fn create_directory_symlink(_source: &Path, _target: &Path) -> Result<(), String> {
+    Err("当前系统不支持创建目录符号链接".to_string())
+}
+
+#[cfg(unix)]
+fn create_file_symlink(source: &Path, target: &Path) -> Result<(), String> {
+    std::os::unix::fs::symlink(source, target).map_err(|e| format!("创建文件共享链接失败: {}", e))
+}
+
+#[cfg(windows)]
+fn create_file_symlink(source: &Path, target: &Path) -> Result<(), String> {
+    std::os::windows::fs::symlink_file(source, target)
+        .map_err(|e| format!("创建文件共享链接失败: {}", e))
+}
+
+#[cfg(not(any(unix, windows)))]
+fn create_file_symlink(_source: &Path, _target: &Path) -> Result<(), String> {
+    Err("当前系统不支持创建文件符号链接".to_string())
+}
+
+fn remove_symlink(path: &Path) -> Result<(), String> {
+    fs::remove_file(path)
+        .or_else(|_| fs::remove_dir(path))
+        .map_err(|e| format!("移除已有共享链接失败: {}", e))
+}
+
+fn is_directory_empty(path: &Path) -> Result<bool, String> {
+    let mut iter = fs::read_dir(path).map_err(|e| format!("读取目录失败: {}", e))?;
+    Ok(iter.next().is_none())
+}
+
+fn files_have_same_content(a: &Path, b: &Path) -> Result<bool, String> {
+    let meta_a = fs::metadata(a).map_err(|e| format!("读取文件元数据失败: {}", e))?;
+    let meta_b = fs::metadata(b).map_err(|e| format!("读取文件元数据失败: {}", e))?;
+    if meta_a.len() != meta_b.len() {
+        return Ok(false);
+    }
+    let bytes_a = fs::read(a).map_err(|e| format!("读取文件失败: {}", e))?;
+    let bytes_b = fs::read(b).map_err(|e| format!("读取文件失败: {}", e))?;
+    Ok(bytes_a == bytes_b)
+}
+
+fn sorted_entries(path: &Path) -> Result<Vec<fs::DirEntry>, String> {
+    let mut entries: Vec<fs::DirEntry> = fs::read_dir(path)
+        .map_err(|e| format!("读取目录失败: {}", e))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("读取目录项失败: {}", e))?;
+    entries.sort_by(|a, b| {
+        a.file_name()
+            .to_string_lossy()
+            .cmp(&b.file_name().to_string_lossy())
+    });
+    Ok(entries)
+}
+
+fn directories_are_equivalent(a: &Path, b: &Path) -> Result<bool, String> {
+    let entries_a = sorted_entries(a)?;
+    let entries_b = sorted_entries(b)?;
+    if entries_a.len() != entries_b.len() {
+        return Ok(false);
+    }
+
+    for (entry_a, entry_b) in entries_a.into_iter().zip(entries_b.into_iter()) {
+        if entry_a.file_name() != entry_b.file_name() {
+            return Ok(false);
+        }
+
+        let path_a = entry_a.path();
+        let path_b = entry_b.path();
+        let meta_a =
+            fs::symlink_metadata(&path_a).map_err(|e| format!("读取路径元数据失败: {}", e))?;
+        let meta_b =
+            fs::symlink_metadata(&path_b).map_err(|e| format!("读取路径元数据失败: {}", e))?;
+        let type_a = meta_a.file_type();
+        let type_b = meta_b.file_type();
+
+        if type_a.is_symlink() || type_b.is_symlink() {
+            return Ok(false);
+        }
+
+        if type_a.is_dir() && type_b.is_dir() {
+            if !directories_are_equivalent(&path_a, &path_b)? {
+                return Ok(false);
+            }
+            continue;
+        }
+
+        if type_a.is_file() && type_b.is_file() {
+            if !files_have_same_content(&path_a, &path_b)? {
+                return Ok(false);
+            }
+            continue;
+        }
+
+        return Ok(false);
+    }
+
+    Ok(true)
+}
+
+fn paths_point_to_same_location(a: &Path, b: &Path) -> bool {
+    match (fs::canonicalize(a), fs::canonicalize(b)) {
+        (Ok(left), Ok(right)) => left == right,
+        _ => a == b,
+    }
+}
+
+fn display_abs_path(path: &Path) -> String {
+    instance_store::display_path(path)
+}
+
+fn resolve_link_target(link_path: &Path, target: PathBuf) -> PathBuf {
+    if target.is_absolute() {
+        target
+    } else {
+        link_path
+            .parent()
+            .unwrap_or_else(|| Path::new(""))
+            .join(target)
+    }
+}
+
+fn sync_shared_directory(
+    profile_dir: &Path,
+    default_codex_home: &Path,
+    relative_path: &Path,
+) -> Result<(), String> {
+    let global_dir = default_codex_home.join(relative_path);
+    let instance_dir = profile_dir.join(relative_path);
+    let relative_display = relative_path.to_string_lossy();
+
+    fs::create_dir_all(&global_dir).map_err(|e| {
+        format!(
+            "创建全局共享目录失败 ({}): {}",
+            display_abs_path(&global_dir),
+            e
+        )
+    })?;
+    if let Some(parent) = instance_dir.parent() {
+        fs::create_dir_all(parent).map_err(|e| {
+            format!(
+                "创建实例共享目录父路径失败 ({}): {}",
+                display_abs_path(parent),
+                e
+            )
+        })?;
+    }
+
+    if !instance_dir.exists() {
+        return create_directory_symlink(&global_dir, &instance_dir);
+    }
+
+    let metadata = fs::symlink_metadata(&instance_dir).map_err(|e| {
+        format!(
+            "读取实例共享目录信息失败 ({}): {}",
+            display_abs_path(&instance_dir),
+            e
+        )
+    })?;
+    if metadata.file_type().is_symlink() {
+        let current_target = fs::read_link(&instance_dir).map_err(|e| {
+            format!(
+                "读取实例共享目录链接失败 ({}): {}",
+                display_abs_path(&instance_dir),
+                e
+            )
+        })?;
+        let resolved_target = resolve_link_target(&instance_dir, current_target);
+        if paths_point_to_same_location(&resolved_target, &global_dir) {
+            return Ok(());
+        }
+        remove_symlink(&instance_dir)?;
+        return create_directory_symlink(&global_dir, &instance_dir);
+    }
+
+    if !metadata.is_dir() {
+        return Err(format!(
+            "实例共享目录路径不是目录 ({}): {}",
+            relative_display,
+            display_abs_path(&instance_dir)
+        ));
+    }
+
+    let instance_empty = is_directory_empty(&instance_dir)?;
+    let global_empty = is_directory_empty(&global_dir)?;
+    if instance_empty {
+        fs::remove_dir(&instance_dir).map_err(|e| {
+            format!(
+                "清理空实例共享目录失败 ({}): {}",
+                display_abs_path(&instance_dir),
+                e
+            )
+        })?;
+        return create_directory_symlink(&global_dir, &instance_dir);
+    }
+
+    if global_empty {
+        fs::remove_dir(&global_dir).map_err(|e| {
+            format!(
+                "移除空全局共享目录失败 ({}): {}",
+                display_abs_path(&global_dir),
+                e
+            )
+        })?;
+        instance_store::copy_dir_recursive(&instance_dir, &global_dir).map_err(|e| {
+            format!(
+                "迁移实例共享目录到全局失败 ({}): {}",
+                display_abs_path(&instance_dir),
+                e
+            )
+        })?;
+        fs::remove_dir_all(&instance_dir).map_err(|e| {
+            format!(
+                "清理实例共享目录失败 ({}): {}",
+                display_abs_path(&instance_dir),
+                e
+            )
+        })?;
+        return create_directory_symlink(&global_dir, &instance_dir);
+    }
+
+    if directories_are_equivalent(&instance_dir, &global_dir)? {
+        fs::remove_dir_all(&instance_dir).map_err(|e| {
+            format!(
+                "清理实例共享目录失败 ({}): {}",
+                display_abs_path(&instance_dir),
+                e
+            )
+        })?;
+        return create_directory_symlink(&global_dir, &instance_dir);
+    }
+
+    Err(format!(
+        "检测到实例共享目录与全局目录不一致，请先手动合并后重试 ({}): instance={}, global={}",
+        relative_display,
+        display_abs_path(&instance_dir),
+        display_abs_path(&global_dir)
+    ))
+}
+
+fn sync_shared_file(
+    profile_dir: &Path,
+    default_codex_home: &Path,
+    relative_path: &Path,
+) -> Result<(), String> {
+    let global_file = default_codex_home.join(relative_path);
+    let instance_file = profile_dir.join(relative_path);
+    let relative_display = relative_path.to_string_lossy();
+
+    if let Some(parent) = global_file.parent() {
+        fs::create_dir_all(parent).map_err(|e| {
+            format!(
+                "创建全局共享文件父目录失败 ({}): {}",
+                display_abs_path(parent),
+                e
+            )
+        })?;
+    }
+    if let Some(parent) = instance_file.parent() {
+        fs::create_dir_all(parent).map_err(|e| {
+            format!(
+                "创建实例共享文件父目录失败 ({}): {}",
+                display_abs_path(parent),
+                e
+            )
+        })?;
+    }
+
+    if !global_file.exists() {
+        if instance_file.exists() {
+            let meta = fs::symlink_metadata(&instance_file).map_err(|e| {
+                format!(
+                    "读取实例共享文件信息失败 ({}): {}",
+                    display_abs_path(&instance_file),
+                    e
+                )
+            })?;
+            if meta.file_type().is_symlink() {
+                remove_symlink(&instance_file)?;
+            } else if meta.is_file() {
+                fs::copy(&instance_file, &global_file).map_err(|e| {
+                    format!(
+                        "迁移实例共享文件到全局失败 ({} -> {}): {}",
+                        display_abs_path(&instance_file),
+                        display_abs_path(&global_file),
+                        e
+                    )
+                })?;
+                fs::remove_file(&instance_file).map_err(|e| {
+                    format!(
+                        "清理实例共享文件失败 ({}): {}",
+                        display_abs_path(&instance_file),
+                        e
+                    )
+                })?;
+            } else {
+                return Err(format!(
+                    "实例共享文件路径不是文件 ({}): {}",
+                    relative_display,
+                    display_abs_path(&instance_file)
+                ));
+            }
+        } else {
+            return Ok(());
+        }
+    }
+
+    let global_meta = fs::metadata(&global_file).map_err(|e| {
+        format!(
+            "读取全局共享文件信息失败 ({}): {}",
+            display_abs_path(&global_file),
+            e
+        )
+    })?;
+    if !global_meta.is_file() {
+        return Err(format!(
+            "全局共享路径不是文件 ({}): {}",
+            relative_display,
+            display_abs_path(&global_file)
+        ));
+    }
+
+    if !instance_file.exists() {
+        return create_file_symlink(&global_file, &instance_file);
+    }
+
+    let instance_meta = fs::symlink_metadata(&instance_file).map_err(|e| {
+        format!(
+            "读取实例共享文件信息失败 ({}): {}",
+            display_abs_path(&instance_file),
+            e
+        )
+    })?;
+    if instance_meta.file_type().is_symlink() {
+        let current_target = fs::read_link(&instance_file).map_err(|e| {
+            format!(
+                "读取实例共享文件链接失败 ({}): {}",
+                display_abs_path(&instance_file),
+                e
+            )
+        })?;
+        let resolved_target = resolve_link_target(&instance_file, current_target);
+        if paths_point_to_same_location(&resolved_target, &global_file) {
+            return Ok(());
+        }
+        remove_symlink(&instance_file)?;
+        return create_file_symlink(&global_file, &instance_file);
+    }
+
+    if !instance_meta.is_file() {
+        return Err(format!(
+            "实例共享文件路径不是文件 ({}): {}",
+            relative_display,
+            display_abs_path(&instance_file)
+        ));
+    }
+
+    if files_have_same_content(&instance_file, &global_file)? {
+        fs::remove_file(&instance_file).map_err(|e| {
+            format!(
+                "清理实例共享文件失败 ({}): {}",
+                display_abs_path(&instance_file),
+                e
+            )
+        })?;
+        return create_file_symlink(&global_file, &instance_file);
+    }
+
+    Err(format!(
+        "检测到实例共享文件与全局文件不一致，请先手动合并后重试 ({}): instance={}, global={}",
+        relative_display,
+        display_abs_path(&instance_file),
+        display_abs_path(&global_file)
+    ))
+}
+
+pub fn ensure_instance_shared_skills(profile_dir: &Path) -> Result<(), String> {
+    let default_codex_home = get_default_codex_home()?;
+    if paths_point_to_same_location(profile_dir, &default_codex_home) {
+        return Ok(());
+    }
+    fs::create_dir_all(profile_dir).map_err(|e| format!("创建实例目录失败: {}", e))?;
+
+    sync_shared_directory(
+        profile_dir,
+        &default_codex_home,
+        Path::new(CODEX_SHARED_SKILLS_DIR_NAME),
+    )?;
+    sync_shared_directory(
+        profile_dir,
+        &default_codex_home,
+        Path::new(CODEX_SHARED_RULES_DIR_NAME),
+    )?;
+    sync_shared_directory(
+        profile_dir,
+        &default_codex_home,
+        Path::new(CODEX_SHARED_VENDOR_IMPORTS_SKILLS_DIR),
+    )?;
+    sync_shared_file(
+        profile_dir,
+        &default_codex_home,
+        Path::new(CODEX_SHARED_AGENTS_FILE_NAME),
+    )?;
+
+    Ok(())
 }
 
 pub fn create_instance(params: CreateInstanceParams) -> Result<InstanceProfile, String> {
@@ -176,6 +599,8 @@ pub fn create_instance(params: CreateInstanceParams) -> Result<InstanceProfile, 
 
         instance_store::copy_dir_recursive(&source_dir, &user_dir_path)?;
     }
+
+    ensure_instance_shared_skills(&user_dir_path)?;
 
     let instance = InstanceProfile {
         id: Uuid::new_v4().to_string(),

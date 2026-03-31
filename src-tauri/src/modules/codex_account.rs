@@ -74,9 +74,8 @@ fn validate_api_key_credentials(
 
     let normalized_base_url = normalize_api_base_url(api_base_url);
     if let Some(base_url) = normalized_base_url.as_ref() {
-        let parsed = reqwest::Url::parse(base_url).map_err(|_| {
-            "Base URL 格式无效，请输入完整的 http:// 或 https:// 地址".to_string()
-        })?;
+        let parsed = reqwest::Url::parse(base_url)
+            .map_err(|_| "Base URL 格式无效，请输入完整的 http:// 或 https:// 地址".to_string())?;
         if !matches!(parsed.scheme(), "http" | "https") {
             return Err("Base URL 仅支持 http 或 https 协议".to_string());
         }
@@ -445,7 +444,10 @@ fn migrate_codex_data_if_needed(new_data_dir: &PathBuf) {
                 let _ = fs::remove_file(&old_index);
             }
             Err(e) => {
-                logger::log_warn(&format!("[Codex Migration] codex_accounts.json 迁移失败: {}", e));
+                logger::log_warn(&format!(
+                    "[Codex Migration] codex_accounts.json 迁移失败: {}",
+                    e
+                ));
             }
         }
     }

@@ -2349,6 +2349,19 @@
     },
     "switch": {
       "success": "帳號切換成功"
+    },
+    "projectConfig": {
+      "button": "設定 GCP 專案",
+      "title": "設定 GCP 專案",
+      "selectLabel": "選擇專案",
+      "loading": "正在載入專案清單...",
+      "auto": "自動選擇（不手動指定）",
+      "empty": "未取得可用專案，請確認此帳號具備 GCP 專案權限。",
+      "hint": "儲存後將優先使用此專案請求配額，並在啟動命令注入 GOOGLE_CLOUD_PROJECT。",
+      "current": "專案：{{projectId}}",
+      "saved": "專案已儲存：{{projectId}}",
+      "cleared": "已恢復為自動專案識別",
+      "savedWithRefreshError": "專案已儲存，但配額刷新失敗：{{error}}"
     }
   },
   "codebuddy": {

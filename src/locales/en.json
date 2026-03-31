@@ -2168,6 +2168,19 @@
       "localDesc": "Import Gemini Cli account data from local Gemini Cli config directory (~/.gemini) or a JSON file.",
       "localClient": "Import from local Gemini Cli"
     },
+    "projectConfig": {
+      "button": "Set GCP Project",
+      "title": "Set GCP Project",
+      "selectLabel": "Select project",
+      "loading": "Loading project list...",
+      "auto": "Auto-select (do not specify manually)",
+      "empty": "No available project found. Ensure this account has access to GCP projects.",
+      "hint": "After saving, this project is preferred for quota requests and injected as GOOGLE_CLOUD_PROJECT in launch commands.",
+      "current": "Project: {{projectId}}",
+      "saved": "Project saved: {{projectId}}",
+      "cleared": "Switched back to automatic project resolution",
+      "savedWithRefreshError": "Project saved, but quota refresh failed: {{error}}"
+    },
     "flowNotice": {
       "title": "Gemini Cli account guide (click to expand/collapse)",
       "desc": "Manage Gemini Cli accounts by importing from local Gemini Cli config, pasting a JWT token, or signing in via OAuth.",

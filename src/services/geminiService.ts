@@ -9,6 +9,11 @@ export interface GeminiOAuthLoginStartResponse {
   callbackUrl?: string | null;
 }
 
+export interface GeminiCloudProject {
+  projectId: string;
+  projectName?: string | null;
+}
+
 export async function startGeminiOAuthLogin(): Promise<GeminiOAuthLoginStartResponse> {
   return await invoke('gemini_oauth_login_start');
 }
@@ -66,6 +71,20 @@ export async function addGeminiAccountWithToken(accessToken: string): Promise<Ge
 
 export async function updateGeminiAccountTags(accountId: string, tags: string[]): Promise<GeminiAccount> {
   return await invoke('update_gemini_account_tags', { accountId, tags });
+}
+
+export async function listGeminiCloudProjects(accountId: string): Promise<GeminiCloudProject[]> {
+  return await invoke('list_gemini_cloud_projects', { accountId });
+}
+
+export async function setGeminiAccountProjectId(
+  accountId: string,
+  projectId?: string | null,
+): Promise<GeminiAccount> {
+  return await invoke('set_gemini_account_project_id', {
+    accountId,
+    projectId: projectId ?? null,
+  });
 }
 
 export async function getGeminiAccountsIndexPath(): Promise<string> {

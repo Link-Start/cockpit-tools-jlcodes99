@@ -105,16 +105,17 @@ pub fn list_sessions_across_instances() -> Result<Vec<CodexSessionRecord>, Strin
     for instance in &instances {
         let running = is_instance_running(instance, &process_entries);
         for snapshot in load_thread_snapshots(instance)? {
-            let entry = session_map
-                .entry(snapshot.id.clone())
-                .or_insert_with(|| CodexSessionRecord {
-                    session_id: snapshot.id.clone(),
-                    title: snapshot.title.clone(),
-                    cwd: snapshot.cwd.clone(),
-                    updated_at: snapshot.updated_at,
-                    location_count: 0,
-                    locations: Vec::new(),
-                });
+            let entry =
+                session_map
+                    .entry(snapshot.id.clone())
+                    .or_insert_with(|| CodexSessionRecord {
+                        session_id: snapshot.id.clone(),
+                        title: snapshot.title.clone(),
+                        cwd: snapshot.cwd.clone(),
+                        updated_at: snapshot.updated_at,
+                        location_count: 0,
+                        locations: Vec::new(),
+                    });
 
             if entry.updated_at.is_none() {
                 entry.updated_at = snapshot.updated_at;
@@ -241,7 +242,10 @@ fn collect_instances() -> Result<Vec<CodexSyncInstance>, String> {
     Ok(instances)
 }
 
-fn is_instance_running(instance: &CodexSyncInstance, process_entries: &[(u32, Option<String>)]) -> bool {
+fn is_instance_running(
+    instance: &CodexSyncInstance,
+    process_entries: &[(u32, Option<String>)],
+) -> bool {
     let codex_home = if instance.id == DEFAULT_INSTANCE_ID {
         None
     } else {
@@ -402,7 +406,13 @@ fn move_snapshot_rollout_to_trash(
                 .map_err(|error| format!("序列化会话废纸篓清单失败: {}", error))?
         ),
     )
-    .map_err(|error| format!("写入会话废纸篓清单失败 ({}): {}", entry_dir.display(), error))?;
+    .map_err(|error| {
+        format!(
+            "写入会话废纸篓清单失败 ({}): {}",
+            entry_dir.display(),
+            error
+        )
+    })?;
     Ok(())
 }
 
@@ -426,7 +436,10 @@ fn remove_threads_from_db(root_dir: &Path, snapshots: &[ThreadSnapshot]) -> Resu
     Ok(())
 }
 
-fn rewrite_session_index_without_ids(root_dir: &Path, snapshots: &[ThreadSnapshot]) -> Result<(), String> {
+fn rewrite_session_index_without_ids(
+    root_dir: &Path,
+    snapshots: &[ThreadSnapshot],
+) -> Result<(), String> {
     let path = root_dir.join(SESSION_INDEX_FILE);
     if !path.exists() {
         return Ok(());
@@ -436,8 +449,13 @@ fn rewrite_session_index_without_ids(root_dir: &Path, snapshots: &[ThreadSnapsho
         .iter()
         .map(|snapshot| snapshot.id.as_str())
         .collect::<HashSet<_>>();
-    let content = fs::read_to_string(&path)
-        .map_err(|error| format!("读取 session_index.jsonl 失败 ({}): {}", path.display(), error))?;
+    let content = fs::read_to_string(&path).map_err(|error| {
+        format!(
+            "读取 session_index.jsonl 失败 ({}): {}",
+            path.display(),
+            error
+        )
+    })?;
     let retained = content
         .lines()
         .filter(|line| {
@@ -462,8 +480,13 @@ fn rewrite_session_index_without_ids(root_dir: &Path, snapshots: &[ThreadSnapsho
     } else {
         format!("{}\n", retained)
     };
-    fs::write(&path, final_content)
-        .map_err(|error| format!("重写 session_index.jsonl 失败 ({}): {}", path.display(), error))?;
+    fs::write(&path, final_content).map_err(|error| {
+        format!(
+            "重写 session_index.jsonl 失败 ({}): {}",
+            path.display(),
+            error
+        )
+    })?;
     Ok(())
 }
 
@@ -473,8 +496,13 @@ fn read_session_index_map(root_dir: &Path) -> Result<HashMap<String, JsonValue>,
         return Ok(HashMap::new());
     }
 
-    let content = fs::read_to_string(&path)
-        .map_err(|error| format!("读取 session_index.jsonl 失败 ({}): {}", path.display(), error))?;
+    let content = fs::read_to_string(&path).map_err(|error| {
+        format!(
+            "读取 session_index.jsonl 失败 ({}): {}",
+            path.display(),
+            error
+        )
+    })?;
     let mut entries = HashMap::new();
 
     for line in content.lines() {
@@ -549,12 +577,10 @@ fn sqlite_value_to_json(value: &Value) -> JsonValue {
         Value::Integer(number) => json!(number),
         Value::Real(number) => json!(number),
         Value::Text(text) => json!(text),
-        Value::Blob(bytes) => json!(
-            bytes
-                .iter()
-                .map(|byte| format!("{:02X}", byte))
-                .collect::<String>()
-        ),
+        Value::Blob(bytes) => json!(bytes
+            .iter()
+            .map(|byte| format!("{:02X}", byte))
+            .collect::<String>()),
     }
 }
 

@@ -5,9 +5,9 @@ export const CODEX_CODE_REVIEW_QUOTA_VISIBILITY_CHANGED_EVENT =
 
 export function isCodexCodeReviewQuotaVisibleByDefault(): boolean {
   try {
-    return localStorage.getItem(CODEX_SHOW_CODE_REVIEW_QUOTA_STORAGE_KEY) !== '0';
+    return localStorage.getItem(CODEX_SHOW_CODE_REVIEW_QUOTA_STORAGE_KEY) === '1';
   } catch {
-    return true;
+    return false;
   }
 }
 

@@ -437,8 +437,6 @@ pub async fn sync_codebuddy_cn_to_workbuddy(app: AppHandle) -> Result<i32, Strin
     Ok(synced_count as i32)
 }
 
-
-
 #[tauri::command]
 pub async fn get_checkin_status_codebuddy_cn(
     account_id: String,

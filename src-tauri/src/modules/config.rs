@@ -461,10 +461,10 @@ fn default_workbuddy_app_path() -> String {
     String::new()
 }
 fn default_opencode_sync_on_switch() -> bool {
-    true
+    false
 }
 fn default_opencode_auth_overwrite_on_switch() -> bool {
-    true
+    false
 }
 fn default_ghcp_opencode_sync_on_switch() -> bool {
     false
@@ -1303,8 +1303,8 @@ mod tests {
 
     #[test]
     fn openclaw_auth_overwrite_missing_field_falls_back_to_disabled() {
-        let cfg: UserConfig = serde_json::from_value(serde_json::json!({}))
-            .expect("反序列化默认配置应成功");
+        let cfg: UserConfig =
+            serde_json::from_value(serde_json::json!({})).expect("反序列化默认配置应成功");
         assert!(!cfg.openclaw_auth_overwrite_on_switch);
     }
 }

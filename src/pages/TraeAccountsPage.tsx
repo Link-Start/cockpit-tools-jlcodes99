@@ -47,6 +47,7 @@ import {
   getTraeUsage,
   TRAE_PRODUCT_TYPE,
 } from '../types/trae';
+import { compareCurrentAccountFirst } from '../utils/currentAccountSort';
 
 const TRAE_CURRENT_ACCOUNT_ID_KEY = 'agtools.trae.current_account_id';
 const TRAE_FLOW_NOTICE_COLLAPSED_KEY = 'agtools.trae.flow_notice_collapsed';
@@ -289,6 +290,11 @@ export function TraeAccountsPage() {
 
   const compareAccountsBySort = useCallback(
     (left: TraeAccount, right: TraeAccount) => {
+      const currentFirstDiff = compareCurrentAccountFirst(left.id, right.id, currentAccountId);
+      if (currentFirstDiff !== 0) {
+        return currentFirstDiff;
+      }
+
       if (sortBy === 'plan') {
         const diff = getTraePlanBadge(left).localeCompare(getTraePlanBadge(right));
         return sortDirection === 'desc' ? -diff : diff;
@@ -304,7 +310,7 @@ export function TraeAccountsPage() {
       const diff = left.created_at - right.created_at;
       return sortDirection === 'desc' ? -diff : diff;
     },
-    [sortBy, sortDirection],
+    [currentAccountId, sortBy, sortDirection],
   );
 
   const sortedAccountsForInstances = useMemo(

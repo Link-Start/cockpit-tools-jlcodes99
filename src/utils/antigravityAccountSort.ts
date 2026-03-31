@@ -5,6 +5,7 @@ import {
   calculateOverallQuota,
 } from '../services/groupService';
 import { getAntigravityGroupResetTimestamp } from '../presentation/platformAccountPresentation';
+import { compareCurrentAccountFirst } from './currentAccountSort';
 
 export type AntigravitySortDirection = 'asc' | 'desc';
 
@@ -100,6 +101,7 @@ export interface AntigravityAccountSortOptions {
   sortBy: string;
   sortDirection: AntigravitySortDirection;
   displayGroups: DisplayGroup[];
+  currentAccountId?: string | null;
 }
 
 export const normalizeAntigravitySortBy = (sortBy: string | null | undefined) => {
@@ -115,10 +117,16 @@ export const createAntigravityAccountComparator = ({
   sortBy,
   sortDirection,
   displayGroups,
+  currentAccountId,
 }: AntigravityAccountSortOptions) => {
   const normalizedSortBy = normalizeAntigravitySortBy(sortBy);
 
   return (a: Account, b: Account) => {
+    const currentFirstDiff = compareCurrentAccountFirst(a.id, b.id, currentAccountId);
+    if (currentFirstDiff !== 0) {
+      return currentFirstDiff;
+    }
+
     if (normalizedSortBy === 'created_at') {
       return compareByCreatedAt(a, b, sortDirection);
     }

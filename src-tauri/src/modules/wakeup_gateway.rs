@@ -612,7 +612,8 @@ fn official_ls_app_data_dir_name() -> String {
 
 pub(crate) fn official_antigravity_root_for_version() -> Option<std::path::PathBuf> {
     let user_config = crate::modules::config::get_user_config();
-    if let Some(root) = resolve_configured_antigravity_root(user_config.antigravity_app_path.trim()) {
+    if let Some(root) = resolve_configured_antigravity_root(user_config.antigravity_app_path.trim())
+    {
         return Some(root);
     }
 

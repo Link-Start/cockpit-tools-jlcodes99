@@ -49,6 +49,14 @@ pub struct GeminiAccount {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GeminiCloudProject {
+    pub project_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GeminiAccountSummary {
     pub id: String,
     pub email: String,

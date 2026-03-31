@@ -1588,7 +1588,8 @@ mod imp {
         account: &crate::models::windsurf::WindsurfAccount,
     ) -> WindsurfQuotaUsageSummary {
         let plan_status_roots = windsurf_plan_status_roots(account);
-        let is_quota_billing = resolve_windsurf_billing_strategy(account).as_deref() == Some("quota");
+        let is_quota_billing =
+            resolve_windsurf_billing_strategy(account).as_deref() == Some("quota");
         let daily_used = first_number_from_roots(
             &plan_status_roots,
             &[

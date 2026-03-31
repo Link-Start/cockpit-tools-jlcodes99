@@ -1735,8 +1735,13 @@ async fn run_single_account(
         );
     }
 
-    let command_result =
-        run_codex_exec_sync(&binary.path, &managed_home, prompt, execution_config, cancel_flag);
+    let command_result = run_codex_exec_sync(
+        &binary.path,
+        &managed_home,
+        prompt,
+        execution_config,
+        cancel_flag,
+    );
 
     match command_result {
         Ok(output) => {
@@ -1846,14 +1851,13 @@ pub async fn run_batch(
                 None,
             );
 
-            let record =
-                create_cli_missing_record(
-                    &run_id,
-                    &context,
-                    account_id,
-                    Some(prompt.clone()),
-                    &execution_config,
-                );
+            let record = create_cli_missing_record(
+                &run_id,
+                &context,
+                account_id,
+                Some(prompt.clone()),
+                &execution_config,
+            );
             if record.success {
                 success_count += 1;
             } else {
@@ -1945,17 +1949,16 @@ pub async fn run_batch(
             Some(&account_id),
             None,
         );
-        let record =
-            run_single_account(
-                binary.as_ref(),
-                &run_id,
-                &context,
-                &account_id,
-                &prompt,
-                &execution_config,
-                cancel_flag.as_ref(),
-            )
-            .await;
+        let record = run_single_account(
+            binary.as_ref(),
+            &run_id,
+            &context,
+            &account_id,
+            &prompt,
+            &execution_config,
+            cancel_flag.as_ref(),
+        )
+        .await;
         if record.success {
             success_count += 1;
         } else {

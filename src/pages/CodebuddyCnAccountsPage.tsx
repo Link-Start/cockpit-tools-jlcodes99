@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { PlatformOverviewTabsHeader, PlatformOverviewTab } from '../components/platform/PlatformOverviewTabsHeader';
 import { CodebuddyCnInstancesContent } from './CodebuddyCnInstancesPage';
 import { useCodebuddyCnAccountStore } from '../stores/useCodebuddyCnAccountStore';
@@ -14,6 +14,7 @@ import {
 import { useProviderAccountsPage } from '../hooks/useProviderAccountsPage';
 import { CodeBuddyCNCheckinModal } from '../components/codebuddy-suite/CodebuddySuiteCheckinModal';
 import { CodebuddySuiteAccountsSharedView, type CodebuddySuiteAccountsPlatformConfig } from '../components/codebuddy-suite/CodebuddySuiteAccountsSharedView';
+import { compareCurrentAccountFirst } from '../utils/currentAccountSort';
 
 const CB_FLOW_NOTICE_COLLAPSED_KEY = 'agtools.codebuddycn.flow_notice_collapsed';
 const CB_CURRENT_ACCOUNT_ID_KEY = 'agtools.codebuddycn.current_account_id';
@@ -115,6 +116,19 @@ export function CodebuddyCnAccountsPage() {
     getDisplayEmail: (account) => getCodebuddyAccountDisplayEmail(account),
   });
 
+  const accountsForInstances = useMemo(
+    () =>
+      [...store.accounts].sort((a, b) => {
+        const currentFirstDiff = compareCurrentAccountFirst(a.id, b.id, store.currentAccountId);
+        if (currentFirstDiff !== 0) {
+          return currentFirstDiff;
+        }
+        const diff = b.created_at - a.created_at;
+        return page.sortDirection === 'desc' ? diff : -diff;
+      }),
+    [page.sortDirection, store.accounts, store.currentAccountId],
+  );
+
   return (
     <div className={`ghcp-accounts-page ${codebuddyCnPlatformConfig.pageClassName}`}>
       <PlatformOverviewTabsHeader
@@ -123,7 +137,7 @@ export function CodebuddyCnAccountsPage() {
         onTabChange={setActiveTab}
       />
       {activeTab === 'instances' ? (
-        <CodebuddyCnInstancesContent accountsForSelect={store.accounts} />
+        <CodebuddyCnInstancesContent accountsForSelect={accountsForInstances} />
       ) : (
         <CodebuddySuiteAccountsSharedView
           accounts={store.accounts}

@@ -598,6 +598,8 @@ pub fn run() {
             commands::gemini::gemini_oauth_login_cancel,
             commands::gemini::add_gemini_account_with_token,
             commands::gemini::update_gemini_account_tags,
+            commands::gemini::list_gemini_cloud_projects,
+            commands::gemini::set_gemini_account_project_id,
             commands::gemini::get_gemini_accounts_index_path,
             commands::gemini::inject_gemini_account,
             // Gemini Instance Commands

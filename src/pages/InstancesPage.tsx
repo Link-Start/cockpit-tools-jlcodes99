@@ -26,7 +26,7 @@ interface InstancesPageProps {
 export function InstancesPage({ onNavigate }: InstancesPageProps) {
   const { t } = useTranslation();
   const instanceStore = useInstanceStore();
-  const { accounts, fetchAccounts } = useAccountStore();
+  const { accounts, currentAccount, fetchAccounts } = useAccountStore();
   const [displayGroups, setDisplayGroups] = useState<DisplayGroup[]>([]);
   const [sortBy] = useState(() =>
     normalizeAntigravitySortBy(
@@ -45,8 +45,9 @@ export function InstancesPage({ onNavigate }: InstancesPageProps) {
         sortBy,
         sortDirection,
         displayGroups,
+        currentAccountId: currentAccount?.id ?? null,
       }),
-    [displayGroups, sortBy, sortDirection],
+    [currentAccount?.id, displayGroups, sortBy, sortDirection],
   );
   const sortedAccountsForSelect = useMemo(
     () => [...accounts].sort(accountSortComparator),

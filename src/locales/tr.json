@@ -2349,6 +2349,19 @@
     },
     "switch": {
       "success": "Hesap başarıyla değiştirildi"
+    },
+    "projectConfig": {
+      "button": "GCP projesini ayarla",
+      "title": "GCP projesini ayarla",
+      "selectLabel": "Proje seç",
+      "loading": "Proje listesi yükleniyor...",
+      "auto": "Otomatik seç (elle belirtme)",
+      "empty": "Kullanılabilir proje bulunamadı. Bu hesabın GCP projelerine erişimi olduğundan emin olun.",
+      "hint": "Kaydettikten sonra bu proje kota isteklerinde öncelikli olur ve başlatma komutunda GOOGLE_CLOUD_PROJECT olarak eklenir.",
+      "current": "Proje: {{projectId}}",
+      "saved": "Proje kaydedildi: {{projectId}}",
+      "cleared": "Otomatik proje çözümlemeye geri dönüldü",
+      "savedWithRefreshError": "Proje kaydedildi ancak kota yenileme başarısız oldu: {{error}}"
     }
   },
   "codebuddy": {

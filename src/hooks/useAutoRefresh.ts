@@ -262,9 +262,9 @@ export function useAutoRefresh() {
                     qoderAppPath: config.qoder_app_path ?? '',
                     traeAppPath: config.trae_app_path ?? '',
                     zedAppPath: config.zed_app_path ?? '',
-                    opencodeSyncOnSwitch: config.opencode_sync_on_switch ?? true,
+                    opencodeSyncOnSwitch: config.opencode_sync_on_switch ?? false,
                     opencodeAuthOverwriteOnSwitch:
-                      config.opencode_auth_overwrite_on_switch ?? true,
+                      config.opencode_auth_overwrite_on_switch ?? false,
                     codexLaunchOnSwitch: config.codex_launch_on_switch ?? true,
                     cursorQuotaAlertEnabled: config.cursor_quota_alert_enabled ?? false,
                     cursorQuotaAlertThreshold: config.cursor_quota_alert_threshold ?? 20,

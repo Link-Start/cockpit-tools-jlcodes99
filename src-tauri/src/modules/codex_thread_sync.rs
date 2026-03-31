@@ -112,7 +112,9 @@ pub fn sync_threads_across_instances() -> Result<CodexInstanceThreadSyncSummary,
             .map(|item| item.id.clone())
             .collect::<HashSet<_>>();
         for snapshot in snapshots {
-            thread_universe.entry(snapshot.id.clone()).or_insert(snapshot);
+            thread_universe
+                .entry(snapshot.id.clone())
+                .or_insert(snapshot);
         }
         existing_ids_by_instance.insert(instance.id.clone(), ids);
     }
@@ -217,7 +219,10 @@ fn collect_instances() -> Result<Vec<CodexSyncInstance>, String> {
     Ok(instances)
 }
 
-fn is_instance_running(instance: &CodexSyncInstance, process_entries: &[(u32, Option<String>)]) -> bool {
+fn is_instance_running(
+    instance: &CodexSyncInstance,
+    process_entries: &[(u32, Option<String>)],
+) -> bool {
     let codex_home = if instance.id == DEFAULT_INSTANCE_ID {
         None
     } else {
@@ -277,10 +282,9 @@ fn load_thread_snapshots(instance: &CodexSyncInstance) -> Result<Vec<ThreadSnaps
             .filter(|value| !value.trim().is_empty())
             .unwrap_or_else(|| "未知工作区".to_string());
         let updated_at = row_data.get_i64("updated_at").and_then(format_timestamp);
-        let session_index_entry = session_index_map
-            .get(&id)
-            .cloned()
-            .unwrap_or_else(|| build_fallback_session_index_entry(&id, &title, updated_at.as_deref()));
+        let session_index_entry = session_index_map.get(&id).cloned().unwrap_or_else(|| {
+            build_fallback_session_index_entry(&id, &title, updated_at.as_deref())
+        });
 
         snapshots.push(ThreadSnapshot {
             id,
@@ -403,8 +407,13 @@ fn read_session_index_map(root_dir: &Path) -> Result<HashMap<String, JsonValue>,
         return Ok(HashMap::new());
     }
 
-    let content = fs::read_to_string(&path)
-        .map_err(|error| format!("读取 session_index.jsonl 失败 ({}): {}", path.display(), error))?;
+    let content = fs::read_to_string(&path).map_err(|error| {
+        format!(
+            "读取 session_index.jsonl 失败 ({}): {}",
+            path.display(),
+            error
+        )
+    })?;
     let mut entries = HashMap::new();
 
     for line in content.lines() {
@@ -424,7 +433,11 @@ fn read_session_index_map(root_dir: &Path) -> Result<HashMap<String, JsonValue>,
     Ok(entries)
 }
 
-fn build_fallback_session_index_entry(id: &str, title: &str, updated_at: Option<&str>) -> JsonValue {
+fn build_fallback_session_index_entry(
+    id: &str,
+    title: &str,
+    updated_at: Option<&str>,
+) -> JsonValue {
     let mut value = json!({
         "id": id,
         "thread_name": title,
@@ -462,24 +475,44 @@ fn append_session_index_entries(
         .create(true)
         .append(true)
         .open(&path)
-        .map_err(|error| format!("打开 session_index.jsonl 失败 ({}): {}", path.display(), error))?;
+        .map_err(|error| {
+            format!(
+                "打开 session_index.jsonl 失败 ({}): {}",
+                path.display(),
+                error
+            )
+        })?;
 
     use std::io::Write;
     if needs_prefix {
-        file.write_all(b"\n")
-            .map_err(|error| format!("写入 session_index 换行失败 ({}): {}", path.display(), error))?;
+        file.write_all(b"\n").map_err(|error| {
+            format!(
+                "写入 session_index 换行失败 ({}): {}",
+                path.display(),
+                error
+            )
+        })?;
     }
 
     for line in lines {
         file.write_all(line.as_bytes())
             .and_then(|_| file.write_all(b"\n"))
-            .map_err(|error| format!("追加 session_index 条目失败 ({}): {}", path.display(), error))?;
+            .map_err(|error| {
+                format!(
+                    "追加 session_index 条目失败 ({}): {}",
+                    path.display(),
+                    error
+                )
+            })?;
     }
 
     Ok(())
 }
 
-fn update_global_state<'a>(root_dir: &Path, workspaces: impl Iterator<Item = &'a str>) -> Result<(), String> {
+fn update_global_state<'a>(
+    root_dir: &Path,
+    workspaces: impl Iterator<Item = &'a str>,
+) -> Result<(), String> {
     let path = root_dir.join(GLOBAL_STATE_FILE);
     let mut value = if path.exists() {
         let raw = fs::read_to_string(&path)
@@ -624,8 +657,8 @@ fn to_sql_literal(value: &Value) -> String {
 }
 
 fn file_ends_with_newline(path: &Path) -> Result<bool, String> {
-    let bytes = fs::read(path)
-        .map_err(|error| format!("读取文件失败 ({}): {}", path.display(), error))?;
+    let bytes =
+        fs::read(path).map_err(|error| format!("读取文件失败 ({}): {}", path.display(), error))?;
     Ok(bytes.is_empty() || bytes.last() == Some(&b'\n'))
 }
 

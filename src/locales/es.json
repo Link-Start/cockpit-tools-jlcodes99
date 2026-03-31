@@ -2349,6 +2349,19 @@
       "desc": "Gestiona cuentas de Gemini Cli importando desde la instalación local de Gemini Cli o pegando tokens JWT. Los datos se procesan solo localmente.",
       "reason": "Alcance de permisos: leer y escribir oauth_creds.json, google_accounts.json y settings.json en ~/.gemini predeterminado o en la ruta de instancia (GEMINI_CLI_HOME/.gemini) para importar cuentas e inyectar credenciales locales (cambio de cuenta).",
       "storage": "Alcance de red: OAuth y la actualización de cuota llaman a las API oficiales de Google/Gemini (como oauth2.googleapis.com y googleapis.com). Solo se envían campos necesarios de autenticación/cuota; los archivos locales no se suben a servidores de terceros."
+    },
+    "projectConfig": {
+      "button": "Configurar proyecto de GCP",
+      "title": "Configurar proyecto de GCP",
+      "selectLabel": "Seleccionar proyecto",
+      "loading": "Cargando lista de proyectos...",
+      "auto": "Selección automática (sin especificar manualmente)",
+      "empty": "No se encontraron proyectos disponibles. Asegúrate de que esta cuenta tenga acceso a proyectos de GCP.",
+      "hint": "Después de guardar, este proyecto tendrá prioridad para las solicitudes de cuota y se inyectará como GOOGLE_CLOUD_PROJECT al iniciar.",
+      "current": "Proyecto: {{projectId}}",
+      "saved": "Proyecto guardado: {{projectId}}",
+      "cleared": "Se volvió a la resolución automática del proyecto",
+      "savedWithRefreshError": "Proyecto guardado, pero falló la actualización de cuota: {{error}}"
     }
   },
   "codebuddy": {

@@ -2349,6 +2349,19 @@
       "desc": "Gerencie contas Gemini Cli importando da configuração local do Gemini Cli, colando um token JWT ou fazendo login via OAuth.",
       "reason": "Escopo de permissão: ler e gravar oauth_creds.json, google_accounts.json e settings.json no padrão ~/.gemini ou caminho de instância (GEMINI_CLI_HOME/.gemini) para importação de conta e injeção de credenciais locais (troca de conta).",
       "storage": "Escopo da rede: OAuth e atualização chamam APIs oficiais do Google/Gemini (como oauth2.googleapis.com e googleapis.com). Apenas os campos de autenticação/cota obrigatórios são enviados; os arquivos da conta local não são carregados em servidores de terceiros."
+    },
+    "projectConfig": {
+      "button": "Definir projeto do GCP",
+      "title": "Definir projeto do GCP",
+      "selectLabel": "Selecionar projeto",
+      "loading": "Carregando lista de projetos...",
+      "auto": "Seleção automática (sem definir manualmente)",
+      "empty": "Nenhum projeto disponível encontrado. Verifique se esta conta tem acesso a projetos do GCP.",
+      "hint": "Após salvar, este projeto terá prioridade nas requisições de cota e será injetado como GOOGLE_CLOUD_PROJECT ao iniciar.",
+      "current": "Projeto: {{projectId}}",
+      "saved": "Projeto salvo: {{projectId}}",
+      "cleared": "Voltou para resolução automática de projeto",
+      "savedWithRefreshError": "Projeto salvo, mas a atualização de cota falhou: {{error}}"
     }
   },
   "codebuddy": {

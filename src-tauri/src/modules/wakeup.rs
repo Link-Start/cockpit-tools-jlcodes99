@@ -107,7 +107,9 @@ fn wakeup_cancelled_error() -> String {
 }
 
 fn is_wakeup_cancelled(cancel_rx: Option<&watch::Receiver<bool>>) -> bool {
-    cancel_rx.map(|receiver| *receiver.borrow()).unwrap_or(false)
+    cancel_rx
+        .map(|receiver| *receiver.borrow())
+        .unwrap_or(false)
 }
 
 fn is_wakeup_cancelled_message(message: &str) -> bool {
@@ -481,7 +483,9 @@ async fn send_stream_request(
                 Ok(res) => {
                     let status = res.status();
                     if status.is_success() {
-                        let text = await_with_cancel(cancel_rx, res.text()).await?.unwrap_or_default();
+                        let text = await_with_cancel(cancel_rx, res.text())
+                            .await?
+                            .unwrap_or_default();
                         crate::modules::logger::log_info(&format!(
                             "[Wakeup] stream响应: {}",
                             truncate_log_text(&text, 2000)
@@ -527,7 +531,9 @@ async fn send_stream_request(
                             crate::modules::logger::log_error("[Wakeup] 无权限 (403)");
                             return Err("Cloud Code access forbidden".to_string());
                         }
-                        let text = await_with_cancel(cancel_rx, res.text()).await?.unwrap_or_default();
+                        let text = await_with_cancel(cancel_rx, res.text())
+                            .await?
+                            .unwrap_or_default();
                         let retryable = status == reqwest::StatusCode::TOO_MANY_REQUESTS
                             || status.as_u16() >= 500;
                         let message = format!("唤醒请求失败: {} - {}", status, text);
@@ -741,7 +747,9 @@ async fn post_gateway_json(
     })?;
 
     let status = resp.status();
-    let text = await_with_cancel(cancel_rx, resp.text()).await?.unwrap_or_default();
+    let text = await_with_cancel(cancel_rx, resp.text())
+        .await?
+        .unwrap_or_default();
     if !status.is_success() {
         crate::modules::logger::log_error(&format!(
             "[Wakeup] 网关 {} 返回错误: url={}, status={}, body={}",
@@ -788,7 +796,12 @@ async fn resolve_requested_model_for_official_ls(
         }
     };
 
-    let token = match await_with_cancel(cancel_rx, modules::oauth::ensure_fresh_token(&account.token)).await? {
+    let token = match await_with_cancel(
+        cancel_rx,
+        modules::oauth::ensure_fresh_token(&account.token),
+    )
+    .await?
+    {
         Ok(v) => {
             if v.access_token != account.token.access_token
                 || v.refresh_token != account.token.refresh_token
@@ -836,7 +849,9 @@ async fn resolve_requested_model_for_official_ls(
                 Ok(res) => {
                     let status = res.status();
                     if status.is_success() {
-                        match await_with_cancel(cancel_rx, res.json::<AvailableModelsResponse>()).await? {
+                        match await_with_cancel(cancel_rx, res.json::<AvailableModelsResponse>())
+                            .await?
+                        {
                             Ok(parsed) => {
                                 if let Some(models) = extract_available_models_map(&parsed) {
                                     if let Some(meta) = models.get(trimmed) {
@@ -892,7 +907,9 @@ async fn resolve_requested_model_for_official_ls(
                             }
                         }
                     } else {
-                        let text = await_with_cancel(cancel_rx, res.text()).await?.unwrap_or_default();
+                        let text = await_with_cancel(cancel_rx, res.text())
+                            .await?
+                            .unwrap_or_default();
                         let retryable = status == reqwest::StatusCode::TOO_MANY_REQUESTS
                             || status.as_u16() >= 500;
 
@@ -947,11 +964,8 @@ async fn resolve_requested_model_for_official_ls(
                     if attempt < DEFAULT_ATTEMPTS {
                         let delay = get_backoff_delay_ms(attempt + 1);
                         if delay > 0 {
-                            sleep_with_cancel(
-                                std::time::Duration::from_millis(delay),
-                                cancel_rx,
-                            )
-                            .await?;
+                            sleep_with_cancel(std::time::Duration::from_millis(delay), cancel_rx)
+                                .await?;
                         }
                         continue;
                     }
@@ -1431,22 +1445,22 @@ async fn trigger_wakeup_via_client_gateway_once(
                 .send(),
         )
         .await?
-            .map_err(|e| {
-                let kind = classify_gateway_transport_error(&e);
-                let message = format!(
-                    "网关 prepareStartContext 请求失败[{}]: {} (url={})",
-                    kind, e, prepare_url
-                );
-                crate::modules::logger::log_error(&format!("[Wakeup] {}", message));
-                message
-            })?
-            .error_for_status()
-            .map_err(|e| {
-                format!(
-                    "网关 prepareStartContext 返回错误: {} (url={})",
-                    e, prepare_url
-                )
-            })?;
+        .map_err(|e| {
+            let kind = classify_gateway_transport_error(&e);
+            let message = format!(
+                "网关 prepareStartContext 请求失败[{}]: {} (url={})",
+                kind, e, prepare_url
+            );
+            crate::modules::logger::log_error(&format!("[Wakeup] {}", message));
+            message
+        })?
+        .error_for_status()
+        .map_err(|e| {
+            format!(
+                "网关 prepareStartContext 返回错误: {} (url={})",
+                e, prepare_url
+            )
+        })?;
 
         start_resp = post_gateway_json(
             &client,
@@ -1746,15 +1760,17 @@ pub(crate) async fn trigger_wakeup_direct(
         max_output_tokens,
         format_prompt_for_log(prompt)
     ));
-    let mut token =
-        await_with_cancel(cancel_rx, modules::oauth::ensure_fresh_token(&account.token)).await??;
+    let mut token = await_with_cancel(
+        cancel_rx,
+        modules::oauth::ensure_fresh_token(&account.token),
+    )
+    .await??;
 
-    let (project_id, _, _) =
-        await_with_cancel(
-            cancel_rx,
-            modules::quota::fetch_project_id_for_token(&token, &account.email),
-        )
-        .await?;
+    let (project_id, _, _) = await_with_cancel(
+        cancel_rx,
+        modules::quota::fetch_project_id_for_token(&token, &account.email),
+    )
+    .await?;
     let final_project_id = project_id
         .clone()
         .or_else(|| token.project_id.clone())
@@ -1820,8 +1836,14 @@ pub async fn trigger_wakeup(
     match resolve_wakeup_transport_mode() {
         WakeupTransportMode::LegacyCloudCode => {
             crate::modules::logger::log_info("[Wakeup] 通道=legacy_cloudcode");
-            trigger_wakeup_direct(account_id, model, prompt, max_output_tokens, cancel_rx.as_ref())
-                .await
+            trigger_wakeup_direct(
+                account_id,
+                model,
+                prompt,
+                max_output_tokens,
+                cancel_rx.as_ref(),
+            )
+            .await
         }
         WakeupTransportMode::ClientGateway => {
             crate::modules::logger::log_info("[Wakeup] 通道=client_gateway");

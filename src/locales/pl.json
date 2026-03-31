@@ -2349,6 +2349,19 @@
       "desc": "Zarządzaj kontami Gemini Cli, importując z lokalnej instalacji Gemini Cli lub wklejając tokeny JWT. Dane są przetwarzane wyłącznie lokalnie.",
       "reason": "Zakres uprawnień: odczyt i zapis oauth_creds.json, google_accounts.json oraz settings.json w domyślnym ~/.gemini lub ścieżce instancji (GEMINI_CLI_HOME/.gemini) do importu kont i lokalnego wstrzykiwania poświadczeń (przełączanie kont).",
       "storage": "Zakres sieci: OAuth i odświeżanie limitu wywołują oficjalne API Google/Gemini (np. oauth2.googleapis.com i googleapis.com). Wysyłane są tylko wymagane pola uwierzytelniania/limitu; lokalne pliki nie są wysyłane na serwery stron trzecich."
+    },
+    "projectConfig": {
+      "button": "Ustaw projekt GCP",
+      "title": "Ustaw projekt GCP",
+      "selectLabel": "Wybierz projekt",
+      "loading": "Ładowanie listy projektów...",
+      "auto": "Wybór automatyczny (bez ręcznego ustawiania)",
+      "empty": "Nie znaleziono dostępnych projektów. Upewnij się, że to konto ma dostęp do projektów GCP.",
+      "hint": "Po zapisaniu ten projekt będzie preferowany przy zapytaniach o limit i zostanie ustawiony jako GOOGLE_CLOUD_PROJECT przy uruchomieniu.",
+      "current": "Projekt: {{projectId}}",
+      "saved": "Projekt zapisany: {{projectId}}",
+      "cleared": "Przywrócono automatyczne wykrywanie projektu",
+      "savedWithRefreshError": "Projekt zapisany, ale odświeżanie limitu nie powiodło się: {{error}}"
     }
   },
   "codebuddy": {

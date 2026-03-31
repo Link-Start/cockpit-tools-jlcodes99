@@ -2349,6 +2349,19 @@
       "desc": "ローカルの Gemini Cli インストールからのインポートまたは JWT トークンの貼り付けで Gemini Cli アカウントを管理します。データはローカルでのみ処理されます。",
       "reason": "権限範囲: デフォルトの ~/.gemini またはインスタンスパス (GEMINI_CLI_HOME/.gemini) 配下の oauth_creds.json、google_accounts.json、settings.json を読み書きし、アカウントのインポートとローカル認証情報の注入（アカウント切り替え）を行います。",
       "storage": "ネットワーク範囲: OAuth とクォータ更新では Google/Gemini の公式 API（oauth2.googleapis.com、googleapis.com など）を呼び出します。送信されるのは必要な認証/クォータ項目のみで、ローカルのアカウントファイルは第三者サーバーへアップロードされません。"
+    },
+    "projectConfig": {
+      "button": "GCP プロジェクトを設定",
+      "title": "GCP プロジェクトを設定",
+      "selectLabel": "プロジェクトを選択",
+      "loading": "プロジェクト一覧を読み込み中...",
+      "auto": "自動選択（手動指定しない）",
+      "empty": "利用可能なプロジェクトが見つかりません。このアカウントに GCP プロジェクトへのアクセス権があるか確認してください。",
+      "hint": "保存後、このプロジェクトがクォータ取得で優先され、起動コマンドでは GOOGLE_CLOUD_PROJECT として注入されます。",
+      "current": "プロジェクト: {{projectId}}",
+      "saved": "プロジェクトを保存しました: {{projectId}}",
+      "cleared": "プロジェクト自動解決に戻しました",
+      "savedWithRefreshError": "プロジェクトは保存されましたが、クォータ更新に失敗しました: {{error}}"
     }
   },
   "codebuddy": {

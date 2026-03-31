@@ -247,6 +247,8 @@ pub async fn codex_start_instance(instance_id: String) -> Result<InstanceProfile
         .find(|item| item.id == instance_id)
         .ok_or("实例不存在")?;
 
+    modules::codex_instance::ensure_instance_shared_skills(Path::new(&instance.user_data_dir))?;
+
     if let Some(pid) =
         modules::process::resolve_codex_pid(instance.last_pid, Some(&instance.user_data_dir))
     {

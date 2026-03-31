@@ -7,6 +7,20 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
 ---
+## [0.20.16] - 2026-03-31
+
+### 新增
+- **Gemini 账号现已支持按账号配置 GCP 项目（从云端项目列表选择）**：账号卡片/表格新增项目设置弹框，可拉取可访问项目、可切回自动项目识别，并持久化保存所选 project id。
+- **Codex 实例现已在创建/启动时自动接入共享 Skills/Rules/AGENTS 资源**：`skills`、`rules`、`vendor_imports/skills` 与 `AGENTS.md` 会与默认 Codex Home 同步，并带迁移与冲突保护。
+
+### 变更
+- **Gemini 配额刷新与 CLI 启动现已优先使用已配置项目**：保存项目后会触发刷新，账号列表会显示当前项目，启动命令会注入 `GOOGLE_CLOUD_PROJECT`。
+- **当前账号优先排序现已在账号页与实例选择器统一生效**：在 Antigravity、Codex、Gemini、Cursor、Windsurf、Kiro、Qoder、Trae、Zed、GitHub Copilot、CodeBuddy CN、WorkBuddy 等视图中，当前账号会在其它排序规则前优先置顶。
+- **OpenCode 切号相关默认值现已改为默认关闭**：`sync_on_switch` 与 `auth_overwrite_on_switch` 在配置默认、设置页初始化与唤醒任务上下文中均改为默认关闭。
+- **Codex 代码评审配额显示默认值现已改为隐藏**：仅在用户显式开启后才显示该指标。
+- **Updater 依赖链路现已补齐 reqwest 的 socks 能力**：全局代理为 `socks5://` 时更新链路兼容性更好。
+
+---
 ## [0.20.15] - 2026-03-30
 
 ### 新增

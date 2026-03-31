@@ -48,16 +48,44 @@ struct GeminiLaunchContext {
     user_data_dir: String,
     extra_args: String,
     use_home_env: bool,
+    project_id: Option<String>,
+}
+
+fn normalize_non_empty(value: Option<&str>) -> Option<String> {
+    value.and_then(|raw| {
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
+}
+
+fn resolve_bound_account_project_id(bind_account_id: Option<&str>) -> Option<String> {
+    bind_account_id
+        .and_then(modules::gemini_account::load_account)
+        .and_then(|account| normalize_non_empty(account.project_id.as_deref()))
+}
+
+fn resolve_default_current_project_id() -> Option<String> {
+    let accounts = modules::gemini_account::list_accounts();
+    modules::gemini_account::resolve_current_account(&accounts)
+        .and_then(|account| normalize_non_empty(account.project_id.as_deref()))
 }
 
 fn resolve_instance_launch_context(instance_id: &str) -> Result<GeminiLaunchContext, String> {
     if instance_id == DEFAULT_INSTANCE_ID {
         let default_dir = modules::gemini_instance::get_default_gemini_cli_home_root()?;
         let default_settings = modules::gemini_instance::load_default_settings()?;
+        let project_id =
+            resolve_bound_account_project_id(default_settings.bind_account_id.as_deref())
+                .or_else(resolve_default_current_project_id);
         return Ok(GeminiLaunchContext {
             user_data_dir: default_dir.to_string_lossy().to_string(),
             extra_args: default_settings.extra_args,
             use_home_env: false,
+            project_id,
         });
     }
 
@@ -71,6 +99,7 @@ fn resolve_instance_launch_context(instance_id: &str) -> Result<GeminiLaunchCont
         user_data_dir: instance.user_data_dir,
         extra_args: instance.extra_args,
         use_home_env: true,
+        project_id: resolve_bound_account_project_id(instance.bind_account_id.as_deref()),
     })
 }
 
@@ -79,11 +108,20 @@ fn build_launch_command(context: &GeminiLaunchContext) -> String {
 
     #[cfg(target_os = "windows")]
     {
-        let mut command = if context.use_home_env {
+        let mut env_prefixes = Vec::new();
+        if context.use_home_env {
             let escaped_home = context.user_data_dir.replace('"', "\"\"");
-            format!("set \"GEMINI_CLI_HOME={}\" && gemini", escaped_home)
-        } else {
+            env_prefixes.push(format!("set \"GEMINI_CLI_HOME={}\"", escaped_home));
+        }
+        if let Some(project_id) = context.project_id.as_deref() {
+            let escaped_project = project_id.replace('"', "\"\"");
+            env_prefixes.push(format!("set \"GOOGLE_CLOUD_PROJECT={}\"", escaped_project));
+        }
+
+        let mut command = if env_prefixes.is_empty() {
             "gemini".to_string()
+        } else {
+            format!("{} && gemini", env_prefixes.join(" && "))
         };
         for arg in parsed_args {
             if !arg.trim().is_empty() {
@@ -96,13 +134,24 @@ fn build_launch_command(context: &GeminiLaunchContext) -> String {
 
     #[cfg(not(target_os = "windows"))]
     {
-        let mut command = if context.use_home_env {
-            format!(
-                "GEMINI_CLI_HOME={} gemini",
+        let mut env_prefixes = Vec::new();
+        if context.use_home_env {
+            env_prefixes.push(format!(
+                "GEMINI_CLI_HOME={}",
                 posix_shell_quote(&context.user_data_dir)
-            )
-        } else {
+            ));
+        }
+        if let Some(project_id) = context.project_id.as_deref() {
+            env_prefixes.push(format!(
+                "GOOGLE_CLOUD_PROJECT={}",
+                posix_shell_quote(project_id)
+            ));
+        }
+
+        let mut command = if env_prefixes.is_empty() {
             "gemini".to_string()
+        } else {
+            format!("{} gemini", env_prefixes.join(" "))
         };
         for arg in parsed_args {
             let trimmed = arg.trim();

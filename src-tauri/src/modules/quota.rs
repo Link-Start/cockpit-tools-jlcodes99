@@ -210,8 +210,14 @@ fn cloud_code_plugin_version() -> String {
 
 fn build_cloud_code_metadata(duet_project: Option<&str>) -> Value {
     let mut metadata = serde_json::Map::new();
-    metadata.insert("ideName".to_string(), Value::String("antigravity".to_string()));
-    metadata.insert("ideType".to_string(), Value::String("ANTIGRAVITY".to_string()));
+    metadata.insert(
+        "ideName".to_string(),
+        Value::String("antigravity".to_string()),
+    );
+    metadata.insert(
+        "ideType".to_string(),
+        Value::String("ANTIGRAVITY".to_string()),
+    );
     metadata.insert(
         "ideVersion".to_string(),
         Value::String(official_antigravity_version_for_cloud_code()),
@@ -236,7 +242,10 @@ fn build_cloud_code_metadata(duet_project: Option<&str>) -> Value {
         .map(str::trim)
         .filter(|value| !value.is_empty())
     {
-        metadata.insert("duetProject".to_string(), Value::String(project.to_string()));
+        metadata.insert(
+            "duetProject".to_string(),
+            Value::String(project.to_string()),
+        );
     }
     Value::Object(metadata)
 }
@@ -659,10 +668,7 @@ pub async fn fetch_project_id_with_context(
             .post(format!("{}/{}", base_url, LOAD_CODE_ASSIST_PATH))
             .bearer_auth(access_token)
             .header(reqwest::header::CONTENT_TYPE, "application/json")
-            .header(
-                reqwest::header::USER_AGENT,
-                &ua,
-            )
+            .header(reqwest::header::USER_AGENT, &ua)
             .header("x-goog-api-client", &x_goog_api_client)
             .header(reqwest::header::ACCEPT, "*/*")
             .header(reqwest::header::ACCEPT_ENCODING, "gzip, deflate, br")

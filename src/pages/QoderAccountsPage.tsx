@@ -53,6 +53,7 @@ import {
 } from '../utils/privacy';
 import { useExportJsonModal } from '../hooks/useExportJsonModal';
 import { parseFileCorruptedError } from '../components/FileCorruptedModal';
+import { compareCurrentAccountFirst } from '../utils/currentAccountSort';
 
 const QODER_FLOW_NOTICE_COLLAPSED_KEY = 'agtools.qoder.flow_notice_collapsed';
 const QODER_VIEW_MODE_KEY = 'agtools.qoder.accounts_view_mode';
@@ -463,6 +464,11 @@ export function QoderAccountsPage() {
 
   const compareAccountsBySort = useCallback(
     (a: QoderAccount, b: QoderAccount) => {
+      const currentFirstDiff = compareCurrentAccountFirst(a.id, b.id, currentAccountId);
+      if (currentFirstDiff !== 0) {
+        return currentFirstDiff;
+      }
+
       if (sortBy === 'plan') {
         const left = getQoderPlanBadge(a);
         const right = getQoderPlanBadge(b);
@@ -478,7 +484,7 @@ export function QoderAccountsPage() {
       const cmp = a.created_at - b.created_at;
       return sortDirection === 'asc' ? cmp : -cmp;
     },
-    [sortBy, sortDirection],
+    [currentAccountId, sortBy, sortDirection],
   );
 
   const filteredAccounts = useMemo(() => {

@@ -41,6 +41,7 @@ import { QuickSettingsPopover } from '../components/QuickSettingsPopover';
 import { useProviderAccountsPage } from '../hooks/useProviderAccountsPage';
 import { MultiSelectFilterDropdown, type MultiSelectFilterOption } from '../components/MultiSelectFilterDropdown';
 import type { KiroAccount } from '../types/kiro';
+import { compareCurrentAccountFirst } from '../utils/currentAccountSort';
 
 const KIRO_FLOW_NOTICE_COLLAPSED_KEY = 'agtools.kiro.flow_notice_collapsed';
 const KIRO_CURRENT_ACCOUNT_ID_KEY = 'agtools.kiro.current_account_id';
@@ -382,6 +383,11 @@ export function KiroAccountsPage() {
 
   // ─── Filtering & Sorting ────────────────────────────────────────────
   const compareAccountsBySort = useCallback((a: KiroAccount, b: KiroAccount) => {
+    const currentFirstDiff = compareCurrentAccountFirst(a.id, b.id, currentAccountId);
+    if (currentFirstDiff !== 0) {
+      return currentFirstDiff;
+    }
+
     if (sortBy === 'created_at') {
       const diff = b.created_at - a.created_at;
       return sortDirection === 'desc' ? diff : -diff;
@@ -399,7 +405,7 @@ export function KiroAccountsPage() {
     const bValue = resolveCreditsSummary(b).creditsLeft ?? -1;
     const diff = bValue - aValue;
     return sortDirection === 'desc' ? diff : -diff;
-  }, [resolveCreditsSummary, sortBy, sortDirection]);
+  }, [currentAccountId, resolveCreditsSummary, sortBy, sortDirection]);
 
   const sortedAccountsForInstances = useMemo(
     () => [...accounts].sort(compareAccountsBySort),

@@ -1131,7 +1131,9 @@ pub async fn get_checkin_status(
         ));
     }
 
-    let data = body.get("data").ok_or_else(|| "checkin-status 响应缺少 data 字段".to_string())?;
+    let data = body
+        .get("data")
+        .ok_or_else(|| "checkin-status 响应缺少 data 字段".to_string())?;
 
     let status: CheckinStatusResponse = serde_json::from_value(data.clone())
         .map_err(|e| format!("解析 checkin-status data 失败: {}", e))?;
@@ -1207,14 +1209,19 @@ pub async fn perform_checkin(
         });
     }
 
-    let data = body.get("data").ok_or_else(|| "daily-checkin 响应缺少 data 字段".to_string())?;
+    let data = body
+        .get("data")
+        .ok_or_else(|| "daily-checkin 响应缺少 data 字段".to_string())?;
 
     let success = data
         .get("success")
         .and_then(|v| v.as_bool())
         .unwrap_or(true); // code==0 时默认成功
 
-    let message = data.get("message").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let message = data
+        .get("message")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
 
     let reward = data.get("reward").cloned();
 

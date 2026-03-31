@@ -2349,6 +2349,19 @@
       "desc": "Spravujte účty Gemini Cli importem z místní instalace Gemini Cli nebo vložením tokenů JWT. Data jsou zpracovávána pouze lokálně.",
       "reason": "Rozsah oprávnění: čtení a zápis oauth_creds.json, google_accounts.json a settings.json v výchozím ~/.gemini nebo v cestě instance (GEMINI_CLI_HOME/.gemini) pro import účtů a lokální injekci přihlašovacích údajů (přepnutí účtu).",
       "storage": "Síťový rozsah: OAuth a obnovení kvóty volají oficiální API Google/Gemini (např. oauth2.googleapis.com a googleapis.com). Odesílají se jen nutná pole pro autentizaci/kvótu; lokální soubory se na servery třetích stran nenahrávají."
+    },
+    "projectConfig": {
+      "button": "Nastavit projekt GCP",
+      "title": "Nastavit projekt GCP",
+      "selectLabel": "Vyberte projekt",
+      "loading": "Načítání seznamu projektů...",
+      "auto": "Automatický výběr (bez ručního zadání)",
+      "empty": "Nebyly nalezeny dostupné projekty. Ověřte, že tento účet má přístup k projektům GCP.",
+      "hint": "Po uložení bude tento projekt upřednostněn pro dotazy na kvóty a při spuštění se nastaví GOOGLE_CLOUD_PROJECT.",
+      "current": "Projekt: {{projectId}}",
+      "saved": "Projekt uložen: {{projectId}}",
+      "cleared": "Obnoveno automatické zjišťování projektu",
+      "savedWithRefreshError": "Projekt byl uložen, ale obnovení kvóty selhalo: {{error}}"
     }
   },
   "codebuddy": {

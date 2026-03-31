@@ -42,6 +42,7 @@ import {
   isCursorAccountBanned,
 } from '../types/cursor';
 import type { CursorAccount } from '../types/cursor';
+import { compareCurrentAccountFirst } from '../utils/currentAccountSort';
 
 import { useProviderAccountsPage } from '../hooks/useProviderAccountsPage';
 import { CursorOverviewTabsHeader, CursorTab } from '../components/CursorOverviewTabsHeader';
@@ -395,6 +396,11 @@ export function CursorAccountsPage() {
   // ─── Filtering & Sorting ──────────────────────────────────────────
 
   const compareAccountsBySort = useCallback((a: CursorAccount, b: CursorAccount) => {
+    const currentFirstDiff = compareCurrentAccountFirst(a.id, b.id, currentAccountId);
+    if (currentFirstDiff !== 0) {
+      return currentFirstDiff;
+    }
+
     if (sortBy === 'created_at') {
       const diff = b.created_at - a.created_at;
       return sortDirection === 'desc' ? diff : -diff;
@@ -414,7 +420,7 @@ export function CursorAccountsPage() {
     const bValue = 100 - (bUsage.inlineSuggestionsUsedPercent ?? 0);
     const diff = bValue - aValue;
     return sortDirection === 'desc' ? diff : -diff;
-  }, [sortBy, sortDirection]);
+  }, [currentAccountId, sortBy, sortDirection]);
 
   const sortedAccountsForInstances = useMemo(
     () => [...accounts].sort(compareAccountsBySort),

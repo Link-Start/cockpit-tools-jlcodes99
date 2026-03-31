@@ -398,7 +398,8 @@ fn merge_duplicate_account(primary: &mut CodebuddyAccount, dup: &CodebuddyAccoun
         &dup.quota_query_last_error_at,
     );
     // 签到字段合并：保留最新的签到时间，累加连续签到天数（如果两者都已签到）
-    if let (Some(primary_time), Some(dup_time)) = (primary.last_checkin_time, dup.last_checkin_time) {
+    if let (Some(primary_time), Some(dup_time)) = (primary.last_checkin_time, dup.last_checkin_time)
+    {
         if dup_time > primary_time {
             primary.last_checkin_time = Some(dup_time);
         }

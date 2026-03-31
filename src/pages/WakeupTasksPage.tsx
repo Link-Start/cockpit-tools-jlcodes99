@@ -1741,8 +1741,8 @@ export function WakeupTasksPage({ onNavigate }: WakeupPageProps) {
           antigravityAppPath: config.antigravity_app_path ?? '',
           codexAppPath: config.codex_app_path ?? '',
           vscodeAppPath: config.vscode_app_path ?? '',
-          opencodeSyncOnSwitch: config.opencode_sync_on_switch ?? true,
-          opencodeAuthOverwriteOnSwitch: config.opencode_auth_overwrite_on_switch ?? true,
+          opencodeSyncOnSwitch: config.opencode_sync_on_switch ?? false,
+          opencodeAuthOverwriteOnSwitch: config.opencode_auth_overwrite_on_switch ?? false,
           codexLaunchOnSwitch: config.codex_launch_on_switch ?? true,
         });
         

@@ -1,7 +1,7 @@
 use std::time::Instant;
 
-use tauri::{AppHandle, Emitter};
 use crate::modules::codebuddy_cn_oauth;
+use tauri::{AppHandle, Emitter};
 
 use crate::models::workbuddy::{WorkbuddyAccount, WorkbuddyOAuthStartResponse};
 use crate::modules::{logger, workbuddy_account, workbuddy_oauth};

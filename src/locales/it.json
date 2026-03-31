@@ -2349,6 +2349,19 @@
       "desc": "Gestisci gli account Gemini Cli importando dall'installazione locale di Gemini Cli o incollando token JWT. I dati vengono elaborati solo localmente.",
       "reason": "Ambito autorizzazioni: lettura e scrittura di oauth_creds.json, google_accounts.json e settings.json nel percorso predefinito ~/.gemini o nel percorso istanza (GEMINI_CLI_HOME/.gemini) per importare account e iniettare credenziali locali (cambio account).",
       "storage": "Ambito rete: OAuth e aggiornamento quota chiamano le API ufficiali Google/Gemini (come oauth2.googleapis.com e googleapis.com). Vengono inviati solo i campi necessari di autenticazione/quota; i file locali non vengono caricati su server di terze parti."
+    },
+    "projectConfig": {
+      "button": "Imposta progetto GCP",
+      "title": "Imposta progetto GCP",
+      "selectLabel": "Seleziona progetto",
+      "loading": "Caricamento elenco progetti...",
+      "auto": "Selezione automatica (senza specifica manuale)",
+      "empty": "Nessun progetto disponibile trovato. Verifica che questo account abbia accesso ai progetti GCP.",
+      "hint": "Dopo il salvataggio, questo progetto sarà preferito per le richieste quota e verrà iniettato come GOOGLE_CLOUD_PROJECT all’avvio.",
+      "current": "Progetto: {{projectId}}",
+      "saved": "Progetto salvato: {{projectId}}",
+      "cleared": "Ripristinato il rilevamento automatico del progetto",
+      "savedWithRefreshError": "Progetto salvato, ma aggiornamento quota non riuscito: {{error}}"
     }
   },
   "codebuddy": {

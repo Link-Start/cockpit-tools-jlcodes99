@@ -69,6 +69,7 @@ import {
   isCodexCodeReviewQuotaVisibleByDefault,
 } from '../utils/codexPreferences';
 import { emitAccountsChanged } from '../utils/accountSyncEvents';
+import { compareCurrentAccountFirst } from '../utils/currentAccountSort';
 
 const CODEX_TOKEN_SINGLE_EXAMPLE = `{
   "tokens": {
@@ -1143,6 +1144,11 @@ export function CodexAccountsPage() {
 
   // ─── Filtering & Sorting ────────────────────────────────────────────
   const compareAccountsBySort = useCallback((a: CodexAccount, b: CodexAccount) => {
+    const currentFirstDiff = compareCurrentAccountFirst(a.id, b.id, currentAccount?.id);
+    if (currentFirstDiff !== 0) {
+      return currentFirstDiff;
+    }
+
     if (sortBy === 'created_at') {
       const diff = b.created_at - a.created_at;
       return sortDirection === 'desc' ? diff : -diff;
@@ -1158,7 +1164,7 @@ export function CodexAccountsPage() {
     const aV = sortBy === 'weekly' ? a.quota?.weekly_percentage ?? -1 : a.quota?.hourly_percentage ?? -1;
     const bV = sortBy === 'weekly' ? b.quota?.weekly_percentage ?? -1 : b.quota?.hourly_percentage ?? -1;
     return sortDirection === 'desc' ? bV - aV : aV - bV;
-  }, [sortBy, sortDirection]);
+  }, [currentAccount?.id, sortBy, sortDirection]);
 
   const sortedAccountsForInstances = useMemo(
     () => [...accounts].sort(compareAccountsBySort),

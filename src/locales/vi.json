@@ -2349,6 +2349,19 @@
     },
     "switch": {
       "success": "Chuyển đổi tài khoản thành công"
+    },
+    "projectConfig": {
+      "button": "Đặt dự án GCP",
+      "title": "Đặt dự án GCP",
+      "selectLabel": "Chọn dự án",
+      "loading": "Đang tải danh sách dự án...",
+      "auto": "Tự động chọn (không chỉ định thủ công)",
+      "empty": "Không tìm thấy dự án khả dụng. Hãy đảm bảo tài khoản này có quyền truy cập dự án GCP.",
+      "hint": "Sau khi lưu, dự án này sẽ được ưu tiên cho các yêu cầu hạn mức và được chèn thành GOOGLE_CLOUD_PROJECT khi khởi chạy.",
+      "current": "Dự án: {{projectId}}",
+      "saved": "Đã lưu dự án: {{projectId}}",
+      "cleared": "Đã chuyển về tự động xác định dự án",
+      "savedWithRefreshError": "Đã lưu dự án nhưng làm mới hạn mức thất bại: {{error}}"
     }
   },
   "codebuddy": {

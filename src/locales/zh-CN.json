@@ -2168,6 +2168,19 @@
       "localDesc": "支持从本机 Gemini Cli 配置目录（~/.gemini）或 JSON 文件导入账号数据。",
       "localClient": "从本机 Gemini Cli 导入"
     },
+    "projectConfig": {
+      "button": "设置 GCP 项目",
+      "title": "设置 GCP 项目",
+      "selectLabel": "选择项目",
+      "loading": "正在加载项目列表...",
+      "auto": "自动选择（不手动指定）",
+      "empty": "未获取到可用项目，请确认该账号具备 GCP 项目权限。",
+      "hint": "保存后将优先使用该项目请求配额，并在启动命令中注入 GOOGLE_CLOUD_PROJECT。",
+      "current": "项目：{{projectId}}",
+      "saved": "项目已保存：{{projectId}}",
+      "cleared": "已恢复为自动项目识别",
+      "savedWithRefreshError": "项目已保存，但刷新配额失败：{{error}}"
+    },
     "flowNotice": {
       "title": "Gemini Cli 账号管理说明（点击展开/收起）",
       "desc": "支持从本机 Gemini Cli 配置目录导入、粘贴 JWT 令牌或 OAuth 授权登录来管理 Gemini Cli 账号。",

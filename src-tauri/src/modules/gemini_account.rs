@@ -1,4 +1,6 @@
-use crate::models::gemini::{GeminiAccount, GeminiAccountIndex, GeminiOAuthCompletePayload};
+use crate::models::gemini::{
+    GeminiAccount, GeminiAccountIndex, GeminiCloudProject, GeminiOAuthCompletePayload,
+};
 use crate::modules::{account, gemini_oauth, logger};
 use base64::Engine;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
@@ -78,6 +80,14 @@ struct GoogleUserInfoResponse {
 struct LoadCodeAssistStatus {
     tier_id: Option<String>,
     project_id: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct GeminiProjectCandidate {
+    project_id: String,
+    project_name: Option<String>,
+    is_gen_lang_client: bool,
+    has_gen_label: bool,
 }
 
 fn now_ts() -> i64 {
@@ -522,6 +532,19 @@ pub fn set_account_status(
     account.status_reason = reason.map(|r| r.to_string());
     upsert_account_record(account)?;
     Ok(())
+}
+
+pub fn set_account_project_id(
+    account_id: &str,
+    project_id: Option<&str>,
+) -> Result<GeminiAccount, String> {
+    let mut account =
+        load_account_file(account_id).ok_or_else(|| "Gemini 账号不存在".to_string())?;
+    account.project_id = normalize_non_empty(project_id);
+    account.last_used = now_ts();
+    let updated = account.clone();
+    upsert_account_record(account)?;
+    Ok(updated)
 }
 
 fn parse_gemini_account_from_json_object(
@@ -1169,46 +1192,132 @@ async fn load_code_assist_status(access_token: &str) -> Result<LoadCodeAssistSta
     })
 }
 
-async fn discover_gemini_project_id(access_token: &str) -> Option<String> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(20))
-        .build()
-        .ok()?;
+fn extract_project_candidates(value: &Value) -> Vec<GeminiProjectCandidate> {
+    let Some(projects) = value.get("projects").and_then(|v| v.as_array()) else {
+        return Vec::new();
+    };
 
-    let response = client
-        .get(GOOGLE_PROJECTS_ENDPOINT)
-        .header(AUTHORIZATION, format!("Bearer {}", access_token))
-        .send()
-        .await
-        .ok()?;
-
-    if !response.status().is_success() {
-        return None;
-    }
-
-    let value = response.json::<Value>().await.ok()?;
-    let projects = value.get("projects")?.as_array()?;
-
+    let mut candidates = Vec::new();
     for project in projects {
         let project_id = normalize_non_empty(project.get("projectId").and_then(|v| v.as_str()));
         let Some(project_id) = project_id else {
             continue;
         };
 
-        if project_id.starts_with("gen-lang-client") {
-            return Some(project_id);
+        let lifecycle_state =
+            normalize_non_empty(project.get("lifecycleState").and_then(|v| v.as_str()));
+        if let Some(state) = lifecycle_state {
+            if !state.eq_ignore_ascii_case("ACTIVE") {
+                continue;
+            }
         }
 
+        let project_name = normalize_non_empty(project.get("name").and_then(|v| v.as_str()));
         let has_gen_label = project
             .get("labels")
             .and_then(|v| v.get("generative-language"))
             .is_some();
-        if has_gen_label {
-            return Some(project_id);
-        }
+        let is_gen_lang_client = project_id.starts_with("gen-lang-client");
+
+        candidates.push(GeminiProjectCandidate {
+            project_id,
+            project_name,
+            is_gen_lang_client,
+            has_gen_label,
+        });
     }
 
-    None
+    candidates.sort_by(|a, b| {
+        b.is_gen_lang_client
+            .cmp(&a.is_gen_lang_client)
+            .then_with(|| b.has_gen_label.cmp(&a.has_gen_label))
+            .then_with(|| a.project_id.cmp(&b.project_id))
+    });
+    candidates
+}
+
+async fn fetch_project_candidates(
+    access_token: &str,
+) -> Result<Vec<GeminiProjectCandidate>, String> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(20))
+        .build()
+        .map_err(|e| format!("创建 HTTP 客户端失败: {}", e))?;
+
+    let response = client
+        .get(GOOGLE_PROJECTS_ENDPOINT)
+        .header(AUTHORIZATION, format!("Bearer {}", access_token))
+        .send()
+        .await
+        .map_err(|e| format!("请求 Google projects 列表失败: {}", e))?;
+
+    if response.status().as_u16() == 401 {
+        return Err("UNAUTHORIZED: Gemini access_token 已失效".to_string());
+    }
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "<empty-body>".to_string());
+        return Err(format!(
+            "请求 Google projects 列表失败: status={}, body={}",
+            status, body
+        ));
+    }
+
+    let value = response
+        .json::<Value>()
+        .await
+        .map_err(|e| format!("解析 Google projects 列表失败: {}", e))?;
+    Ok(extract_project_candidates(&value))
+}
+
+async fn discover_gemini_project_id(access_token: &str) -> Option<String> {
+    fetch_project_candidates(access_token)
+        .await
+        .ok()
+        .and_then(|projects| projects.into_iter().next().map(|item| item.project_id))
+}
+
+pub async fn list_cloud_projects(account_id: &str) -> Result<Vec<GeminiCloudProject>, String> {
+    let mut account =
+        load_account_file(account_id).ok_or_else(|| "Gemini 账号不存在".to_string())?;
+
+    let original_access_token = account.access_token.clone();
+    let original_id_token = account.id_token.clone();
+    let original_token_type = account.token_type.clone();
+    let original_scope = account.scope.clone();
+    let original_expiry_date = account.expiry_date;
+
+    ensure_access_token_valid(&mut account).await?;
+
+    let mut projects = fetch_project_candidates(&account.access_token).await;
+    if let Err(err) = &projects {
+        if is_unauthorized_error(err) {
+            force_refresh_access_token(&mut account).await?;
+            projects = fetch_project_candidates(&account.access_token).await;
+        }
+    }
+    let projects = projects?;
+
+    let token_changed = account.access_token != original_access_token
+        || account.id_token != original_id_token
+        || account.token_type != original_token_type
+        || account.scope != original_scope
+        || account.expiry_date != original_expiry_date;
+    if token_changed {
+        upsert_account_record(account)?;
+    }
+
+    Ok(projects
+        .into_iter()
+        .map(|item| GeminiCloudProject {
+            project_id: item.project_id,
+            project_name: item.project_name,
+        })
+        .collect())
 }
 
 async fn retrieve_user_quota(
@@ -1311,10 +1420,10 @@ async fn refresh_account_token_once(account_id: &str) -> Result<GeminiAccount, S
     }
     let load_status = load_status?;
 
-    let mut project_id = load_status
-        .project_id
+    let selected_project_id = normalize_non_empty(account.project_id.as_deref());
+    let mut project_id = selected_project_id
         .clone()
-        .or_else(|| account.project_id.clone());
+        .or_else(|| load_status.project_id.clone());
     if project_id.is_none() {
         project_id = discover_gemini_project_id(&account.access_token).await;
     }
@@ -1357,7 +1466,7 @@ async fn refresh_account_token_once(account_id: &str) -> Result<GeminiAccount, S
             .and_then(|token| parse_jwt_claim_string(token, "sub"));
     }
 
-    account.project_id = project_id;
+    account.project_id = selected_project_id.or_else(|| project_id.clone());
     if let Some(tier_id) = load_status.tier_id {
         account.tier_id = Some(tier_id);
     }

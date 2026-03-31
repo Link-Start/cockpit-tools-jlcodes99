@@ -7,6 +7,7 @@
 import { useMemo, useCallback } from 'react';
 import type { CodebuddySuiteAccountBase } from '../types/codebuddy-suite';
 import { KNOWN_PLAN_FILTERS } from '../components/codebuddy-suite/CodebuddySuiteConfig';
+import { compareCurrentAccountFirst } from '../utils/currentAccountSort';
 
 const QUOTA_NUMBER_FORMATTER = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 2,
@@ -32,6 +33,7 @@ export function getQuotaClassByRemainPercent(remainPercent: number | null): stri
 
 export interface UseCodebuddySuitePageOptions<TAccount extends CodebuddySuiteAccountBase> {
   accounts: TAccount[];
+  currentAccountId?: string | null;
   searchQuery: string;
   filterTypes: string[];
   tagFilter: string[];
@@ -60,6 +62,7 @@ export function useCodebuddySuitePage<TAccount extends CodebuddySuiteAccountBase
 ): UseCodebuddySuitePageReturn<TAccount> {
   const {
     accounts,
+    currentAccountId,
     searchQuery,
     filterTypes,
     tagFilter,
@@ -123,11 +126,16 @@ export function useCodebuddySuitePage<TAccount extends CodebuddySuiteAccountBase
       );
     }
     result.sort((a, b) => {
+      const currentFirstDiff = compareCurrentAccountFirst(a.id, b.id, currentAccountId);
+      if (currentFirstDiff !== 0) {
+        return currentFirstDiff;
+      }
+
       const diff = b.created_at - a.created_at;
       return sortDirection === 'desc' ? diff : -diff;
     });
     return result;
-  }, [accounts, searchQuery, filterTypes, resolvePlanKey, tagFilter, normalizeTag, sortDirection]);
+  }, [accounts, currentAccountId, searchQuery, filterTypes, resolvePlanKey, tagFilter, normalizeTag, sortDirection]);
 
   const filteredIds = useMemo(
     () => filteredAccounts.map((account) => account.id),

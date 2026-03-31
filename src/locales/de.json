@@ -2349,6 +2349,19 @@
       "desc": "Verwalten Sie Gemini Cli-Konten durch Import aus der lokalen Gemini Cli-Installation oder durch Einfügen von JWT-Token. Daten werden nur lokal verarbeitet.",
       "reason": "Berechtigungsumfang: Lesen und Schreiben von oauth_creds.json, google_accounts.json und settings.json im Standardpfad ~/.gemini oder Instanzpfad (GEMINI_CLI_HOME/.gemini) für Kontoimport und lokale Anmeldeinjektionsfunktionen (Kontowechsel).",
       "storage": "Netzwerkumfang: OAuth und Quotenaktualisierung rufen offizielle Google/Gemini-APIs auf (z. B. oauth2.googleapis.com und googleapis.com). Es werden nur notwendige Auth-/Quotenfelder gesendet; lokale Dateien werden nicht an Drittserver hochgeladen."
+    },
+    "projectConfig": {
+      "button": "GCP-Projekt festlegen",
+      "title": "GCP-Projekt festlegen",
+      "selectLabel": "Projekt auswählen",
+      "loading": "Projektliste wird geladen...",
+      "auto": "Automatisch wählen (nicht manuell festlegen)",
+      "empty": "Keine verfügbaren Projekte gefunden. Stelle sicher, dass dieses Konto Zugriff auf GCP-Projekte hat.",
+      "hint": "Nach dem Speichern wird dieses Projekt für Quota-Anfragen bevorzugt und beim Start als GOOGLE_CLOUD_PROJECT gesetzt.",
+      "current": "Projekt: {{projectId}}",
+      "saved": "Projekt gespeichert: {{projectId}}",
+      "cleared": "Zur automatischen Projekterkennung zurückgekehrt",
+      "savedWithRefreshError": "Projekt gespeichert, aber Quota-Aktualisierung fehlgeschlagen: {{error}}"
     }
   },
   "codebuddy": {

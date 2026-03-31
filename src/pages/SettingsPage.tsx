@@ -251,8 +251,8 @@ export function SettingsPage() {
   const [codebuddyCnQuotaAlertThresholdCustomMode, setCodebuddyCnQuotaAlertThresholdCustomMode] = useState(false);
   const [workbuddyQuotaAlertThresholdCustomMode, setWorkbuddyQuotaAlertThresholdCustomMode] = useState(false);
   const [appPathResetDetectingTargets, setAppPathResetDetectingTargets] = useState<Set<AppPathTarget>>(new Set());
-  const [opencodeSyncOnSwitch, setOpencodeSyncOnSwitch] = useState(true);
-  const [opencodeAuthOverwriteOnSwitch, setOpencodeAuthOverwriteOnSwitch] = useState(true);
+  const [opencodeSyncOnSwitch, setOpencodeSyncOnSwitch] = useState(false);
+  const [opencodeAuthOverwriteOnSwitch, setOpencodeAuthOverwriteOnSwitch] = useState(false);
   const [openclawAuthOverwriteOnSwitch, setOpenclawAuthOverwriteOnSwitch] = useState(false);
   const [codexLaunchOnSwitch, setCodexLaunchOnSwitch] = useState(true);
   const [autoSwitchEnabled, setAutoSwitchEnabled] = useState(false);
@@ -891,8 +891,8 @@ export function SettingsPage() {
       setTraeQuotaAlertThreshold(String(config.trae_quota_alert_threshold ?? 20));
       setZedQuotaAlertEnabled(config.zed_quota_alert_enabled ?? false);
       setZedQuotaAlertThreshold(String(config.zed_quota_alert_threshold ?? 20));
-      setOpencodeSyncOnSwitch(config.opencode_sync_on_switch ?? true);
-      setOpencodeAuthOverwriteOnSwitch(config.opencode_auth_overwrite_on_switch ?? true);
+      setOpencodeSyncOnSwitch(config.opencode_sync_on_switch ?? false);
+      setOpencodeAuthOverwriteOnSwitch(config.opencode_auth_overwrite_on_switch ?? false);
       setOpenclawAuthOverwriteOnSwitch(config.openclaw_auth_overwrite_on_switch ?? false);
       setCodexLaunchOnSwitch(config.codex_launch_on_switch ?? true);
       setAutoSwitchEnabled(config.auto_switch_enabled ?? false);

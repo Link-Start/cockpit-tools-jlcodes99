@@ -1507,7 +1507,7 @@ export function CodexWakeupContent({ accounts, onRefreshAccounts }: CodexWakeupC
       antigravityAppPath: config.antigravity_app_path ?? '',
       codexAppPath: config.codex_app_path ?? '',
       vscodeAppPath: config.vscode_app_path ?? '',
-      opencodeSyncOnSwitch: config.opencode_sync_on_switch ?? true,
+      opencodeSyncOnSwitch: config.opencode_sync_on_switch ?? false,
       codexLaunchOnSwitch: config.codex_launch_on_switch ?? true,
     });
     window.dispatchEvent(new Event('config-updated'));

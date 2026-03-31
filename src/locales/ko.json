@@ -2349,6 +2349,19 @@
       "desc": "로컬 Gemini Cli 설치에서 가져오기 또는 JWT 토큰을 붙여넣어 Gemini Cli 계정을 관리합니다. 데이터는 로컬에서만 처리됩니다.",
       "reason": "권한 범위: 계정 가져오기 및 로컬 자격 증명 주입(계정 전환)을 위해 기본 ~/.gemini 또는 인스턴스 경로(GEMINI_CLI_HOME/.gemini)의 oauth_creds.json, google_accounts.json, settings.json을 읽고 씁니다.",
       "storage": "네트워크 범위: OAuth 및 할당량 갱신 시 Google/Gemini 공식 API(oauth2.googleapis.com, googleapis.com 등)를 호출합니다. 필요한 인증/할당량 필드만 전송되며, 로컬 계정 파일은 제3자 서버로 업로드되지 않습니다."
+    },
+    "projectConfig": {
+      "button": "GCP 프로젝트 설정",
+      "title": "GCP 프로젝트 설정",
+      "selectLabel": "프로젝트 선택",
+      "loading": "프로젝트 목록을 불러오는 중...",
+      "auto": "자동 선택(수동 지정 안 함)",
+      "empty": "사용 가능한 프로젝트를 찾지 못했습니다. 이 계정에 GCP 프로젝트 접근 권한이 있는지 확인하세요.",
+      "hint": "저장 후 이 프로젝트가 할당량 요청에 우선 적용되며, 실행 명령에 GOOGLE_CLOUD_PROJECT로 주입됩니다.",
+      "current": "프로젝트: {{projectId}}",
+      "saved": "프로젝트 저장됨: {{projectId}}",
+      "cleared": "자동 프로젝트 확인으로 되돌렸습니다",
+      "savedWithRefreshError": "프로젝트는 저장되었지만 할당량 새로고침에 실패했습니다: {{error}}"
     }
   },
   "codebuddy": {

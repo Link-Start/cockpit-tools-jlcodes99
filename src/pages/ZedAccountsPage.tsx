@@ -40,6 +40,7 @@ import {
   getZedPlanBadge,
   type ZedAccount,
 } from '../types/zed';
+import { compareCurrentAccountFirst } from '../utils/currentAccountSort';
 import './ZedAccountsPage.css';
 
 type ZedSortKey = 'created_at' | 'token_spend' | 'billing_end';
@@ -382,6 +383,11 @@ export function ZedAccountsPage() {
 
   const compareAccountsBySort = useCallback(
     (left: ZedAccount, right: ZedAccount) => {
+      const currentFirstDiff = compareCurrentAccountFirst(left.id, right.id, currentAccountId);
+      if (currentFirstDiff !== 0) {
+        return currentFirstDiff;
+      }
+
       const key = sortBy as ZedSortKey;
       if (key === 'billing_end') {
         const leftValue = left.billing_period_end_at ?? null;
@@ -402,7 +408,7 @@ export function ZedAccountsPage() {
       const diff = right.created_at - left.created_at;
       return sortDirection === 'desc' ? diff : -diff;
     },
-    [sortBy, sortDirection],
+    [currentAccountId, sortBy, sortDirection],
   );
 
   const filteredAccounts = useMemo(() => {

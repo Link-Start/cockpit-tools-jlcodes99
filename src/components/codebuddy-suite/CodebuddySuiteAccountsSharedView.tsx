@@ -157,6 +157,7 @@ export function CodebuddySuiteAccountsSharedView<TAccount extends CodebuddySuite
 
   const suitePage = useCodebuddySuitePage({
     accounts,
+    currentAccountId,
     searchQuery,
     filterTypes,
     tagFilter,
