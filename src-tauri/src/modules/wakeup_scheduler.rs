@@ -1,4 +1,6 @@
 use std::collections::{HashMap, HashSet};
+use std::fs;
+use std::path::Path;
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
@@ -12,8 +14,9 @@ use crate::modules;
 const DEFAULT_PROMPT: &str = "hi";
 const RESET_TRIGGER_COOLDOWN_MS: i64 = 10 * 60 * 1000;
 const RESET_SAFETY_MARGIN_MS: i64 = 2 * 60 * 1000;
+const WAKEUP_TASKS_FILE: &str = "wakeup_tasks.json";
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WakeupTaskInput {
     pub id: String,
@@ -23,7 +26,16 @@ pub struct WakeupTaskInput {
     pub schedule: ScheduleConfig,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct PersistedWakeupState {
+    #[serde(default)]
+    enabled: bool,
+    #[serde(default)]
+    tasks: Vec<WakeupTaskInput>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScheduleConfig {
     pub repeat_mode: String,
@@ -96,6 +108,7 @@ struct SchedulerState {
 
 static STATE: OnceLock<Mutex<SchedulerState>> = OnceLock::new();
 static STARTED: OnceLock<Mutex<bool>> = OnceLock::new();
+static STARTUP_TRIGGERED: OnceLock<Mutex<bool>> = OnceLock::new();
 
 fn state() -> &'static Mutex<SchedulerState> {
     STATE.get_or_init(|| Mutex::new(SchedulerState::default()))
@@ -103,6 +116,82 @@ fn state() -> &'static Mutex<SchedulerState> {
 
 fn started_flag() -> &'static Mutex<bool> {
     STARTED.get_or_init(|| Mutex::new(false))
+}
+
+fn startup_triggered_flag() -> &'static Mutex<bool> {
+    STARTUP_TRIGGERED.get_or_init(|| Mutex::new(false))
+}
+
+fn tasks_state_path() -> Result<std::path::PathBuf, String> {
+    Ok(modules::account::get_data_dir()?.join(WAKEUP_TASKS_FILE))
+}
+
+fn save_json_atomic<T: Serialize>(path: &Path, value: &T) -> Result<(), String> {
+    let parent = path.parent().ok_or("无法定位唤醒任务目录")?;
+    fs::create_dir_all(parent).map_err(|e| format!("创建唤醒任务目录失败: {}", e))?;
+    let temp_path = parent.join(format!(
+        "{}.tmp",
+        path.file_name()
+            .and_then(|item| item.to_str())
+            .unwrap_or("wakeup_tasks")
+    ));
+    let content = serde_json::to_string_pretty(value).map_err(|e| format!("序列化唤醒任务失败: {}", e))?;
+    fs::write(&temp_path, content).map_err(|e| format!("写入唤醒任务临时文件失败: {}", e))?;
+    fs::rename(&temp_path, path).map_err(|e| format!("替换唤醒任务文件失败: {}", e))
+}
+
+fn persist_state(enabled: bool, tasks: &[WakeupTaskInput]) -> Result<(), String> {
+    let persisted = PersistedWakeupState {
+        enabled,
+        tasks: tasks.to_vec(),
+    };
+    save_json_atomic(&tasks_state_path()?, &persisted)
+}
+
+fn apply_state(enabled: bool, tasks: Vec<WakeupTaskInput>) {
+    let mut guard = state().lock().expect("wakeup state lock");
+    guard.enabled = enabled;
+    guard.tasks = tasks
+        .into_iter()
+        .map(|task| WakeupTask {
+            id: task.id,
+            name: task.name,
+            enabled: task.enabled,
+            last_run_at: task.last_run_at,
+            schedule: normalize_schedule(task.schedule),
+        })
+        .collect();
+}
+
+pub fn restore_state_from_disk() {
+    let path = match tasks_state_path() {
+        Ok(path) => path,
+        Err(err) => {
+            modules::logger::log_warn(&format!("[WakeupTasks] 获取持久化路径失败: {}", err));
+            return;
+        }
+    };
+    if !path.exists() {
+        return;
+    }
+    let content = match fs::read_to_string(&path) {
+        Ok(content) => content,
+        Err(err) => {
+            modules::logger::log_warn(&format!("[WakeupTasks] 读取持久化任务失败: {}", err));
+            return;
+        }
+    };
+    if content.trim().is_empty() {
+        return;
+    }
+    let persisted: PersistedWakeupState = match serde_json::from_str(&content) {
+        Ok(state) => state,
+        Err(err) => {
+            modules::logger::log_warn(&format!("[WakeupTasks] 解析持久化任务失败: {}", err));
+            return;
+        }
+    };
+    apply_state(persisted.enabled, persisted.tasks);
 }
 
 fn normalize_schedule(raw: ScheduleConfig) -> ScheduleConfigNormalized {
@@ -154,18 +243,49 @@ fn normalize_schedule(raw: ScheduleConfig) -> ScheduleConfigNormalized {
 }
 
 pub fn sync_state(enabled: bool, tasks: Vec<WakeupTaskInput>) {
-    let mut guard = state().lock().expect("wakeup state lock");
-    guard.enabled = enabled;
-    guard.tasks = tasks
-        .into_iter()
-        .map(|task| WakeupTask {
-            id: task.id,
-            name: task.name,
-            enabled: task.enabled,
-            last_run_at: task.last_run_at,
-            schedule: normalize_schedule(task.schedule),
-        })
-        .collect();
+    if let Err(err) = persist_state(enabled, &tasks) {
+        modules::logger::log_warn(&format!("[WakeupTasks] 持久化任务状态失败: {}", err));
+    }
+    apply_state(enabled, tasks);
+}
+
+pub fn trigger_startup_tasks_if_needed(app: AppHandle) {
+    let has_startup_tasks = {
+        let guard = state().lock().expect("wakeup state lock");
+        guard.enabled
+            && guard
+                .tasks
+                .iter()
+                .any(|task| task.enabled && task.schedule.startup_delay_minutes.is_some())
+    };
+    if !has_startup_tasks {
+        return;
+    }
+
+    let should_trigger = {
+        let mut startup_triggered = startup_triggered_flag()
+            .lock()
+            .expect("wakeup startup trigger lock");
+        if *startup_triggered {
+            false
+        } else {
+            *startup_triggered = true;
+            true
+        }
+    };
+    if !should_trigger {
+        return;
+    }
+
+    tauri::async_runtime::spawn(async move {
+        let started = run_enabled_tasks_now(&app, "startup").await;
+        if started > 0 {
+            modules::logger::log_info(&format!(
+                "[WakeupTasks] 应用启动触发自启任务: started={}",
+                started
+            ));
+        }
+    });
 }
 
 pub fn ensure_started(app: AppHandle) {

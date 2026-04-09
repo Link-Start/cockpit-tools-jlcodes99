@@ -144,7 +144,10 @@ pub fn run() {
                 });
             }
 
+            modules::wakeup_scheduler::restore_state_from_disk();
+            modules::wakeup_scheduler::ensure_started(app.handle().clone());
             modules::codex_wakeup_scheduler::ensure_started(app.handle().clone());
+            modules::codex_wakeup_scheduler::trigger_startup_tasks_if_needed(app.handle().clone());
 
             #[cfg(target_os = "macos")]
             apply_macos_activation_policy(&app.handle());

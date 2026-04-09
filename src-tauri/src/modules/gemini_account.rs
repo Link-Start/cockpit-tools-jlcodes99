@@ -245,8 +245,8 @@ fn load_account_file(account_id: &str) -> Option<GeminiAccount> {
     if !path.exists() {
         return None;
     }
-    let content = fs::read_to_string(path).ok()?;
-    serde_json::from_str(&content).ok()
+    let content = fs::read_to_string(&path).ok()?;
+    crate::modules::atomic_write::parse_json_with_auto_restore(&path, &content).ok()
 }
 
 pub fn load_account(account_id: &str) -> Option<GeminiAccount> {
@@ -257,7 +257,8 @@ fn save_account_file(account: &GeminiAccount) -> Result<(), String> {
     let path = resolve_account_file_path(&account.id)?;
     let content = serde_json::to_string_pretty(account)
         .map_err(|e| format!("序列化 Gemini 账号失败: {}", e))?;
-    fs::write(path, content).map_err(|e| format!("保存 Gemini 账号失败: {}", e))
+    crate::modules::atomic_write::write_string_atomic(&path, &content)
+        .map_err(|e| format!("保存 Gemini 账号失败: {}", e))
 }
 
 fn delete_account_file(account_id: &str) -> Result<(), String> {
@@ -284,7 +285,7 @@ fn load_account_index() -> GeminiAccountIndex {
             repair_account_index_from_details("索引文件为空")
                 .unwrap_or_else(GeminiAccountIndex::new)
         }
-        Ok(content) => match serde_json::from_str::<GeminiAccountIndex>(&content) {
+        Ok(content) => match crate::modules::atomic_write::parse_json_with_auto_restore::<GeminiAccountIndex>(&path, &content) {
             Ok(index) if !index.accounts.is_empty() => index,
             Ok(_) => repair_account_index_from_details("索引账号列表为空")
                 .unwrap_or_else(GeminiAccountIndex::new),
@@ -328,7 +329,7 @@ fn load_account_index_checked() -> Result<GeminiAccountIndex, String> {
         return Ok(GeminiAccountIndex::new());
     }
 
-    match serde_json::from_str::<GeminiAccountIndex>(&content) {
+    match crate::modules::atomic_write::parse_json_with_auto_restore::<GeminiAccountIndex>(&path, &content) {
         Ok(index) if !index.accounts.is_empty() => Ok(index),
         Ok(index) => {
             if let Some(repaired) = repair_account_index_from_details("索引账号列表为空") {
@@ -353,7 +354,8 @@ fn save_account_index(index: &GeminiAccountIndex) -> Result<(), String> {
     let path = get_accounts_index_path()?;
     let content = serde_json::to_string_pretty(index)
         .map_err(|e| format!("序列化 Gemini 账号索引失败: {}", e))?;
-    fs::write(path, content).map_err(|e| format!("写入 Gemini 账号索引失败: {}", e))
+    crate::modules::atomic_write::write_string_atomic(&path, &content)
+        .map_err(|e| format!("写入 Gemini 账号索引失败: {}", e))
 }
 
 fn repair_account_index_from_details(reason: &str) -> Option<GeminiAccountIndex> {

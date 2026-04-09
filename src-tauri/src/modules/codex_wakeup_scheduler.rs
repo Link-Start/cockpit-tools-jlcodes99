@@ -8,6 +8,7 @@ use tokio::time::sleep;
 
 static STARTED: OnceLock<Mutex<bool>> = OnceLock::new();
 static RUNNING_TASKS: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+static STARTUP_TRIGGERED: OnceLock<Mutex<bool>> = OnceLock::new();
 
 fn started_flag() -> &'static Mutex<bool> {
     STARTED.get_or_init(|| Mutex::new(false))
@@ -15,6 +16,10 @@ fn started_flag() -> &'static Mutex<bool> {
 
 fn running_tasks() -> &'static Mutex<HashSet<String>> {
     RUNNING_TASKS.get_or_init(|| Mutex::new(HashSet::new()))
+}
+
+fn startup_triggered_flag() -> &'static Mutex<bool> {
+    STARTUP_TRIGGERED.get_or_init(|| Mutex::new(false))
 }
 
 fn parse_time_to_minutes(value: &str) -> Option<i32> {
@@ -309,6 +314,54 @@ pub async fn run_enabled_tasks_now(
     }
 
     Ok(started_count)
+}
+
+pub fn trigger_startup_tasks_if_needed(app: AppHandle) {
+    let state = match codex_wakeup::load_state_for_scheduler() {
+        Ok(state) => state,
+        Err(err) => {
+            logger::log_warn(&format!("[CodexWakeup] 读取启动任务状态失败: {}", err));
+            return;
+        }
+    };
+    let has_startup_tasks = state
+        .tasks
+        .iter()
+        .any(|task| task.enabled && task.schedule.kind == "startup");
+    if !state.enabled || !has_startup_tasks {
+        return;
+    }
+
+    let should_trigger = {
+        let mut startup_triggered = startup_triggered_flag()
+            .lock()
+            .expect("codex wakeup startup trigger lock");
+        if *startup_triggered {
+            false
+        } else {
+            *startup_triggered = true;
+            true
+        }
+    };
+    if !should_trigger {
+        return;
+    }
+
+    tauri::async_runtime::spawn(async move {
+        match run_enabled_tasks_now(Some(&app), "startup").await {
+            Ok(started) => {
+                if started > 0 {
+                    logger::log_info(&format!(
+                        "[CodexWakeup] 应用启动触发自启任务: started={}",
+                        started
+                    ));
+                }
+            }
+            Err(err) => {
+                logger::log_warn(&format!("[CodexWakeup] 应用启动触发自启任务失败: {}", err));
+            }
+        }
+    });
 }
 
 async fn run_scheduler_once(app: &AppHandle) {

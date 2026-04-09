@@ -1315,8 +1315,6 @@ function MainApp() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-
     const syncWakeupStateOnStartup = async () => {
       let officialLsVersionMode = loadWakeupOfficialLsVersionMode();
       try {
@@ -1329,39 +1327,17 @@ function MainApp() {
         const tasksRaw = localStorage.getItem(TASKS_STORAGE_KEY);
         const tasks = tasksRaw ? JSON.parse(tasksRaw) : [];
         officialLsVersionMode = loadWakeupOfficialLsVersionMode();
-        await invoke('wakeup_sync_state', { enabled, tasks, officialLsVersionMode });
+        await invoke('wakeup_sync_state', {
+          enabled,
+          tasks,
+          officialLsVersionMode,
+          runStartupTasks: true,
+        });
       } catch (error) {
         console.error('唤醒任务状态同步失败:', error);
       }
-
-      if (cancelled) {
-        return;
-      }
-
-      try {
-        await invoke('wakeup_run_enabled_tasks', {
-          triggerSource: 'startup',
-          officialLsVersionMode,
-        });
-      } catch (error) {
-        console.error('执行 Antigravity 启动后唤醒失败:', error);
-      }
-
-      if (cancelled) {
-        return;
-      }
-
-      try {
-        await invoke('codex_wakeup_run_enabled_tasks', { triggerType: 'startup' });
-      } catch (error) {
-        console.error('执行 Codex 启动后唤醒失败:', error);
-      }
     };
     void syncWakeupStateOnStartup();
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   // Check for updates on startup
