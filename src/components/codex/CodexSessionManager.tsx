@@ -75,6 +75,26 @@ function formatSessionId(sessionId: string): string {
   return `${sessionId.slice(0, 8)}...${sessionId.slice(-6)}`;
 }
 
+function formatLargeNumber(value: number): string {
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(1)}M`;
+  }
+  if (value >= 1_000) {
+    return `${(value / 1_000).toFixed(1)}K`;
+  }
+  return value.toLocaleString();
+}
+
+function formatTokenStats(session: CodexSessionRecord): string {
+  const { inputTokens, outputTokens } = session;
+
+  if (inputTokens !== undefined && outputTokens !== undefined) {
+    return `${formatLargeNumber(inputTokens)} / ${formatLargeNumber(outputTokens)} tokens`;
+  }
+
+  return '';
+}
+
 export function CodexSessionManager() {
   const { t, i18n } = useTranslation();
   const instances = useCodexInstanceStore((state) => state.instances);
@@ -547,6 +567,11 @@ export function CodexSessionManager() {
                             >
                               {copiedSessionId === session.sessionId ? <Check size={14} /> : <Copy size={14} />}
                             </button>
+                            {formatTokenStats(session) && (
+                              <span className="codex-session-row__tokens" title={t('codex.sessionManager.labels.tokenUsage', 'Token使用')}>
+                                {formatTokenStats(session)}
+                              </span>
+                            )}
                             <span className="codex-session-row__time">
                               {formatRelativeTime(session.updatedAt, isZh)}
                             </span>

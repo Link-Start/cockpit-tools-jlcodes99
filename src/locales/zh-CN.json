@@ -2191,11 +2191,12 @@
     "groupCount": "{{count}} 条会话",
     "updatedAt": "最近更新",
     "labels": {
-      "sessionId": "会话 ID"
+      "sessionId": "会话 ID",
+      "tokenUsage": "Token使用"
     },
     "locationRunning": "（运行中）",
     "untitled": "未命名会话",
-      "restoreModal": {
+    "restoreModal": {
         "title": "恢复会话",
         "hint": "恢复会把 rollout 文件、SQLite 线程记录和 session_index 条目一起放回原实例。",
         "emptyTitle": "废纸篓里还没有会话",

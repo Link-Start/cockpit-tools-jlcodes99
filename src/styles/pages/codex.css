@@ -5421,6 +5421,14 @@
   outline-offset: 2px;
 }
 
+.codex-session-row__tokens {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-right: 8px;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
 .codex-session-restore-modal {
   width: min(760px, calc(100vw - 32px));
 }

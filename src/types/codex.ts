@@ -137,6 +137,12 @@ export interface CodexSessionRecord {
   updatedAt?: number | null;
   locationCount: number;
   locations: CodexSessionLocation[];
+  /** 输入token数量（来自rollout文件的token_count记录） */
+  inputTokens?: number;
+  /** 输出token数量（来自rollout文件的token_count记录） */
+  outputTokens?: number;
+  /** 总token数量（来自rollout文件的token_count记录） */
+  totalTokens?: number;
 }
 
 export interface CodexSessionTrashSummary {

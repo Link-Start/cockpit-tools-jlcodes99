@@ -2191,11 +2191,12 @@
     "groupCount": "{{count}} sessions",
     "updatedAt": "Updated",
     "labels": {
-      "sessionId": "Session ID"
+      "sessionId": "Session ID",
+      "tokenUsage": "Token Usage"
     },
     "locationRunning": " (running)",
     "untitled": "Untitled session",
-      "restoreModal": {
+    "restoreModal": {
         "title": "Restore Sessions",
         "hint": "Restoring puts the rollout file, SQLite thread row, and session_index entry back into the original instance together.",
         "emptyTitle": "Trash is empty",

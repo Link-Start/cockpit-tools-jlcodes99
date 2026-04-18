@@ -34,6 +34,15 @@ pub struct CodexSessionRecord {
     pub updated_at: Option<i64>,
     pub location_count: usize,
     pub locations: Vec<CodexSessionLocation>,
+    /// 输入token数量（来自rollout文件的token_count记录）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input_tokens: Option<u64>,
+    /// 输出token数量（来自rollout文件的token_count记录）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output_tokens: Option<u64>,
+    /// 总token数量（来自rollout文件的token_count记录）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_tokens: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -148,6 +157,54 @@ struct TrashedSessionEntry {
     trashed_rollout_path: PathBuf,
 }
 
+/// 从 rollout JSONL 文件中读取 token 统计信息
+/// 返回 (input_tokens, output_tokens, total_tokens)
+fn read_token_stats_from_rollout(rollout_path: &Path) -> Option<(u64, u64, u64)> {
+    let content = fs::read_to_string(rollout_path).ok()?;
+
+    // 从文件末尾向前读取，找到第一条 token_count 记录
+    // token_count 记录通常在文件末尾
+    for line in content.lines().rev() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        if let Ok(parsed) = serde_json::from_str::<JsonValue>(trimmed) {
+            // 检查 type == "event_msg"
+            if parsed.get("type").and_then(|v| v.as_str()) != Some("event_msg") {
+                continue;
+            }
+
+            if let Some(payload) = parsed.get("payload") {
+                // 检查 payload.type == "token_count"
+                if payload.get("type").and_then(|v| v.as_str()) != Some("token_count") {
+                    continue;
+                }
+
+                if let Some(info) = payload.get("info") {
+                    if let Some(usage) = info.get("total_token_usage") {
+                        let input = usage
+                            .get("input_tokens")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(0);
+                        let output = usage
+                            .get("output_tokens")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(0);
+                        let total = usage
+                            .get("total_tokens")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(0);
+                        return Some((input, output, total));
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 pub fn list_sessions_across_instances() -> Result<Vec<CodexSessionRecord>, String> {
     let instances = collect_instances()?;
     let process_entries = modules::process::collect_codex_process_entries();
@@ -156,6 +213,9 @@ pub fn list_sessions_across_instances() -> Result<Vec<CodexSessionRecord>, Strin
     for instance in &instances {
         let running = is_instance_running(instance, &process_entries);
         for snapshot in load_thread_snapshots(instance)? {
+            // 读取 token 统计
+            let token_stats = read_token_stats_from_rollout(&snapshot.rollout_path);
+
             let entry =
                 session_map
                     .entry(snapshot.id.clone())
@@ -166,6 +226,9 @@ pub fn list_sessions_across_instances() -> Result<Vec<CodexSessionRecord>, Strin
                         updated_at: snapshot.updated_at,
                         location_count: 0,
                         locations: Vec::new(),
+                        input_tokens: token_stats.as_ref().map(|(i, _, _)| *i),
+                        output_tokens: token_stats.as_ref().map(|(_, o, _)| *o),
+                        total_tokens: token_stats.as_ref().map(|(_, _, t)| *t),
                     });
 
             if entry.updated_at.is_none() {
