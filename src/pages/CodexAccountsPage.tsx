@@ -46,9 +46,12 @@ import {
   LogOut,
   Server,
   Wrench,
+  Terminal,
 } from 'lucide-react';
 import { useCodexAccountStore } from '../stores/useCodexAccountStore';
+import { useCodexInstanceStore } from '../stores/useCodexInstanceStore';
 import * as codexService from '../services/codexService';
+import * as codexInstanceService from '../services/codexInstanceService';
 import * as codexLocalAccessService from '../services/codexLocalAccessService';
 import { TagEditModal } from '../components/TagEditModal';
 import { ExportJsonModal, maskJsonPreviewContent } from '../components/ExportJsonModal';
@@ -101,6 +104,7 @@ import type {
   CodexLocalAccessRoutingStrategy,
   CodexLocalAccessState,
 } from '../types/codexLocalAccess';
+import type { InstanceProfile } from '../types/instance';
 import {
   CODEX_CODE_REVIEW_QUOTA_VISIBILITY_CHANGED_EVENT,
   isCodexCodeReviewQuotaVisibleByDefault,
@@ -149,6 +153,7 @@ import {
   setCodexLocalAccessRiskNoticeDismissed,
   type CodexLocalAccessRiskNoticeAction,
 } from '../utils/codexLocalAccessRiskNotice';
+import md5 from 'blueimp-md5';
 
 const CODEX_TOKEN_SINGLE_EXAMPLE = `{
   "tokens": {
@@ -254,6 +259,16 @@ function joinFilePath(directory: string, fileName: string): string {
   return directory.endsWith('/') || directory.endsWith('\\')
     ? `${directory}${fileName}`
     : `${directory}${separator}${fileName}`;
+}
+
+function normalizePathForCompare(value?: string | null): string {
+  return (value || '').trim().replace(/[\\/]+$/, '');
+}
+
+function sanitizeCodexCliInstanceName(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return 'Codex CLI';
+  return trimmed.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function maskCodexApiKey(value: string): string {
@@ -409,6 +424,8 @@ export function CodexAccountsPage() {
   });
 
   const store = useCodexAccountStore();
+  const codexInstanceStore = useCodexInstanceStore();
+  const [cliLaunchingAccountId, setCliLaunchingAccountId] = useState<string | null>(null);
 
   // Use the common hook WITHOUT oauthService since Codex uses Tauri event-based OAuth
   const page = useProviderAccountsPage<CodexAccount>({
@@ -1609,6 +1626,76 @@ export function CodexAccountsPage() {
       setMessage({ text: t('codex.switchFailed', { error: String(e) }), tone: 'error' });
     }
     setSwitching(null);
+  };
+
+  const resolveCodexCliInstanceForAccount = async (
+    account: CodexAccount,
+    workingDir: string,
+  ): Promise<InstanceProfile> => {
+    const normalizedWorkingDir = normalizePathForCompare(workingDir);
+    const instances = await codexInstanceService.listInstances();
+    const existing = instances.find(
+      (instance) =>
+        !instance.isDefault &&
+        (instance.launchMode ?? 'app') === 'cli' &&
+        instance.bindAccountId === account.id &&
+        normalizePathForCompare(instance.workingDir) === normalizedWorkingDir,
+    );
+    if (existing) {
+      return existing;
+    }
+
+    const defaults = await codexInstanceService.getInstanceDefaults();
+    const presentation = buildCodexAccountPresentation(account, t);
+    const displayName = presentation.displayName || account.email || account.id;
+    const instanceHash = md5(`${account.id}|${normalizedWorkingDir}`).substring(0, 12);
+    const instanceName = sanitizeCodexCliInstanceName(`${displayName} CLI ${instanceHash.substring(0, 6)}`);
+    const userDataDir = joinFilePath(defaults.rootDir, `cli-${instanceHash}`);
+
+    return await codexInstanceService.createInstance({
+      name: instanceName,
+      userDataDir,
+      workingDir: normalizedWorkingDir,
+      extraArgs: '',
+      bindAccountId: account.id,
+      launchMode: 'cli',
+      copySourceInstanceId: '__default__',
+      initMode: 'copy',
+    });
+  };
+
+  const handleLaunchCodexCli = async (account: CodexAccount) => {
+    if (cliLaunchingAccountId) return;
+    setMessage(null);
+    setCliLaunchingAccountId(account.id);
+    try {
+      const selected = await openFileDialog({
+        directory: true,
+        multiple: false,
+        title: t('codex.cli.selectWorkingDir', '选择 Codex CLI 工作目录'),
+      });
+      if (!selected || typeof selected !== 'string') {
+        return;
+      }
+
+      const instance = await resolveCodexCliInstanceForAccount(account, selected);
+      const prepared = await codexInstanceService.startInstance(instance.id);
+      const result = await codexInstanceService.executeCodexInstanceLaunchCommand(prepared.id);
+      await codexInstanceStore.refreshInstances();
+      setMessage({
+        text: result || t('codex.cli.launchSuccess', '已启动 Codex CLI'),
+      });
+    } catch (e) {
+      setMessage({
+        text: t('codex.cli.launchFailed', '启动 Codex CLI 失败: {{error}}').replace(
+          '{{error}}',
+          String(e).replace(/^Error:\s*/, ''),
+        ),
+        tone: 'error',
+      });
+    } finally {
+      setCliLaunchingAccountId(null);
+    }
   };
 
   const handleImportFromLocal = async () => {
@@ -3400,44 +3487,58 @@ export function CodexAccountsPage() {
               )}
             </div>
           )}
-          <div className="card-footer">
+          <div className="codex-card-bottom">
             <span className="card-date">{formatDate(account.created_at)}</span>
-            <div className="card-actions">
-              <button className="card-action-btn" onClick={() => openTagModal(account.id)} title={t('accounts.editTags', '编辑标签')}><Tag size={14} /></button>
-              {isApiKeyAccount && (
+            <div className="card-footer">
+              <div className="card-actions">
                 <button
                   className="card-action-btn"
-                  onClick={() => openQuickSwitchProviderModal(account)}
-                  title={t('codex.quickSwitch.action', '快速切换供应商')}
+                  onClick={() => void handleLaunchCodexCli(account)}
+                  disabled={cliLaunchingAccountId === account.id}
+                  title={t('codex.cli.quickLaunch', 'CLI 快速启动')}
                 >
-                  <Repeat size={14} />
+                  {cliLaunchingAccountId === account.id ? (
+                    <RefreshCw size={14} className="loading-spinner" />
+                  ) : (
+                    <Terminal size={14} />
+                  )}
                 </button>
-              )}
-              {isApiKeyAccount && (
+                <button className="card-action-btn" onClick={() => openTagModal(account.id)} title={t('accounts.editTags', '编辑标签')}><Tag size={14} /></button>
+                {isApiKeyAccount && (
+                  <button
+                    className="card-action-btn"
+                    onClick={() => openQuickSwitchProviderModal(account)}
+                    title={t('codex.quickSwitch.action', '快速切换供应商')}
+                  >
+                    <Repeat size={14} />
+                  </button>
+                )}
+                {isApiKeyAccount && (
+                  <button
+                    className="card-action-btn"
+                    onClick={() => openApiKeyCredentialsModal(account)}
+                    title={t('instances.actions.edit', '编辑')}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                )}
+                <button className={`card-action-btn ${!isCurrent ? 'success' : ''}`} onClick={() => handleSwitch(account.id)} disabled={!!switching} title={t('codex.switch', '切换')}>
+                  {switching === account.id ? <RefreshCw size={14} className="loading-spinner" /> : <Play size={14} />}
+                </button>
+                {!isApiKeyAccount && (
+                  <button className="card-action-btn" onClick={() => handleRefresh(account.id)} disabled={refreshing === account.id} title={t('common.shared.refreshQuota', '刷新配额')}>
+                    <RotateCw size={14} className={refreshing === account.id ? 'loading-spinner' : ''} />
+                  </button>
+                )}
                 <button
-                  className="card-action-btn"
-                  onClick={() => openApiKeyCredentialsModal(account)}
-                  title={t('instances.actions.edit', '编辑')}
+                  className="card-action-btn export-btn"
+                  onClick={() => handleExportByIds([account.id], resolveSingleExportBaseName(account))}
+                  title={t('common.shared.export.title', '导出')}
                 >
-                  <Pencil size={14} />
+                  <Upload size={14} />
                 </button>
-              )}
-              <button className={`card-action-btn ${!isCurrent ? 'success' : ''}`} onClick={() => handleSwitch(account.id)} disabled={!!switching} title={t('codex.switch', '切换')}>
-                {switching === account.id ? <RefreshCw size={14} className="loading-spinner" /> : <Play size={14} />}
-              </button>
-              {!isApiKeyAccount && (
-                <button className="card-action-btn" onClick={() => handleRefresh(account.id)} disabled={refreshing === account.id} title={t('common.shared.refreshQuota', '刷新配额')}>
-                  <RotateCw size={14} className={refreshing === account.id ? 'loading-spinner' : ''} />
-                </button>
-              )}
-              <button
-                className="card-action-btn export-btn"
-                onClick={() => handleExportByIds([account.id], resolveSingleExportBaseName(account))}
-                title={t('common.shared.export.title', '导出')}
-              >
-                <Upload size={14} />
-              </button>
-              <button className="card-action-btn danger" onClick={() => handleDelete(account.id)} title={t('common.delete', '删除')}><Trash2 size={14} /></button>
+                <button className="card-action-btn danger" onClick={() => handleDelete(account.id)} title={t('common.delete', '删除')}><Trash2 size={14} /></button>
+              </div>
             </div>
           </div>
         </div>
@@ -4024,6 +4125,18 @@ export function CodexAccountsPage() {
             )}
           </td>
           <td className="sticky-action-cell table-action-cell"><div className="action-buttons">
+            <button
+              className="action-btn"
+              onClick={() => void handleLaunchCodexCli(account)}
+              disabled={cliLaunchingAccountId === account.id}
+              title={t('codex.cli.quickLaunch', 'CLI 快速启动')}
+            >
+              {cliLaunchingAccountId === account.id ? (
+                <RefreshCw size={14} className="loading-spinner" />
+              ) : (
+                <Terminal size={14} />
+              )}
+            </button>
             <button className="action-btn" onClick={() => openTagModal(account.id)} title={t('accounts.editTags', '编辑标签')}><Tag size={14} /></button>
             {isApiKeyAccount && (
               <button
