@@ -1148,6 +1148,40 @@
   padding: 12px;
 }
 
+.ghcp-account-card .card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.ghcp-account-card .card-action-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.ghcp-account-card .card-action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ghcp-account-card .card-action-btn.success:hover {
+  background: var(--success);
+  color: white;
+}
+
+.ghcp-account-card .card-action-btn.danger:hover {
+  background: var(--danger);
+  color: white;
+}
+
 /* 空状态 */
 .ghcp-accounts-page .empty-state {
   display: flex;
