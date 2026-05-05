@@ -70,6 +70,34 @@
           "statusPending": "In attesa di importazione"
         }
       },
+      "externalImport": {
+        "bundleInvalidJson": "Il pacchetto di importazione non è un JSON valido",
+        "bundleEmpty": "Il pacchetto di importazione è vuoto",
+        "bundleProviderMismatch": "Il provider del pacchetto di importazione non corrisponde",
+        "bundleNoItems": "Il pacchetto di importazione non contiene elementi importabili",
+        "titleCodex": "Importazione batch Codex",
+        "statusReceiving": "Ricezione richiesta di importazione...",
+        "statusFetching": "Recupero pacchetto di importazione...",
+        "statusParsing": "Analisi JSON Codex...",
+        "statusImporting": "Importazione account {{current}} / {{total}}",
+        "statusRefreshing": "Aggiornamento elenco account...",
+        "statusSuccess": "Importazione completata",
+        "statusPartial": "Importazione parziale completata",
+        "statusFailed": "Importazione non riuscita",
+        "total": "Totale",
+        "success": "Riusciti",
+        "failed": "Falliti",
+        "stepReceive": "Ricevi richiesta",
+        "stepFetch": "Recupera pacchetto",
+        "stepParse": "Analizza JSON Codex",
+        "stepImport": "Importa account",
+        "stepRefresh": "Aggiorna elenco",
+        "errorsTitle": "Elementi falliti",
+        "viewAccounts": "Vedi account Codex",
+        "copyErrors": "Copia errori",
+        "copied": "Copiato",
+        "unknownItem": "JSON n. {{index}}"
+      },
       "instances": {
         "unsupported": {
           "title": "Non supportato su questo sistema"

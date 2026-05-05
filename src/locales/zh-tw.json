@@ -70,6 +70,34 @@
           "statusPending": "待匯入"
         }
       },
+      "externalImport": {
+        "bundleInvalidJson": "匯入包不是有效 JSON",
+        "bundleEmpty": "匯入包內容為空",
+        "bundleProviderMismatch": "匯入包平台不符",
+        "bundleNoItems": "匯入包沒有可匯入內容",
+        "titleCodex": "Codex 批次匯入",
+        "statusReceiving": "正在接收匯入請求...",
+        "statusFetching": "正在取得匯入包...",
+        "statusParsing": "正在解析 Codex JSON...",
+        "statusImporting": "正在匯入第 {{current}} / {{total}} 個帳號",
+        "statusRefreshing": "正在重新整理帳號列表...",
+        "statusSuccess": "匯入完成",
+        "statusPartial": "部分匯入完成",
+        "statusFailed": "匯入失敗",
+        "total": "總數",
+        "success": "成功",
+        "failed": "失敗",
+        "stepReceive": "接收匯入請求",
+        "stepFetch": "取得匯入包",
+        "stepParse": "解析 Codex JSON",
+        "stepImport": "匯入帳號",
+        "stepRefresh": "重新整理帳號列表",
+        "errorsTitle": "失敗項",
+        "viewAccounts": "查看 Codex 帳號",
+        "copyErrors": "複製錯誤",
+        "copied": "已複製",
+        "unknownItem": "第 {{index}} 個 JSON"
+      },
       "instances": {
         "unsupported": {
           "title": "暫不支援目前系統"

@@ -19,6 +19,7 @@ import {
   type SetStateAction,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import {
   isPrivacyModeEnabledByDefault,
@@ -36,6 +37,7 @@ import {
 import {
   consumeQueuedExternalProviderImportForPlatform,
   EXTERNAL_PROVIDER_IMPORT_EVENT,
+  type ExternalProviderImportPayload,
 } from '../utils/externalProviderImport';
 import { useDropdownPanelPlacement } from './useDropdownPanelPlacement';
 import {
@@ -55,6 +57,34 @@ import {
 // ---------------------------------------------------------------------------
 
 export type AddModalStatus = 'idle' | 'loading' | 'success' | 'error';
+export type ExternalImportProgressStatus =
+  | 'idle'
+  | 'receiving'
+  | 'fetching'
+  | 'parsing'
+  | 'importing'
+  | 'refreshing'
+  | 'success'
+  | 'partial'
+  | 'error';
+
+export type ExternalImportProgressFailure = {
+  index: number;
+  label: string;
+  error: string;
+};
+
+export type ExternalImportProgressState = {
+  visible: boolean;
+  status: ExternalImportProgressStatus;
+  progress: number;
+  total: number;
+  success: number;
+  failed: number;
+  current: number;
+  message: string;
+  failures: ExternalImportProgressFailure[];
+};
 export type ViewMode = 'grid' | 'list';
 export type SortDirection = 'asc' | 'desc';
 
@@ -165,6 +195,107 @@ const normalizeStringArray = (value: unknown): string[] =>
         .map((item) => item.trim())
         .filter(Boolean)
     : [];
+
+type ExternalImportBundleParseMessages = {
+  invalidJson: string;
+  empty: string;
+  providerMismatch: string;
+  noItems: string;
+};
+
+const readBundleMessage = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+};
+
+const resolveExternalImportBundleItems = (
+  rawContent: string,
+  platformId: string,
+  messages: ExternalImportBundleParseMessages,
+): unknown[] => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawContent) as unknown;
+  } catch {
+    throw new Error(messages.invalidJson);
+  }
+
+  if (parsed && typeof parsed === 'object' && 'code' in parsed) {
+    const code = (parsed as { code?: unknown }).code;
+    if (code !== 200 && code !== '200') {
+      throw new Error(
+        readBundleMessage((parsed as { msg?: unknown }).msg) ??
+          readBundleMessage((parsed as { message?: unknown }).message) ??
+          readBundleMessage((parsed as { error?: unknown }).error) ??
+          messages.empty,
+      );
+    }
+  }
+
+  const root =
+    parsed && typeof parsed === 'object' && 'data' in parsed
+      ? (parsed as { data?: unknown }).data
+      : parsed;
+
+  if (!root || typeof root !== 'object') {
+    throw new Error(messages.empty);
+  }
+
+  const provider = (root as { provider?: unknown }).provider;
+  if (typeof provider === 'string' && provider.trim() && provider.trim() !== platformId) {
+    throw new Error(messages.providerMismatch);
+  }
+
+  const items = (root as { items?: unknown }).items;
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error(messages.noItems);
+  }
+
+  return items;
+};
+
+const buildInitialExternalImportProgress = (): ExternalImportProgressState => ({
+  visible: false,
+  status: 'idle',
+  progress: 0,
+  total: 0,
+  success: 0,
+  failed: 0,
+  current: 0,
+  message: '',
+  failures: [],
+});
+
+const isExternalImportRunning = (status: ExternalImportProgressStatus): boolean =>
+  ['receiving', 'fetching', 'parsing', 'importing', 'refreshing'].includes(status);
+
+const resolveExternalImportItemLabel = (
+  item: unknown,
+  fallback: string,
+): string => {
+  if (!item || typeof item !== 'object') return fallback;
+  const payload = item as Record<string, unknown>;
+  const profile = payload['https://api.openai.com/profile'];
+  const auth = payload['https://api.openai.com/auth'];
+  const candidates = [
+    payload.email,
+    payload.account_email,
+    payload.id,
+    profile && typeof profile === 'object'
+      ? (profile as Record<string, unknown>).email
+      : null,
+    auth && typeof auth === 'object'
+      ? (auth as Record<string, unknown>).chatgpt_user_id
+      : null,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+  return fallback;
+};
 
 // ---------------------------------------------------------------------------
 // Hook return type
@@ -297,6 +428,8 @@ export interface UseProviderAccountsPageReturn {
   handleImportFromLocal: (() => Promise<void>) | null;
   handlePickImportFile: () => void;
   importFileInputRef: RefObject<HTMLInputElement | null>;
+  externalImportProgress: ExternalImportProgressState;
+  closeExternalImportProgressModal: () => void;
 
   // OAuth (device flow style: Kiro / Windsurf / GHCP)
   oauthUrl: string | null;
@@ -932,6 +1065,10 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
   const [addMessage, setAddMessage] = useState<string | null>(null);
   const [tokenInput, setTokenInput] = useState('');
   const [importing, setImporting] = useState(false);
+  const [externalAutoImportNonce, setExternalAutoImportNonce] = useState(0);
+  const [externalImportProgress, setExternalImportProgress] =
+    useState<ExternalImportProgressState>(() => buildInitialExternalImportProgress());
+  const externalImportRunIdRef = useRef(0);
 
   const showAddModalRef = useRef(showAddModal);
   const addTabRef = useRef(addTab);
@@ -983,15 +1120,210 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
     resetAddModalState();
   }, [resetAddModalState]);
 
+  const closeExternalImportProgressModal = useCallback(() => {
+    setExternalImportProgress((current) => {
+      if (isExternalImportRunning(current.status)) {
+        return current;
+      }
+      return buildInitialExternalImportProgress();
+    });
+  }, []);
+
+  const runExternalImportFromUrl = useCallback(
+    (request: ExternalProviderImportPayload) => {
+      const importUrl = request.importUrl?.trim();
+      if (!importUrl || !platformId) return;
+      const runId = externalImportRunIdRef.current + 1;
+      externalImportRunIdRef.current = runId;
+
+      const updateProgress = (patch: Partial<ExternalImportProgressState>) => {
+        setExternalImportProgress((current) => {
+          if (externalImportRunIdRef.current !== runId) {
+            return current;
+          }
+          return {
+            ...current,
+            ...patch,
+            visible: true,
+          };
+        });
+      };
+
+      updateProgress({
+        status: 'receiving',
+        progress: 5,
+        total: 0,
+        success: 0,
+        failed: 0,
+        current: 0,
+        message: t(
+          'common.shared.externalImport.statusReceiving',
+          '正在接收导入请求...',
+        ),
+        failures: [],
+      });
+
+      void (async () => {
+        try {
+          updateProgress({
+            status: 'fetching',
+            progress: 20,
+            message: t(
+              'common.shared.externalImport.statusFetching',
+              '正在获取导入包...',
+            ),
+          });
+          const content = await invoke<string>('external_import_fetch_import_url', {
+            importUrl,
+          });
+
+          updateProgress({
+            status: 'parsing',
+            progress: 35,
+            message: t(
+              'common.shared.externalImport.statusParsing',
+              '正在解析 Codex JSON...',
+            ),
+          });
+          const items = resolveExternalImportBundleItems(content, platformId, {
+            invalidJson: t(
+              'common.shared.externalImport.bundleInvalidJson',
+              '导入包不是有效 JSON',
+            ),
+            empty: t('common.shared.externalImport.bundleEmpty', '导入包内容为空'),
+            providerMismatch: t(
+              'common.shared.externalImport.bundleProviderMismatch',
+              '导入包平台不匹配',
+            ),
+            noItems: t(
+              'common.shared.externalImport.bundleNoItems',
+              '导入包没有可导入内容',
+            ),
+          });
+
+          let success = 0;
+          const failures: ExternalImportProgressFailure[] = [];
+          const total = items.length;
+          updateProgress({
+            status: 'importing',
+            progress: 40,
+            total,
+            success,
+            failed: 0,
+            current: 0,
+            failures,
+            message: t(
+              'common.shared.externalImport.statusImporting',
+              {
+                current: 1,
+                total,
+                defaultValue: '正在导入第 {{current}} / {{total}} 个账号',
+              },
+            ),
+          });
+
+          for (let index = 0; index < items.length; index += 1) {
+            const current = index + 1;
+            const label = resolveExternalImportItemLabel(
+              items[index],
+              t('common.shared.externalImport.unknownItem', {
+                index: current,
+                defaultValue: '第 {{index}} 个 JSON',
+              }),
+            );
+            updateProgress({
+              status: 'importing',
+              current,
+              progress: Math.min(90, 40 + Math.round((index / total) * 50)),
+              success,
+              failed: failures.length,
+              message: t(
+                'common.shared.externalImport.statusImporting',
+                {
+                  current,
+                  total,
+                  defaultValue: '正在导入第 {{current}} / {{total}} 个账号',
+                },
+              ),
+            });
+
+            try {
+              const imported = await dataService.importFromJson(JSON.stringify(items[index]));
+              success += Array.isArray(imported) ? imported.length : 1;
+            } catch (error) {
+              failures.push({
+                index: current,
+                label,
+                error: String(error).replace(/^Error:\s*/, ''),
+              });
+            }
+          }
+
+          updateProgress({
+            status: 'refreshing',
+            progress: 95,
+            current: total,
+            success,
+            failed: failures.length,
+            failures: [...failures],
+            message: t(
+              'common.shared.externalImport.statusRefreshing',
+              '正在刷新账号列表...',
+            ),
+          });
+          await fetchAccounts();
+          if (success > 0 && platformId) {
+            await emitAccountsChanged({
+              platformId,
+              reason: 'import',
+            });
+          }
+
+          const status: ExternalImportProgressStatus =
+            failures.length === 0 ? 'success' : success > 0 ? 'partial' : 'error';
+          updateProgress({
+            status,
+            progress: 100,
+            current: total,
+            success,
+            failed: failures.length,
+            failures: [...failures],
+            message:
+              status === 'success'
+                ? t('common.shared.externalImport.statusSuccess', '导入完成')
+                : status === 'partial'
+                  ? t('common.shared.externalImport.statusPartial', '部分导入完成')
+                  : t('common.shared.externalImport.statusFailed', '导入失败'),
+          });
+        } catch (error) {
+          updateProgress({
+            status: 'error',
+            progress: 100,
+            message: String(error).replace(/^Error:\s*/, ''),
+          });
+        }
+      })();
+    },
+    [dataService, fetchAccounts, platformId, t],
+  );
+
   const consumeExternalProviderImport = useCallback(() => {
     if (!platformId) return;
     const request = consumeQueuedExternalProviderImportForPlatform(platformId);
     if (!request) return;
+    if (request.importUrl) {
+      runExternalImportFromUrl(request);
+      return;
+    }
+
     openAddModal('token');
     setTokenInput(request.token);
     setAddStatus('idle');
     setAddMessage(null);
-  }, [openAddModal, platformId]);
+    if (request.autoImport) {
+      setExternalAutoImportNonce((value) => value + 1);
+    }
+  }, [openAddModal, platformId, runExternalImportFromUrl]);
 
   useEffect(() => {
     if (!platformId) return;
@@ -1152,6 +1484,34 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
     }
     setImporting(false);
   }, [dataService, fetchAccounts, platformId, resetAddModalState, t, tokenInput]);
+
+  useEffect(() => {
+    if (
+      externalAutoImportNonce <= 0 ||
+      !showAddModal ||
+      addTab !== 'token' ||
+      importing ||
+      !tokenInput.trim()
+    ) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setExternalAutoImportNonce(0);
+      void handleTokenImport();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    externalAutoImportNonce,
+    showAddModal,
+    addTab,
+    importing,
+    tokenInput,
+    handleTokenImport,
+  ]);
 
   // ─── OAuth (Device Flow) ──────────────────────────────────────────────
   const [oauthUrl, setOauthUrl] = useState<string | null>(null);
@@ -1784,6 +2144,8 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
     handleImportFromLocal,
     handlePickImportFile,
     importFileInputRef,
+    externalImportProgress,
+    closeExternalImportProgressModal,
     oauthUrl,
     oauthCallbackUrl,
     oauthUrlCopied,

@@ -77,6 +77,34 @@
           "statusPending": "待导入"
         }
       },
+      "externalImport": {
+        "bundleInvalidJson": "导入包不是有效 JSON",
+        "bundleEmpty": "导入包内容为空",
+        "bundleProviderMismatch": "导入包平台不匹配",
+        "bundleNoItems": "导入包没有可导入内容",
+        "titleCodex": "Codex 批量导入",
+        "statusReceiving": "正在接收导入请求...",
+        "statusFetching": "正在获取导入包...",
+        "statusParsing": "正在解析 Codex JSON...",
+        "statusImporting": "正在导入第 {{current}} / {{total}} 个账号",
+        "statusRefreshing": "正在刷新账号列表...",
+        "statusSuccess": "导入完成",
+        "statusPartial": "部分导入完成",
+        "statusFailed": "导入失败",
+        "total": "总数",
+        "success": "成功",
+        "failed": "失败",
+        "stepReceive": "接收导入请求",
+        "stepFetch": "获取导入包",
+        "stepParse": "解析 Codex JSON",
+        "stepImport": "导入账号",
+        "stepRefresh": "刷新账号列表",
+        "errorsTitle": "失败项",
+        "viewAccounts": "查看 Codex 账号",
+        "copyErrors": "复制错误",
+        "copied": "已复制",
+        "unknownItem": "第 {{index}} 个 JSON"
+      },
       "instances": {
         "unsupported": {
           "title": "暂不支持当前系统"

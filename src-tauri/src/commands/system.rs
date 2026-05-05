@@ -5,6 +5,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use tauri_plugin_autostart::ManagerExt as _;
+use url::Url;
 
 use crate::modules;
 use crate::modules::config::{
@@ -1706,6 +1707,46 @@ pub fn show_main_window_and_navigate(app: tauri::AppHandle, page: String) -> Res
 pub fn external_import_take_pending(
 ) -> Option<modules::external_import::ExternalProviderImportPayload> {
     modules::external_import::take_pending_external_import()
+}
+
+#[tauri::command]
+pub async fn external_import_fetch_import_url(import_url: String) -> Result<String, String> {
+    const MAX_IMPORT_BUNDLE_BYTES: usize = 8 * 1024 * 1024;
+
+    let import_url = import_url.trim();
+    if import_url.is_empty() {
+        return Err("导入包地址为空".to_string());
+    }
+
+    let parsed = Url::parse(import_url).map_err(|err| format!("导入包地址无效: {}", err))?;
+    if !matches!(parsed.scheme(), "https" | "http") {
+        return Err("导入包地址仅支持 http/https".to_string());
+    }
+
+    let response = reqwest::Client::builder()
+        .timeout(Duration::from_secs(20))
+        .build()
+        .map_err(|err| format!("创建网络客户端失败: {}", err))?
+        .get(parsed)
+        .header(reqwest::header::ACCEPT, "application/json")
+        .send()
+        .await
+        .map_err(|err| format!("拉取导入包失败: {}", err))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        return Err(format!("拉取导入包失败: HTTP {}", status.as_u16()));
+    }
+
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|err| format!("读取导入包失败: {}", err))?;
+    if bytes.len() > MAX_IMPORT_BUNDLE_BYTES {
+        return Err("导入包过大".to_string());
+    }
+
+    String::from_utf8(bytes.to_vec()).map_err(|_| "导入包不是有效 UTF-8 文本".to_string())
 }
 
 /// 打开指定文件夹（如不存在则创建）

@@ -7,6 +7,22 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [0.22.19] - 2026-05-05
+
+### Added
+- **Codex external account-import links now support remote import bundles**: the `import_url` deep-link parameter can fetch an HTTP/HTTPS JSON import bundle, import accounts one by one, and show a dedicated progress dialog with totals, success/failure counts, and copyable failed items.
+
+### Changed
+- **Codex account imports now refresh OAuth quota data in the backend**: local, JSON, and file imports refresh imported OAuth accounts after saving, skip API Key accounts, then update account and tray state from the refreshed records.
+- **Codex portable export output now normalizes Cockpit Tools JSON**: Cockpit Tools exports produce portable token/API-key JSON, while CPA documents preserve token refresh and expiry metadata.
+- **Codex PRO plan handling now aligns bare `pro` accounts with CPA 20x semantics**: accounts without an explicit `prolite` marker are shown as PRO Max/20x and ranked as the 20x tier by Local API Service routing.
+- **Codex session-visibility repair now keeps only the latest repair backup per instance**: old session-visibility repair backup directories are pruned before running a new repair to avoid long-term backup buildup.
+
+### Fixed
+- **Codex OAuth imports no longer fail when email only exists in the OpenAI profile claim**: `id_token` parsing now reads `https://api.openai.com/profile.email` when the top-level email claim is absent.
+- **External import links now honor automatic token import requests**: token/payload links with `auto_import=true` submit automatically, and repeated delivery of the same import request within a short window is ignored.
+
+---
 ## [0.22.18] - 2026-05-04
 
 ### Added

@@ -70,6 +70,34 @@
           "statusPending": "بانتظار الاستيراد"
         }
       },
+      "externalImport": {
+        "bundleInvalidJson": "حزمة الاستيراد ليست JSON صالحا",
+        "bundleEmpty": "حزمة الاستيراد فارغة",
+        "bundleProviderMismatch": "موفر حزمة الاستيراد غير مطابق",
+        "bundleNoItems": "لا تحتوي حزمة الاستيراد على عناصر قابلة للاستيراد",
+        "titleCodex": "استيراد Codex دفعة واحدة",
+        "statusReceiving": "جارٍ استلام طلب الاستيراد...",
+        "statusFetching": "جارٍ جلب حزمة الاستيراد...",
+        "statusParsing": "جارٍ تحليل JSON الخاص بـ Codex...",
+        "statusImporting": "جارٍ استيراد الحساب {{current}} / {{total}}",
+        "statusRefreshing": "جارٍ تحديث قائمة الحسابات...",
+        "statusSuccess": "اكتمل الاستيراد",
+        "statusPartial": "اكتمل الاستيراد جزئيا",
+        "statusFailed": "فشل الاستيراد",
+        "total": "الإجمالي",
+        "success": "نجح",
+        "failed": "فشل",
+        "stepReceive": "استلام الطلب",
+        "stepFetch": "جلب الحزمة",
+        "stepParse": "تحليل JSON الخاص بـ Codex",
+        "stepImport": "استيراد الحسابات",
+        "stepRefresh": "تحديث القائمة",
+        "errorsTitle": "العناصر الفاشلة",
+        "viewAccounts": "عرض حسابات Codex",
+        "copyErrors": "نسخ الأخطاء",
+        "copied": "تم النسخ",
+        "unknownItem": "JSON رقم {{index}}"
+      },
       "instances": {
         "unsupported": {
           "title": "غير مدعوم على هذا النظام"

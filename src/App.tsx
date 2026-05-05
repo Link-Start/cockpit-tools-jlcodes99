@@ -195,6 +195,7 @@ const WAKEUP_ENABLED_KEY = 'agtools.wakeup.enabled';
 const TASKS_STORAGE_KEY = 'agtools.wakeup.tasks';
 const WAKEUP_FORCE_DISABLE_MIGRATION_KEY = 'agtools.wakeup.migration.force_disable_0_8_14';
 const TOP_RIGHT_AD_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+const EXTERNAL_IMPORT_DEDUPE_WINDOW_MS = 30 * 1000;
 
 type WakeupHistoryRecord = {
   id: string;
@@ -273,6 +274,22 @@ type UpdateAction = {
   progress: number;
   requiresInstall: boolean;
 };
+
+function buildExternalImportDedupeKey(payload: {
+  providerId: string;
+  page: string;
+  token: string;
+  importUrl?: string | null;
+  rawUrl?: string | null;
+}): string {
+  return [
+    payload.providerId,
+    payload.page,
+    payload.rawUrl ?? '',
+    payload.importUrl ?? '',
+    payload.token,
+  ].join('|');
+}
 
 function normalizeQuotaAlertPlatform(platform: string | undefined): QuotaAlertPlatform {
   switch (platform) {
@@ -478,6 +495,7 @@ function MainApp() {
   const updateDownloadTaskIdRef = useRef(0);
   const updateDownloadOwnerRef = useRef<'none' | 'shared' | 'silent'>('none');
   const updateCheckRequestIdRef = useRef(0);
+  const externalImportHandledAtRef = useRef<Map<string, number>>(new Map());
   const { showModal, closeModal } = useGlobalModal();
   const topRightAdState = useTopRightAdStore((state) => state.state);
   const fetchTopRightAdState = useTopRightAdStore((state) => state.fetchState);
@@ -502,17 +520,30 @@ function MainApp() {
     setShowBreakout(true);
   }, []);
   const handleExternalProviderImportRawPayload = useCallback((rawPayload: unknown) => {
-    console.info('[ExternalImport][App] 收到原始 payload:', rawPayload)
+    console.info('[ExternalImport][App] 收到原始 payload:', rawPayload);
     const normalized = normalizeExternalProviderImportPayload(rawPayload);
     if (!normalized) {
       console.warn('[ExternalImport][App] payload 归一化失败，已忽略');
       return;
     }
+    const now = Date.now();
+    for (const [key, handledAt] of externalImportHandledAtRef.current) {
+      if (now - handledAt > EXTERNAL_IMPORT_DEDUPE_WINDOW_MS) {
+        externalImportHandledAtRef.current.delete(key);
+      }
+    }
+    const dedupeKey = buildExternalImportDedupeKey(normalized);
+    if (externalImportHandledAtRef.current.has(dedupeKey)) {
+      console.info('[ExternalImport][App] 重复外部导入 payload 已忽略');
+      return;
+    }
+    externalImportHandledAtRef.current.set(dedupeKey, now);
     console.info('[ExternalImport][App] payload 归一化成功:', {
       providerId: normalized.providerId,
       page: normalized.page,
       autoImport: normalized.autoImport,
       tokenLength: normalized.token.length,
+      hasImportUrl: Boolean(normalized.importUrl),
       source: normalized.source ?? null,
     });
     setPage(normalized.page);

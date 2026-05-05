@@ -70,6 +70,34 @@
           "statusPending": "インポート待ち"
         }
       },
+      "externalImport": {
+        "bundleInvalidJson": "インポートパッケージは有効な JSON ではありません",
+        "bundleEmpty": "インポートパッケージは空です",
+        "bundleProviderMismatch": "インポートパッケージのプロバイダーが一致しません",
+        "bundleNoItems": "インポート可能な項目がありません",
+        "titleCodex": "Codex 一括インポート",
+        "statusReceiving": "インポート要求を受信中...",
+        "statusFetching": "インポートパッケージを取得中...",
+        "statusParsing": "Codex JSON を解析中...",
+        "statusImporting": "{{current}} / {{total}} 個目のアカウントをインポート中",
+        "statusRefreshing": "アカウント一覧を更新中...",
+        "statusSuccess": "インポート完了",
+        "statusPartial": "一部インポート完了",
+        "statusFailed": "インポート失敗",
+        "total": "合計",
+        "success": "成功",
+        "failed": "失敗",
+        "stepReceive": "要求を受信",
+        "stepFetch": "パッケージ取得",
+        "stepParse": "Codex JSON 解析",
+        "stepImport": "アカウントをインポート",
+        "stepRefresh": "一覧を更新",
+        "errorsTitle": "失敗した項目",
+        "viewAccounts": "Codex アカウントを表示",
+        "copyErrors": "エラーをコピー",
+        "copied": "コピーしました",
+        "unknownItem": "{{index}} 件目の JSON"
+      },
       "instances": {
         "unsupported": {
           "title": "このシステムでは非対応"

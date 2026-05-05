@@ -70,6 +70,34 @@
           "statusPending": "Importação pendente"
         }
       },
+      "externalImport": {
+        "bundleInvalidJson": "O pacote de importação não é um JSON válido",
+        "bundleEmpty": "O pacote de importação está vazio",
+        "bundleProviderMismatch": "O provedor do pacote de importação não corresponde",
+        "bundleNoItems": "O pacote de importação não tem itens importáveis",
+        "titleCodex": "Importação em lote do Codex",
+        "statusReceiving": "Recebendo solicitação de importação...",
+        "statusFetching": "Obtendo pacote de importação...",
+        "statusParsing": "Analisando JSON do Codex...",
+        "statusImporting": "Importando conta {{current}} / {{total}}",
+        "statusRefreshing": "Atualizando lista de contas...",
+        "statusSuccess": "Importação concluída",
+        "statusPartial": "Importação parcial concluída",
+        "statusFailed": "Falha na importação",
+        "total": "Ao todo",
+        "success": "Sucesso",
+        "failed": "Falhas",
+        "stepReceive": "Receber solicitação",
+        "stepFetch": "Obter pacote",
+        "stepParse": "Analisar JSON do Codex",
+        "stepImport": "Importar contas",
+        "stepRefresh": "Atualizar lista",
+        "errorsTitle": "Itens com falha",
+        "viewAccounts": "Ver contas do Codex",
+        "copyErrors": "Copiar erros",
+        "copied": "Copiado",
+        "unknownItem": "JSON nº {{index}}"
+      },
       "instances": {
         "unsupported": {
           "title": "Não suportado neste sistema"

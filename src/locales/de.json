@@ -70,6 +70,34 @@
           "statusPending": "Wartet auf Import"
         }
       },
+      "externalImport": {
+        "bundleInvalidJson": "Das Importpaket ist kein gültiges JSON",
+        "bundleEmpty": "Das Importpaket ist leer",
+        "bundleProviderMismatch": "Der Anbieter des Importpakets passt nicht",
+        "bundleNoItems": "Das Importpaket enthält keine importierbaren Einträge",
+        "titleCodex": "Codex-Stapelimport",
+        "statusReceiving": "Importanfrage wird empfangen...",
+        "statusFetching": "Importpaket wird geladen...",
+        "statusParsing": "Codex JSON wird analysiert...",
+        "statusImporting": "Konto {{current}} / {{total}} wird importiert",
+        "statusRefreshing": "Kontoliste wird aktualisiert...",
+        "statusSuccess": "Import abgeschlossen",
+        "statusPartial": "Teilweise importiert",
+        "statusFailed": "Import fehlgeschlagen",
+        "total": "Gesamt",
+        "success": "Erfolgreich",
+        "failed": "Fehlgeschlagen",
+        "stepReceive": "Anfrage empfangen",
+        "stepFetch": "Paket laden",
+        "stepParse": "Codex JSON analysieren",
+        "stepImport": "Konten importieren",
+        "stepRefresh": "Liste aktualisieren",
+        "errorsTitle": "Fehlgeschlagene Einträge",
+        "viewAccounts": "Codex-Konten anzeigen",
+        "copyErrors": "Fehler kopieren",
+        "copied": "Kopiert",
+        "unknownItem": "JSON Nr. {{index}}"
+      },
       "instances": {
         "unsupported": {
           "title": "Auf diesem System nicht unterstützt"

@@ -70,6 +70,34 @@
           "statusPending": "Ожидает импорта"
         }
       },
+      "externalImport": {
+        "bundleInvalidJson": "Пакет импорта не является корректным JSON",
+        "bundleEmpty": "Пакет импорта пуст",
+        "bundleProviderMismatch": "Поставщик пакета импорта не совпадает",
+        "bundleNoItems": "В пакете импорта нет элементов для импорта",
+        "titleCodex": "Пакетный импорт Codex",
+        "statusReceiving": "Получение запроса на импорт...",
+        "statusFetching": "Получение пакета импорта...",
+        "statusParsing": "Разбор JSON Codex...",
+        "statusImporting": "Импорт аккаунта {{current}} / {{total}}",
+        "statusRefreshing": "Обновление списка аккаунтов...",
+        "statusSuccess": "Импорт завершен",
+        "statusPartial": "Импорт частично завершен",
+        "statusFailed": "Ошибка импорта",
+        "total": "Всего",
+        "success": "Успешно",
+        "failed": "Ошибки",
+        "stepReceive": "Получить запрос",
+        "stepFetch": "Получить пакет",
+        "stepParse": "Разобрать JSON Codex",
+        "stepImport": "Импортировать аккаунты",
+        "stepRefresh": "Обновить список",
+        "errorsTitle": "Ошибочные элементы",
+        "viewAccounts": "Показать аккаунты Codex",
+        "copyErrors": "Копировать ошибки",
+        "copied": "Скопировано",
+        "unknownItem": "JSON № {{index}}"
+      },
       "instances": {
         "unsupported": {
           "title": "Не поддерживается на этой системе"

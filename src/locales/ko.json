@@ -70,6 +70,34 @@
           "statusPending": "가져오기 대기"
         }
       },
+      "externalImport": {
+        "bundleInvalidJson": "가져오기 패키지가 유효한 JSON이 아닙니다",
+        "bundleEmpty": "가져오기 패키지가 비어 있습니다",
+        "bundleProviderMismatch": "가져오기 패키지의 공급자가 일치하지 않습니다",
+        "bundleNoItems": "가져올 수 있는 항목이 없습니다",
+        "titleCodex": "Codex 일괄 가져오기",
+        "statusReceiving": "가져오기 요청을 받는 중...",
+        "statusFetching": "가져오기 패키지를 가져오는 중...",
+        "statusParsing": "Codex JSON을 분석하는 중...",
+        "statusImporting": "{{current}} / {{total}}번째 계정 가져오는 중",
+        "statusRefreshing": "계정 목록 새로 고치는 중...",
+        "statusSuccess": "가져오기 완료",
+        "statusPartial": "일부 가져오기 완료",
+        "statusFailed": "가져오기 실패",
+        "total": "전체",
+        "success": "성공",
+        "failed": "실패",
+        "stepReceive": "요청 받기",
+        "stepFetch": "패키지 가져오기",
+        "stepParse": "Codex JSON 분석",
+        "stepImport": "계정 가져오기",
+        "stepRefresh": "목록 새로 고침",
+        "errorsTitle": "실패 항목",
+        "viewAccounts": "Codex 계정 보기",
+        "copyErrors": "오류 복사",
+        "copied": "복사됨",
+        "unknownItem": "{{index}}번째 JSON"
+      },
       "instances": {
         "unsupported": {
           "title": "이 시스템에서 지원되지 않음"

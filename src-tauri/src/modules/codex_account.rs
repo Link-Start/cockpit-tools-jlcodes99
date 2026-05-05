@@ -1212,7 +1212,10 @@ pub fn extract_user_info(
 > {
     let payload = decode_jwt_payload(id_token)?;
 
-    let email = payload.email.ok_or("id_token 中缺少 email")?;
+    let email = payload
+        .email
+        .or_else(|| payload.profile_data.as_ref().and_then(|data| data.email.clone()))
+        .ok_or("id_token 中缺少 email")?;
     let user_id = payload
         .auth_data
         .as_ref()
@@ -3321,11 +3324,12 @@ fn extract_codex_tokens_from_value(
 mod tests {
     use super::{
         build_account_storage_id, detect_auth_file_plan_type_from_path,
-        extract_codex_tokens_from_value, format_refresh_error_for_user, get_accounts_dir,
-        get_accounts_storage_path, get_current_account, list_accounts_checked, load_account,
-        load_account_index, parse_auth_file_last_refresh, read_api_provider_from_config_toml,
-        read_quick_config_from_config_toml, resolve_api_provider_config, save_account,
-        save_account_index, should_accept_authority_snapshot, sync_account_from_auth_dir,
+        extract_codex_tokens_from_value, extract_user_info, format_refresh_error_for_user,
+        get_accounts_dir, get_accounts_storage_path, get_current_account, list_accounts_checked,
+        load_account, load_account_index, parse_auth_file_last_refresh,
+        read_api_provider_from_config_toml, read_quick_config_from_config_toml,
+        resolve_api_provider_config, save_account, save_account_index,
+        should_accept_authority_snapshot, sync_account_from_auth_dir,
         sync_managed_projection_from_auth_dir, validate_api_key_credentials,
         write_api_provider_to_config_toml, write_managed_projection_to_dir,
         write_quick_config_to_config_toml, ApiProviderConfig, CodexAccountIndex,
@@ -3530,6 +3534,31 @@ mod tests {
         assert_eq!(tokens.access_token, "access.jwt.token");
         assert_eq!(tokens.refresh_token.as_deref(), Some("rt_456"));
         assert_eq!(account_id_hint.as_deref(), Some("acc_2"));
+    }
+
+    #[test]
+    fn extracts_email_from_openai_profile_claim() {
+        let id_token = make_jwt(serde_json::json!({
+            "aud": ["https://api.openai.com/v1"],
+            "iss": "https://auth.openai.com",
+            "https://api.openai.com/auth": {
+                "chatgpt_user_id": "user-profile",
+                "chatgpt_plan_type": "plus",
+                "account_id": "acc-profile"
+            },
+            "https://api.openai.com/profile": {
+                "email": "profile@example.com",
+                "email_verified": true
+            }
+        }));
+
+        let (email, user_id, plan_type, _, account_id, _) =
+            extract_user_info(&id_token).expect("extract profile email");
+
+        assert_eq!(email, "profile@example.com");
+        assert_eq!(user_id.as_deref(), Some("user-profile"));
+        assert_eq!(plan_type.as_deref(), Some("plus"));
+        assert_eq!(account_id.as_deref(), Some("acc-profile"));
     }
 
     #[test]

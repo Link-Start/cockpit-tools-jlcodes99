@@ -420,10 +420,9 @@ export function getCodexPlanBadgeLabel(account: CodexAccount): string {
   if (authFilePlanType === 'prolite') {
     return `${baseLabel} 5x`;
   }
-  if (authFilePlanType === 'promax') {
-    return `${baseLabel} 20x`;
-  }
-  return baseLabel;
+  // CPA 对齐：plan_type='pro' 默认视为 20x（Pro Max），
+  // 只有显式声明 prolite/pro-lite/pro_lite 才是 5x
+  return `${baseLabel} 20x`;
 }
 
 export function getCodexPlanBadgeClass(account: CodexAccount): string {
@@ -441,7 +440,8 @@ export function getCodexPlanBadgeClass(account: CodexAccount): string {
   if (authFilePlanType === 'prolite') {
     return 'pro codex-pro-lite';
   }
-  return authFilePlanType === 'promax' ? 'pro codex-pro-max' : baseClass;
+  // CPA 对齐：plan_type='pro' 默认视为 promax (20x)
+  return 'pro codex-pro-max';
 }
 
 export function getCodexPlanFilterKey(account: CodexAccount): string {

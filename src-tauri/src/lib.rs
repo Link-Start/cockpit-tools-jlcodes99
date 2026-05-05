@@ -383,6 +383,7 @@ pub fn run() {
             commands::system::save_floating_card_position,
             commands::system::show_main_window_and_navigate,
             commands::system::external_import_take_pending,
+            commands::system::external_import_fetch_import_url,
             commands::system::open_folder,
             commands::system::delete_corrupted_file,
             // Logs Commands

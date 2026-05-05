@@ -517,6 +517,7 @@ export function CodexAccountsPage() {
     toggleExportJsonHidden,
     showAddModal, addTab, addStatus, addMessage, tokenInput, setTokenInput,
     importing, openAddModal, closeAddModal,
+    externalImportProgress, closeExternalImportProgressModal,
     formatDate, normalizeTag, saveJsonFile,
   } = page;
 
@@ -1986,7 +1987,6 @@ export function CodexAccountsPage() {
         platformId: 'codex',
         reason: 'import',
       });
-      try { await refreshQuota(account.id); await fetchAccounts(); } catch { }
       page.setAddStatus('success');
       page.setAddMessage(t('codex.import.successMsg', '导入成功: {{email}}').replace('{{email}}', maskAccountText(account.email)));
       setTimeout(() => { closeAddModal(); }, 1200);
@@ -2040,25 +2040,6 @@ export function CodexAccountsPage() {
       } else {
         page.setAddStatus('success');
         page.setAddMessage(t('messages.importSuccess', { count: imported.length }));
-      }
-      // 后台刷新配额，带进度显示，可关闭弹窗
-      if (imported.length > 0) {
-        const total = imported.length;
-        let done = 0;
-        const refreshAll = async () => {
-          for (const acc of imported) {
-            await refreshQuota(acc.id).catch(() => { });
-            done++;
-            page.setAddStatus('loading');
-            page.setAddMessage(t('messages.refreshingQuota', { done, total }));
-            // 每 5 个刷新一次列表，让 UI 实时更新
-            if (done % 5 === 0) await fetchAccounts();
-          }
-          await fetchAccounts();
-          page.setAddStatus('success');
-          page.setAddMessage(`${t('messages.importSuccess', { count: total })}，${t('messages.quotaRefreshDone')}`);
-        };
-        refreshAll();
       }
     } catch (e) {
       page.setAddStatus('error');
@@ -2332,8 +2313,6 @@ export function CodexAccountsPage() {
           reason: 'import',
         });
       }
-      for (const acc of imported) { await refreshQuota(acc.id).catch(() => { }); }
-      await fetchAccounts();
       page.setAddStatus('success');
       page.setAddMessage(t('common.shared.token.importSuccessMsg', '成功导入 {{count}} 个账号').replace('{{count}}', String(imported.length)));
       setTimeout(() => { closeAddModal(); }, 1200);
@@ -4674,6 +4653,59 @@ export function CodexAccountsPage() {
   const hasGroupEntryCards = Boolean(inlineFolderCards && inlineFolderCards.length > 0);
   const showOverviewSelectionBar =
     !groupByTag && !activeGroupId && paginatedAccounts.length > 0;
+  const externalImportRunning = [
+    'receiving',
+    'fetching',
+    'parsing',
+    'importing',
+    'refreshing',
+  ].includes(externalImportProgress.status);
+  const externalImportStepIndex = (() => {
+    switch (externalImportProgress.status) {
+      case 'receiving':
+        return 0;
+      case 'fetching':
+        return 1;
+      case 'parsing':
+        return 2;
+      case 'importing':
+        return 3;
+      case 'refreshing':
+        return 4;
+      case 'success':
+      case 'partial':
+      case 'error':
+        return 5;
+      default:
+        return -1;
+    }
+  })();
+  const externalImportSteps = [
+    t('common.shared.externalImport.stepReceive', '接收导入请求'),
+    t('common.shared.externalImport.stepFetch', '获取导入包'),
+    t('common.shared.externalImport.stepParse', '解析 Codex JSON'),
+    t('common.shared.externalImport.stepImport', '导入账号'),
+    t('common.shared.externalImport.stepRefresh', '刷新账号列表'),
+  ];
+  const externalImportPercent = Math.max(
+    0,
+    Math.min(100, Math.round(externalImportProgress.progress)),
+  );
+  const handleCopyExternalImportErrors = async () => {
+    const content = externalImportProgress.failures
+      .map((item) => `${item.index}. ${item.label}: ${item.error}`)
+      .join('\n');
+    if (!content) return;
+    await navigator.clipboard.writeText(content).catch(() => {});
+    setMessage({
+      text: t('common.shared.externalImport.copied', '已复制'),
+      tone: 'success',
+    });
+  };
+  const handleViewExternalImportAccounts = () => {
+    setActiveTab('overview');
+    closeExternalImportProgressModal();
+  };
 
   return (
     <div className={`codex-accounts-page codex-accounts-page--${overviewLayoutMode}`}>
@@ -4682,6 +4714,134 @@ export function CodexAccountsPage() {
         onTabChange={setActiveTab}
         tabs={['overview', 'providers', 'wakeup', 'instances', 'sessions']}
       />
+
+      {externalImportProgress.visible && (
+        <div
+          className="modal-overlay codex-external-import-overlay"
+          onClick={() => {
+            if (!externalImportRunning) {
+              closeExternalImportProgressModal();
+            }
+          }}
+        >
+          <div
+            className="modal-content codex-external-import-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h2>{t('common.shared.externalImport.titleCodex', 'Codex 批量导入')}</h2>
+              {!externalImportRunning && (
+                <button
+                  className="modal-close"
+                  onClick={closeExternalImportProgressModal}
+                  aria-label={t('common.close', '关闭')}
+                >
+                  <X />
+                </button>
+              )}
+            </div>
+            <div className="codex-external-import-body">
+              <div className="codex-external-import-main">
+                <div className="codex-external-import-primary">
+                  <div className={`codex-external-import-status is-${externalImportProgress.status}`}>
+                    {externalImportRunning ? (
+                      <RefreshCw size={18} className="loading-spinner" />
+                    ) : externalImportProgress.status === 'success' ? (
+                      <Check size={18} />
+                    ) : (
+                      <CircleAlert size={18} />
+                    )}
+                    <span>{externalImportProgress.message}</span>
+                  </div>
+
+                  <div className="codex-external-import-progress-card">
+                    <div className="codex-external-import-progress-head">
+                      <span>{externalImportPercent}%</span>
+                      <strong>
+                        {externalImportProgress.current > 0 && externalImportProgress.total > 0
+                          ? `${externalImportProgress.current}/${externalImportProgress.total}`
+                          : ''}
+                      </strong>
+                    </div>
+                    <div className="codex-external-import-progress-track">
+                      <div
+                        className="codex-external-import-progress-fill"
+                        style={{ width: `${externalImportPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="codex-external-import-side">
+                  <div className="codex-external-import-stats">
+                    <div>
+                      <span>{t('common.shared.externalImport.total', '总数')}</span>
+                      <strong>{externalImportProgress.total}</strong>
+                    </div>
+                    <div>
+                      <span>{t('common.shared.externalImport.success', '成功')}</span>
+                      <strong>{externalImportProgress.success}</strong>
+                    </div>
+                    <div>
+                      <span>{t('common.shared.externalImport.failed', '失败')}</span>
+                      <strong>{externalImportProgress.failed}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="codex-external-import-steps">
+                {externalImportSteps.map((label, index) => {
+                  const isDone = externalImportStepIndex > index;
+                  const isActive = externalImportStepIndex === index;
+                  return (
+                    <div
+                      key={label}
+                      className={`codex-external-import-step ${isDone ? 'is-done' : ''} ${isActive ? 'is-active' : ''}`}
+                    >
+                      <span>{isDone ? <Check size={13} /> : index + 1}</span>
+                      <strong>{label}</strong>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {externalImportProgress.failures.length > 0 && (
+                <div className="codex-external-import-errors">
+                  <div className="codex-external-import-errors-head">
+                    <strong>{t('common.shared.externalImport.errorsTitle', '失败项')}</strong>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={handleCopyExternalImportErrors}
+                    >
+                      <Copy size={13} />
+                      {t('common.shared.externalImport.copyErrors', '复制错误')}
+                    </button>
+                  </div>
+                  <div className="codex-external-import-error-list">
+                    {externalImportProgress.failures.map((item) => (
+                      <div key={`${item.index}-${item.label}`} className="codex-external-import-error">
+                        <span>{item.index}. {item.label}</span>
+                        <small>{item.error}</small>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            {!externalImportRunning && (
+              <div className="modal-footer codex-external-import-footer">
+                <button className="btn btn-secondary" onClick={closeExternalImportProgressModal}>
+                  {t('common.close', '关闭')}
+                </button>
+                <button className="btn btn-primary" onClick={handleViewExternalImportAccounts}>
+                  {t('common.shared.externalImport.viewAccounts', '查看 Codex 账号')}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {activeTab === 'overview' && (<>
         {message && (<div className={`message-bar ${message.tone === 'error' ? 'error' : 'success'}`}>{message.text}<button onClick={() => setMessage(null)}><X size={14} /></button></div>)}

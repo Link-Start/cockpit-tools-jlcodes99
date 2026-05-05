@@ -17,6 +17,9 @@ const DEFAULT_PROVIDER_ID: &str = "openai";
 const STATE_DB_FILE: &str = "state_5.sqlite";
 const CONFIG_FILE_NAME: &str = "config.toml";
 const SESSION_DIRS: [&str; 2] = ["sessions", "archived_sessions"];
+const SESSION_VISIBILITY_REPAIR_BACKUP_PREFIX: &str = "backup-";
+const SESSION_VISIBILITY_REPAIR_BACKUP_SUFFIX: &str = "-session-visibility-repair";
+const MAX_SESSION_VISIBILITY_REPAIR_BACKUPS: usize = 1;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -161,6 +164,8 @@ pub fn repair_session_visibility_across_instances(
             running,
         });
     }
+
+    prune_session_visibility_repair_backups(&instances);
 
     let message = build_summary_message(
         mutated_instance_count,
@@ -636,10 +641,13 @@ fn backup_instance_files(
     instance_id: &str,
     target_provider: &str,
 ) -> Result<PathBuf, String> {
-    let backup_dir = data_dir.join(format!(
-        "backup-{}-session-visibility-repair",
-        Utc::now().format("%Y%m%d-%H%M%S")
-    ));
+    let backup_dir_name = format!(
+        "{}{}{}",
+        SESSION_VISIBILITY_REPAIR_BACKUP_PREFIX,
+        Utc::now().format("%Y%m%d-%H%M%S"),
+        SESSION_VISIBILITY_REPAIR_BACKUP_SUFFIX
+    );
+    let backup_dir = data_dir.join(backup_dir_name);
     fs::create_dir_all(&backup_dir)
         .map_err(|error| format!("创建备份目录失败 ({}): {}", backup_dir.display(), error))?;
 
@@ -706,6 +714,91 @@ fn backup_instance_files(
     })?;
 
     Ok(backup_dir)
+}
+
+fn parse_session_visibility_repair_backup_timestamp(name: &str) -> Option<&str> {
+    let timestamp = name
+        .strip_prefix(SESSION_VISIBILITY_REPAIR_BACKUP_PREFIX)?
+        .strip_suffix(SESSION_VISIBILITY_REPAIR_BACKUP_SUFFIX)?;
+    if timestamp.len() != 15 {
+        return None;
+    }
+    if !timestamp.chars().enumerate().all(|(index, value)| {
+        if index == 8 {
+            value == '-'
+        } else {
+            value.is_ascii_digit()
+        }
+    }) {
+        return None;
+    }
+    Some(timestamp)
+}
+
+fn prune_session_visibility_repair_backups(instances: &[CodexSyncInstance]) {
+    for instance in instances {
+        if let Err(error) = prune_instance_session_visibility_repair_backups(&instance.data_dir) {
+            modules::logger::log_warn(&format!(
+                "清理 Codex 会话可见性修复旧备份失败 ({}): {}",
+                instance.data_dir.display(),
+                error
+            ));
+        }
+    }
+}
+
+fn prune_instance_session_visibility_repair_backups(data_dir: &Path) -> Result<(), String> {
+    let entries = match fs::read_dir(data_dir) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => {
+            return Err(format!(
+                "读取实例目录失败 ({}): {}",
+                data_dir.display(),
+                error
+            ));
+        }
+    };
+    let mut backups: Vec<(String, PathBuf)> = Vec::new();
+
+    for entry in entries {
+        let entry = entry
+            .map_err(|error| format!("读取实例目录项失败 ({}): {}", data_dir.display(), error))?;
+        let file_type = entry.file_type().map_err(|error| {
+            format!(
+                "读取实例目录项类型失败 ({}): {}",
+                entry.path().display(),
+                error
+            )
+        })?;
+        if !file_type.is_dir() {
+            continue;
+        }
+
+        let file_name = entry.file_name();
+        let Some(file_name) = file_name.to_str() else {
+            continue;
+        };
+        let Some(timestamp) = parse_session_visibility_repair_backup_timestamp(file_name) else {
+            continue;
+        };
+        backups.push((timestamp.to_string(), entry.path()));
+    }
+
+    if backups.len() <= MAX_SESSION_VISIBILITY_REPAIR_BACKUPS {
+        return Ok(());
+    }
+
+    backups.sort_by(|left, right| right.0.cmp(&left.0));
+    for (_, path) in backups
+        .into_iter()
+        .skip(MAX_SESSION_VISIBILITY_REPAIR_BACKUPS)
+    {
+        fs::remove_dir_all(&path)
+            .map_err(|error| format!("删除旧备份失败 ({}): {}", path.display(), error))?;
+    }
+
+    Ok(())
 }
 
 fn restore_instance_files_from_backup(

@@ -2337,10 +2337,11 @@ fn resolve_plan_rank(account: &CodexAccount) -> Option<i32> {
         "business" => 650,
         "team" => 640,
         "edu" => 630,
+        // CPA 对齐：plan_type='pro' 默认视为 promax (20x)，
+        // 只有显式声明 prolite 时才降级
         "pro" => match auth_file_plan_type {
-            Some("promax") => 560,
             Some("prolite") => 520,
-            _ => 540,
+            _ => 560, // pro / promax 均为 20x 级别
         },
         "plus" => 420,
         "go" => 360,

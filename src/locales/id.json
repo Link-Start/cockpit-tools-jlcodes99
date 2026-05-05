@@ -77,6 +77,34 @@
           "statusPending": "Menunggu impor"
         }
       },
+      "externalImport": {
+        "bundleInvalidJson": "Paket impor bukan JSON yang valid",
+        "bundleEmpty": "Paket impor kosong",
+        "bundleProviderMismatch": "Penyedia paket impor tidak cocok",
+        "bundleNoItems": "Paket impor tidak memiliki item yang dapat diimpor",
+        "titleCodex": "Impor Massal Codex",
+        "statusReceiving": "Menerima permintaan impor...",
+        "statusFetching": "Mengambil paket impor...",
+        "statusParsing": "Mengurai JSON Codex...",
+        "statusImporting": "Mengimpor akun {{current}} / {{total}}",
+        "statusRefreshing": "Memperbarui daftar akun...",
+        "statusSuccess": "Impor selesai",
+        "statusPartial": "Impor sebagian selesai",
+        "statusFailed": "Impor gagal",
+        "total": "Jumlah",
+        "success": "Berhasil",
+        "failed": "Gagal",
+        "stepReceive": "Terima permintaan",
+        "stepFetch": "Ambil paket",
+        "stepParse": "Urai JSON Codex",
+        "stepImport": "Impor akun",
+        "stepRefresh": "Segarkan daftar",
+        "errorsTitle": "Item gagal",
+        "viewAccounts": "Lihat Akun Codex",
+        "copyErrors": "Salin error",
+        "copied": "Disalin",
+        "unknownItem": "JSON ke-{{index}}"
+      },
       "instances": {
         "unsupported": {
           "title": "Tidak didukung pada sistem ini"

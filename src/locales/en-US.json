@@ -77,6 +77,34 @@
           "statusPending": "Pending import"
         }
       },
+      "externalImport": {
+        "bundleInvalidJson": "The import bundle is not valid JSON",
+        "bundleEmpty": "The import bundle is empty",
+        "bundleProviderMismatch": "The import bundle provider does not match",
+        "bundleNoItems": "The import bundle has no importable items",
+        "titleCodex": "Codex Batch Import",
+        "statusReceiving": "Receiving import request...",
+        "statusFetching": "Getting import bundle...",
+        "statusParsing": "Parsing Codex JSON...",
+        "statusImporting": "Importing account {{current}} / {{total}}",
+        "statusRefreshing": "Refreshing account list...",
+        "statusSuccess": "Import complete",
+        "statusPartial": "Partially imported",
+        "statusFailed": "Import failed",
+        "total": "Total",
+        "success": "Success",
+        "failed": "Failed",
+        "stepReceive": "Receive request",
+        "stepFetch": "Get bundle",
+        "stepParse": "Parse Codex JSON",
+        "stepImport": "Import accounts",
+        "stepRefresh": "Refresh list",
+        "errorsTitle": "Failed items",
+        "viewAccounts": "View Codex Accounts",
+        "copyErrors": "Copy errors",
+        "copied": "Copied",
+        "unknownItem": "JSON #{{index}}"
+      },
       "instances": {
         "unsupported": {
           "title": "Unsupported on this system"

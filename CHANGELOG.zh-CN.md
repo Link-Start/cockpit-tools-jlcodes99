@@ -7,6 +7,22 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
 ---
+## [0.22.19] - 2026-05-05
+
+### 新增
+- **Codex 外部账号导入链接现支持远端导入包**：`import_url` 深链参数可拉取 HTTP/HTTPS JSON 导入包、逐个导入账号，并在专用进度弹框展示总数、成功/失败统计与可复制失败项。
+
+### 变更
+- **Codex 账号导入后端现统一刷新 OAuth 额度信息**：从本地、JSON 或文件导入后会跳过 API Key 账号并刷新 OAuth 账号配额，再用刷新后的记录更新账号列表与托盘状态。
+- **Codex 便携导出格式现归一 Cockpit Tools JSON**：Cockpit Tools 导出会输出可移植的 Token/API Key JSON，CPA 文档会保留 Token 刷新时间与过期时间元数据。
+- **Codex PRO 档位识别现与 CPA 20x 语义对齐**：未显式标记 `prolite` 的 `pro` 账号默认展示为 PRO Max/20x，并在本地 API 服务路由排序中按 20x 档位处理。
+- **Codex 会话可见性修复备份现按实例保留最近一次**：执行新一轮修复前会清理旧的会话可见性修复备份目录，避免备份长期堆积。
+
+### 修复
+- **Codex OAuth 导入不再因 email 只存在于 OpenAI profile claim 中失败**：解析 `id_token` 时会在缺少顶层 email claim 时读取 `https://api.openai.com/profile.email`。
+- **外部导入链接现会执行自动 token 导入请求**：带 `auto_import=true` 的 token/payload 链接会自动提交导入，短时间重复投递的同一导入请求会被忽略。
+
+---
 ## [0.22.18] - 2026-05-04
 
 ### 新增

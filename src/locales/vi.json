@@ -70,6 +70,34 @@
           "statusPending": "Đang chờ nhập"
         }
       },
+      "externalImport": {
+        "bundleInvalidJson": "Gói nhập không phải JSON hợp lệ",
+        "bundleEmpty": "Gói nhập trống",
+        "bundleProviderMismatch": "Nhà cung cấp của gói nhập không khớp",
+        "bundleNoItems": "Gói nhập không có mục nào để nhập",
+        "titleCodex": "Nhập hàng loạt Codex",
+        "statusReceiving": "Đang nhận yêu cầu nhập...",
+        "statusFetching": "Đang lấy gói nhập...",
+        "statusParsing": "Đang phân tích JSON Codex...",
+        "statusImporting": "Đang nhập tài khoản {{current}} / {{total}}",
+        "statusRefreshing": "Đang làm mới danh sách tài khoản...",
+        "statusSuccess": "Nhập hoàn tất",
+        "statusPartial": "Nhập một phần hoàn tất",
+        "statusFailed": "Nhập thất bại",
+        "total": "Tổng",
+        "success": "Thành công",
+        "failed": "Thất bại",
+        "stepReceive": "Nhận yêu cầu",
+        "stepFetch": "Lấy gói",
+        "stepParse": "Phân tích JSON Codex",
+        "stepImport": "Nhập tài khoản",
+        "stepRefresh": "Làm mới danh sách",
+        "errorsTitle": "Mục thất bại",
+        "viewAccounts": "Xem tài khoản Codex",
+        "copyErrors": "Sao chép lỗi",
+        "copied": "Đã sao chép",
+        "unknownItem": "JSON số {{index}}"
+      },
       "instances": {
         "unsupported": {
           "title": "Không hỗ trợ trên hệ thống này"

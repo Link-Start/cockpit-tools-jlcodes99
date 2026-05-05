@@ -240,18 +240,64 @@ pub fn delete_codex_accounts(account_ids: Vec<String>) -> Result<(), String> {
     codex_account::remove_accounts(&account_ids)
 }
 
+async fn refresh_imported_codex_accounts(
+    app: &AppHandle,
+    accounts: Vec<CodexAccount>,
+) -> Vec<CodexAccount> {
+    let mut result = Vec::with_capacity(accounts.len());
+    let mut success_count = 0;
+    let mut attempted = false;
+
+    for account in accounts {
+        if account.is_api_key_auth() {
+            result.push(account);
+            continue;
+        }
+
+        attempted = true;
+        match codex_quota::refresh_account_quota(&account.id).await {
+            Ok(_) => {
+                success_count += 1;
+            }
+            Err(error) => {
+                logger::log_warn(&format!(
+                    "Codex 导入后刷新配额失败: account_id={}, email={}, error={}",
+                    account.id, account.email, error
+                ));
+            }
+        }
+
+        result.push(codex_account::load_account(&account.id).unwrap_or(account));
+    }
+
+    if success_count > 0 {
+        run_codex_post_refresh_checks(app).await;
+    }
+    if attempted || !result.is_empty() {
+        let _ = crate::modules::tray::update_tray_menu(app);
+    }
+
+    result
+}
+
 /// 从本地 auth.json 导入账号
 #[tauri::command]
-pub fn import_codex_from_local(app: AppHandle) -> Result<CodexAccount, String> {
+pub async fn import_codex_from_local(app: AppHandle) -> Result<CodexAccount, String> {
     let account = codex_account::import_from_local()?;
-    let _ = crate::modules::tray::update_tray_menu(&app);
-    Ok(account)
+    let mut accounts = refresh_imported_codex_accounts(&app, vec![account]).await;
+    accounts
+        .pop()
+        .ok_or_else(|| "账号导入后无法读取".to_string())
 }
 
 /// 从 JSON 字符串导入账号
 #[tauri::command]
-pub fn import_codex_from_json(json_content: String) -> Result<Vec<CodexAccount>, String> {
-    codex_account::import_from_json(&json_content)
+pub async fn import_codex_from_json(
+    app: AppHandle,
+    json_content: String,
+) -> Result<Vec<CodexAccount>, String> {
+    let accounts = codex_account::import_from_json(&json_content)?;
+    Ok(refresh_imported_codex_accounts(&app, accounts).await)
 }
 
 /// 导出 Codex 账号
@@ -262,10 +308,16 @@ pub fn export_codex_accounts(account_ids: Vec<String>) -> Result<String, String>
 
 /// 从本地文件导入 Codex 账号
 #[tauri::command]
-pub fn import_codex_from_files(
+pub async fn import_codex_from_files(
+    app: AppHandle,
     file_paths: Vec<String>,
 ) -> Result<codex_account::CodexFileImportResult, String> {
-    codex_account::import_from_files(file_paths)
+    let result = codex_account::import_from_files(file_paths)?;
+    let imported = refresh_imported_codex_accounts(&app, result.imported).await;
+    Ok(codex_account::CodexFileImportResult {
+        imported,
+        failed: result.failed,
+    })
 }
 
 /// 刷新单个账号配额
