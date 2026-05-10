@@ -261,6 +261,37 @@ fn create_directory_symlink(_source: &Path, _target: &Path) -> Result<(), String
     Err("当前系统不支持创建目录符号链接".to_string())
 }
 
+#[cfg(windows)]
+fn create_directory_live_link(source: &Path, target: &Path) -> Result<(), String> {
+    match std::os::windows::fs::symlink_dir(source, target) {
+        Ok(()) => Ok(()),
+        Err(symlink_err) => {
+            modules::logger::log_warn(&format!(
+                "Windows directory symlink failed for live shared history, falling back to junction: source={}, target={}, error={}",
+                source.display(),
+                target.display(),
+                symlink_err
+            ));
+            create_directory_junction(source, target).map_err(|junction_err| {
+                format!(
+                    "create live shared history link failed: symlink_error={}, junction_error={}",
+                    symlink_err, junction_err
+                )
+            })
+        }
+    }
+}
+
+#[cfg(unix)]
+fn create_directory_live_link(source: &Path, target: &Path) -> Result<(), String> {
+    create_directory_symlink(source, target)
+}
+
+#[cfg(not(any(unix, windows)))]
+fn create_directory_live_link(_source: &Path, _target: &Path) -> Result<(), String> {
+    Err("current system does not support live shared history links".to_string())
+}
+
 #[cfg(unix)]
 fn create_file_symlink(source: &Path, target: &Path) -> Result<(), String> {
     std::os::unix::fs::symlink(source, target).map_err(|e| format!("创建文件共享链接失败: {}", e))
@@ -601,7 +632,7 @@ fn sync_shared_directory_preserving_entries(
     }
 
     if !instance_dir.exists() {
-        return create_directory_symlink(&global_dir, &instance_dir);
+        return create_directory_live_link(&global_dir, &instance_dir);
     }
 
     let metadata = fs::symlink_metadata(&instance_dir).map_err(|e| {
@@ -624,7 +655,7 @@ fn sync_shared_directory_preserving_entries(
             return Ok(());
         }
         remove_symlink(&instance_dir)?;
-        return create_directory_symlink(&global_dir, &instance_dir);
+        return create_directory_live_link(&global_dir, &instance_dir);
     }
 
     if !metadata.is_dir() {
@@ -643,7 +674,7 @@ fn sync_shared_directory_preserving_entries(
             e
         )
     })?;
-    create_directory_symlink(&global_dir, &instance_dir).map_err(|e| {
+    create_directory_live_link(&global_dir, &instance_dir).map_err(|e| {
         format!(
             "é‡å»ºå®žä¾‹å…±äº«ç›®å½•é“¾æŽ¥å¤±è´¥ ({} -> {}, {}): {}",
             display_abs_path(&global_dir),
@@ -1327,6 +1358,20 @@ mod tests {
             fs::read_to_string(instance_sessions.join("global.jsonl"))
                 .expect("read shared global session"),
             "global"
+        );
+        fs::write(global_sessions.join("new-global.jsonl"), "new global")
+            .expect("write new global session");
+        assert_eq!(
+            fs::read_to_string(instance_sessions.join("new-global.jsonl"))
+                .expect("read new global session through instance link"),
+            "new global"
+        );
+        fs::write(instance_sessions.join("new-instance.jsonl"), "new instance")
+            .expect("write new instance session through instance link");
+        assert_eq!(
+            fs::read_to_string(global_sessions.join("new-instance.jsonl"))
+                .expect("read new instance session through global dir"),
+            "new instance"
         );
 
         let _ = fs::remove_dir_all(&root);
