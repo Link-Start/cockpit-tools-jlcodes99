@@ -22,6 +22,7 @@ const CODEX_SHARED_SESSIONS_DIR_NAME: &str = "sessions";
 const CODEX_SHARED_ARCHIVED_SESSIONS_DIR_NAME: &str = "archived_sessions";
 const CODEX_SHARED_SESSION_INDEX_FILE_NAME: &str = "session_index.jsonl";
 const CODEX_SHARED_GLOBAL_STATE_FILE_NAME: &str = ".codex-global-state.json";
+const CODEX_HISTORY_ISOLATION_BACKUP_DIR_NAME: &str = ".cockpit-history-isolation-backups";
 const CODEX_ELECTRON_USER_DATA_DIR_NAME: &str = "electron-user-data";
 const CODEX_ELECTRON_AUTH_MARKER_FILE_NAME: &str = ".cockpit_codex_electron_auth.json";
 
@@ -107,7 +108,8 @@ pub fn update_default_settings(
 }
 
 pub fn get_default_codex_home() -> Result<PathBuf, String> {
-    Ok(modules::codex_account::get_codex_home())
+    let home = dirs::home_dir().ok_or("无法获取用户主目录")?;
+    Ok(home.join(".codex"))
 }
 
 pub fn get_default_instances_root_dir() -> Result<PathBuf, String> {
@@ -203,11 +205,44 @@ fn write_electron_auth_marker(
     .map_err(|e| format!("write Electron auth marker failed: {}", e))
 }
 
+fn default_electron_user_data_dir() -> Option<PathBuf> {
+    #[cfg(target_os = "windows")]
+    {
+        return std::env::var("APPDATA")
+            .ok()
+            .map(PathBuf::from)
+            .map(|dir| dir.join("Codex"));
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        return dirs::data_dir().map(|dir| dir.join("Codex"));
+    }
+
+    #[allow(unreachable_code)]
+    None
+}
+
+fn electron_user_data_dir_for_profile(profile_dir: &Path) -> PathBuf {
+    let default_codex_home = get_default_codex_home().ok();
+    if default_codex_home
+        .as_ref()
+        .map(|default_home| paths_point_to_same_location(profile_dir, default_home))
+        .unwrap_or(false)
+    {
+        if let Some(default_electron_dir) = default_electron_user_data_dir() {
+            return default_electron_dir;
+        }
+    }
+
+    profile_dir.join(CODEX_ELECTRON_USER_DATA_DIR_NAME)
+}
+
 pub fn clear_electron_user_data_auth_state(
     profile_dir: &Path,
     account_id: &str,
 ) -> Result<(), String> {
-    let electron_user_data_dir = profile_dir.join(CODEX_ELECTRON_USER_DATA_DIR_NAME);
+    let electron_user_data_dir = electron_user_data_dir_for_profile(profile_dir);
     if electron_auth_marker_matches(&electron_user_data_dir, account_id) {
         return Ok(());
     }
@@ -986,63 +1021,241 @@ fn sync_shared_file(
     })
 }
 
-fn backup_instance_shared_file_if_needed(
+#[cfg(windows)]
+fn metadata_is_reparse_point(metadata: &fs::Metadata) -> bool {
+    use std::os::windows::fs::MetadataExt;
+    const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
+    metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+}
+
+#[cfg(not(windows))]
+fn metadata_is_reparse_point(_metadata: &fs::Metadata) -> bool {
+    false
+}
+
+fn backup_history_isolation_path(
+    profile_dir: &Path,
+    relative_path: &Path,
+    path: &Path,
+    default_path: &Path,
+    reason: &str,
+    copy_file_content: bool,
+) -> Result<(), String> {
+    let backup_dir = profile_dir
+        .join(CODEX_HISTORY_ISOLATION_BACKUP_DIR_NAME)
+        .join(Utc::now().format("%Y%m%d-%H%M%S-%3f").to_string());
+    fs::create_dir_all(&backup_dir).map_err(|e| {
+        format!(
+            "create history isolation backup directory failed ({}): {}",
+            display_abs_path(&backup_dir),
+            e
+        )
+    })?;
+
+    let manifest = serde_json::json!({
+        "created_at": Utc::now().to_rfc3339(),
+        "reason": reason,
+        "relative_path": relative_path.to_string_lossy(),
+        "instance_path": path.to_string_lossy(),
+        "default_path": default_path.to_string_lossy(),
+    });
+    fs::write(
+        backup_dir.join("manifest.json"),
+        format!(
+            "{}\n",
+            serde_json::to_string_pretty(&manifest).map_err(|e| format!(
+                "serialize history isolation backup manifest failed: {}",
+                e
+            ))?
+        ),
+    )
+    .map_err(|e| format!("write history isolation backup manifest failed: {}", e))?;
+
+    if copy_file_content && path.exists() {
+        let backup_file = backup_dir.join("files").join(relative_path);
+        if let Some(parent) = backup_file.parent() {
+            fs::create_dir_all(parent).map_err(|e| {
+                format!(
+                    "create history isolation backup file parent failed ({}): {}",
+                    display_abs_path(parent),
+                    e
+                )
+            })?;
+        }
+        fs::copy(path, &backup_file).map_err(|e| {
+            format!(
+                "copy history isolation backup file failed ({} -> {}): {}",
+                display_abs_path(path),
+                display_abs_path(&backup_file),
+                e
+            )
+        })?;
+    }
+
+    Ok(())
+}
+
+fn ensure_isolated_directory(
     profile_dir: &Path,
     default_codex_home: &Path,
     relative_path: &Path,
 ) -> Result<(), String> {
-    let global_file = default_codex_home.join(relative_path);
-    let instance_file = profile_dir.join(relative_path);
-    if !global_file.exists() || !instance_file.exists() {
-        return Ok(());
-    }
-
-    let instance_meta = fs::symlink_metadata(&instance_file).map_err(|e| {
-        format!(
-            "read instance shared history file metadata failed ({}): {}",
-            display_abs_path(&instance_file),
-            e
-        )
-    })?;
-    if instance_meta.file_type().is_symlink() || !instance_meta.is_file() {
-        return Ok(());
-    }
-    if files_have_same_content(&instance_file, &global_file)? {
-        return Ok(());
-    }
-
-    let backup_path = profile_dir
-        .join(".cockpit-shared-history-backups")
-        .join(Utc::now().format("%Y%m%d%H%M%S%3f").to_string())
-        .join(relative_path);
-    if let Some(parent) = backup_path.parent() {
+    let instance_dir = profile_dir.join(relative_path);
+    let default_dir = default_codex_home.join(relative_path);
+    if let Some(parent) = instance_dir.parent() {
         fs::create_dir_all(parent).map_err(|e| {
             format!(
-                "create shared history backup directory failed ({}): {}",
+                "create isolated directory parent failed ({}): {}",
                 display_abs_path(parent),
                 e
             )
         })?;
     }
-    fs::copy(&instance_file, &backup_path).map_err(|e| {
+
+    if instance_dir.exists() {
+        let metadata = fs::symlink_metadata(&instance_dir).map_err(|e| {
+            format!(
+                "read isolated directory metadata failed ({}): {}",
+                display_abs_path(&instance_dir),
+                e
+            )
+        })?;
+        if metadata.file_type().is_symlink() || metadata_is_reparse_point(&metadata) {
+            backup_history_isolation_path(
+                profile_dir,
+                relative_path,
+                &instance_dir,
+                &default_dir,
+                "remove shared history directory link",
+                false,
+            )?;
+            remove_symlink(&instance_dir)?;
+        } else if metadata.is_dir() {
+            return Ok(());
+        } else {
+            return Err(format!(
+                "isolated history path is not a directory: {}",
+                display_abs_path(&instance_dir)
+            ));
+        }
+    }
+
+    fs::create_dir_all(&instance_dir).map_err(|e| {
         format!(
-            "backup instance history file failed ({} -> {}): {}",
-            display_abs_path(&instance_file),
-            display_abs_path(&backup_path),
+            "create isolated history directory failed ({}): {}",
+            display_abs_path(&instance_dir),
             e
         )
-    })?;
-
-    Ok(())
+    })
 }
 
-fn sync_shared_history_file(
+fn history_file_is_shared_with_default(
+    instance_file: &Path,
+    default_file: &Path,
+    metadata: &fs::Metadata,
+) -> Result<bool, String> {
+    if metadata.file_type().is_symlink() || metadata_is_reparse_point(metadata) {
+        return Ok(true);
+    }
+
+    if !default_file.exists() || !metadata.is_file() {
+        return Ok(false);
+    }
+
+    #[cfg(windows)]
+    {
+        return files_are_same_entry(instance_file, default_file);
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = (instance_file, default_file);
+        Ok(false)
+    }
+}
+
+fn ensure_isolated_file(
     profile_dir: &Path,
     default_codex_home: &Path,
     relative_path: &Path,
+    default_content: &str,
 ) -> Result<(), String> {
-    backup_instance_shared_file_if_needed(profile_dir, default_codex_home, relative_path)?;
-    sync_shared_file(profile_dir, default_codex_home, relative_path)
+    let instance_file = profile_dir.join(relative_path);
+    let default_file = default_codex_home.join(relative_path);
+    if let Some(parent) = instance_file.parent() {
+        fs::create_dir_all(parent).map_err(|e| {
+            format!(
+                "create isolated file parent failed ({}): {}",
+                display_abs_path(parent),
+                e
+            )
+        })?;
+    }
+
+    if instance_file.exists() {
+        let metadata = fs::symlink_metadata(&instance_file).map_err(|e| {
+            format!(
+                "read isolated file metadata failed ({}): {}",
+                display_abs_path(&instance_file),
+                e
+            )
+        })?;
+        if history_file_is_shared_with_default(&instance_file, &default_file, &metadata)? {
+            backup_history_isolation_path(
+                profile_dir,
+                relative_path,
+                &instance_file,
+                &default_file,
+                "break shared history file link",
+                metadata.is_file(),
+            )?;
+            remove_symlink(&instance_file)?;
+        } else if metadata.is_file() {
+            return Ok(());
+        } else {
+            return Err(format!(
+                "isolated history path is not a file: {}",
+                display_abs_path(&instance_file)
+            ));
+        }
+    }
+
+    fs::write(&instance_file, default_content).map_err(|e| {
+        format!(
+            "create isolated history file failed ({}): {}",
+            display_abs_path(&instance_file),
+            e
+        )
+    })
+}
+
+fn ensure_instance_history_isolated(
+    profile_dir: &Path,
+    default_codex_home: &Path,
+) -> Result<(), String> {
+    ensure_isolated_directory(
+        profile_dir,
+        default_codex_home,
+        Path::new(CODEX_SHARED_SESSIONS_DIR_NAME),
+    )?;
+    ensure_isolated_directory(
+        profile_dir,
+        default_codex_home,
+        Path::new(CODEX_SHARED_ARCHIVED_SESSIONS_DIR_NAME),
+    )?;
+    ensure_isolated_file(
+        profile_dir,
+        default_codex_home,
+        Path::new(CODEX_SHARED_SESSION_INDEX_FILE_NAME),
+        "",
+    )?;
+    ensure_isolated_file(
+        profile_dir,
+        default_codex_home,
+        Path::new(CODEX_SHARED_GLOBAL_STATE_FILE_NAME),
+        "{}\n",
+    )?;
+    Ok(())
 }
 
 pub fn ensure_instance_shared_skills(profile_dir: &Path) -> Result<(), String> {
@@ -1072,26 +1285,7 @@ pub fn ensure_instance_shared_skills(profile_dir: &Path) -> Result<(), String> {
         &default_codex_home,
         Path::new(CODEX_SHARED_AGENTS_FILE_NAME),
     )?;
-    sync_shared_directory_preserving_entries(
-        profile_dir,
-        &default_codex_home,
-        Path::new(CODEX_SHARED_SESSIONS_DIR_NAME),
-    )?;
-    sync_shared_directory_preserving_entries(
-        profile_dir,
-        &default_codex_home,
-        Path::new(CODEX_SHARED_ARCHIVED_SESSIONS_DIR_NAME),
-    )?;
-    sync_shared_history_file(
-        profile_dir,
-        &default_codex_home,
-        Path::new(CODEX_SHARED_SESSION_INDEX_FILE_NAME),
-    )?;
-    sync_shared_history_file(
-        profile_dir,
-        &default_codex_home,
-        Path::new(CODEX_SHARED_GLOBAL_STATE_FILE_NAME),
-    )?;
+    ensure_instance_history_isolated(profile_dir, &default_codex_home)?;
 
     Ok(())
 }
@@ -1571,6 +1765,104 @@ mod tests {
             fs::read_to_string(global_sessions.join("new-instance.jsonl"))
                 .expect("read new instance session through global dir"),
             "new instance"
+        );
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn windows_instance_history_isolation_removes_shared_links() {
+        let root = make_temp_dir("codex-history-isolation-test");
+        let default_home = root.join("default");
+        let profile_dir = root.join("instance");
+        let global_sessions = default_home.join("sessions");
+        let global_archived_sessions = default_home.join("archived_sessions");
+        let global_session_index = default_home.join("session_index.jsonl");
+        let global_state = default_home.join(".codex-global-state.json");
+        let instance_sessions = profile_dir.join("sessions");
+        let instance_archived_sessions = profile_dir.join("archived_sessions");
+        let instance_session_index = profile_dir.join("session_index.jsonl");
+        let instance_global_state = profile_dir.join(".codex-global-state.json");
+
+        fs::create_dir_all(&global_sessions).expect("create global sessions");
+        fs::create_dir_all(&global_archived_sessions).expect("create global archived sessions");
+        fs::create_dir_all(&profile_dir).expect("create profile dir");
+        fs::write(global_sessions.join("global.jsonl"), "global").expect("write global session");
+        fs::write(&global_session_index, "{\"id\":\"global\"}\n").expect("write global index");
+        fs::write(&global_state, "{\"project-order\":[]}\n").expect("write global state");
+        create_directory_junction(&global_sessions, &instance_sessions)
+            .expect("create shared sessions junction");
+        create_directory_junction(&global_archived_sessions, &instance_archived_sessions)
+            .expect("create shared archived sessions junction");
+        create_file_symlink(&global_session_index, &instance_session_index)
+            .expect("create shared session index link");
+        create_file_symlink(&global_state, &instance_global_state)
+            .expect("create shared global state link");
+
+        ensure_instance_history_isolated(&profile_dir, &default_home)
+            .expect("isolate history paths");
+
+        let sessions_meta =
+            fs::symlink_metadata(&instance_sessions).expect("read isolated sessions metadata");
+        assert!(sessions_meta.is_dir());
+        assert!(!sessions_meta.file_type().is_symlink());
+        assert!(!instance_sessions.join("global.jsonl").exists());
+
+        let archived_meta = fs::symlink_metadata(&instance_archived_sessions)
+            .expect("read isolated archived sessions metadata");
+        assert!(archived_meta.is_dir());
+        assert!(!archived_meta.file_type().is_symlink());
+
+        let index_meta =
+            fs::symlink_metadata(&instance_session_index).expect("read isolated index metadata");
+        assert!(index_meta.is_file());
+        assert!(!index_meta.file_type().is_symlink());
+        assert_eq!(
+            fs::read_to_string(&instance_session_index).expect("read isolated index"),
+            ""
+        );
+        assert!(global_sessions.join("global.jsonl").exists());
+
+        let global_state_meta =
+            fs::symlink_metadata(&instance_global_state).expect("read isolated global state");
+        assert!(global_state_meta.is_file());
+        assert!(!global_state_meta.file_type().is_symlink());
+        assert_eq!(
+            fs::read_to_string(&instance_global_state).expect("read isolated global state"),
+            "{}\n"
+        );
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn windows_instance_history_isolation_breaks_hard_linked_session_index() {
+        let root = make_temp_dir("codex-history-hardlink-isolation-test");
+        let default_home = root.join("default");
+        let profile_dir = root.join("instance");
+        let global_session_index = default_home.join("session_index.jsonl");
+        let instance_session_index = profile_dir.join("session_index.jsonl");
+
+        fs::create_dir_all(&default_home).expect("create default home");
+        fs::create_dir_all(&profile_dir).expect("create profile dir");
+        fs::write(&global_session_index, "{\"id\":\"global\"}\n").expect("write global index");
+        fs::hard_link(&global_session_index, &instance_session_index)
+            .expect("create hard-linked index");
+
+        ensure_instance_history_isolated(&profile_dir, &default_home)
+            .expect("isolate hard-linked history file");
+
+        assert!(
+            !files_are_same_entry(&instance_session_index, &global_session_index)
+                .expect("compare file entries")
+        );
+        assert_eq!(
+            fs::read_to_string(&instance_session_index).expect("read isolated index"),
+            ""
+        );
+        assert_eq!(
+            fs::read_to_string(&global_session_index).expect("read global index"),
+            "{\"id\":\"global\"}\n"
         );
 
         let _ = fs::remove_dir_all(&root);

@@ -2,6 +2,8 @@ import * as codexInstanceService from '../services/codexInstanceService';
 import type {
   CodexSessionVisibilityRepairSummary,
   CodexInstanceThreadSyncSummary,
+  CodexSharedChatCatalogRecord,
+  CodexSharedChatVisibilitySummary,
   CodexSessionRecord,
   CodexSessionTokenStats,
   CodexSessionTrashSummary,
@@ -14,6 +16,8 @@ type CodexInstanceStoreState = InstanceStoreState & {
   syncThreadsAcrossInstances: () => Promise<CodexInstanceThreadSyncSummary>;
   repairSessionVisibilityAcrossInstances: () => Promise<CodexSessionVisibilityRepairSummary>;
   listSessionsAcrossInstances: () => Promise<CodexSessionRecord[]>;
+  listSharedChatCatalog: (instanceId: string) => Promise<CodexSharedChatCatalogRecord[]>;
+  ensureSharedChatVisibility: (instanceId: string) => Promise<CodexSharedChatVisibilitySummary>;
   getSessionTokenStatsAcrossInstances: (sessionIds: string[]) => Promise<CodexSessionTokenStats[]>;
   moveSessionsToTrashAcrossInstances: (sessionIds: string[]) => Promise<CodexSessionTrashSummary>;
   listTrashedSessionsAcrossInstances: () => Promise<CodexTrashedSessionRecord[]>;
@@ -46,6 +50,20 @@ const listSessionsAcrossInstances = async (): Promise<CodexSessionRecord[]> => {
   return await codexInstanceService.listSessionsAcrossInstances();
 };
 
+const listSharedChatCatalog = async (
+  instanceId: string,
+): Promise<CodexSharedChatCatalogRecord[]> => {
+  return await codexInstanceService.listSharedChatCatalog(instanceId);
+};
+
+const ensureSharedChatVisibility = async (
+  instanceId: string,
+): Promise<CodexSharedChatVisibilitySummary> => {
+  const summary = await codexInstanceService.ensureSharedChatVisibility(instanceId);
+  await typedBaseStore.getState().fetchInstances();
+  return summary;
+};
+
 const getSessionTokenStatsAcrossInstances = async (
   sessionIds: string[],
 ): Promise<CodexSessionTokenStats[]> => {
@@ -76,6 +94,8 @@ typedBaseStore.setState({
   syncThreadsAcrossInstances,
   repairSessionVisibilityAcrossInstances,
   listSessionsAcrossInstances,
+  listSharedChatCatalog,
+  ensureSharedChatVisibility,
   getSessionTokenStatsAcrossInstances,
   moveSessionsToTrashAcrossInstances,
   listTrashedSessionsAcrossInstances,

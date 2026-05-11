@@ -59,6 +59,7 @@ pub struct CodexInstanceLaunchInfo {
     pub launch_command: String,
 }
 
+#[cfg_attr(target_os = "windows", allow(dead_code))]
 struct CodexLaunchContext {
     user_data_dir: String,
     working_dir: Option<String>,
@@ -182,12 +183,12 @@ fn posix_shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\"'\"'"))
 }
 
+#[cfg_attr(target_os = "windows", allow(unused_variables))]
 fn build_launch_command(context: &CodexLaunchContext) -> Result<String, String> {
-    let runtime = modules::codex_wakeup::resolve_cli_runtime()?;
-    let parsed_args = modules::process::parse_extra_args(&context.extra_args);
-
     #[cfg(not(target_os = "windows"))]
     {
+        let runtime = modules::codex_wakeup::resolve_cli_runtime()?;
+        let parsed_args = modules::process::parse_extra_args(&context.extra_args);
         let mut command_parts = Vec::new();
         if let Some(ref dir) = context.working_dir {
             if !dir.trim().is_empty() {
@@ -329,6 +330,20 @@ pub async fn codex_repair_session_visibility_across_instances(
 pub async fn codex_list_sessions_across_instances(
 ) -> Result<Vec<modules::codex_session_manager::CodexSessionRecord>, String> {
     modules::codex_session_manager::list_sessions_across_instances()
+}
+
+#[tauri::command]
+pub async fn codex_list_shared_chat_catalog(
+    instance_id: String,
+) -> Result<Vec<modules::codex_session_manager::CodexSharedChatCatalogRecord>, String> {
+    modules::codex_session_manager::list_shared_chat_catalog(&instance_id)
+}
+
+#[tauri::command]
+pub async fn codex_ensure_shared_chat_visibility(
+    instance_id: String,
+) -> Result<modules::codex_session_manager::CodexSharedChatVisibilitySummary, String> {
+    modules::codex_session_manager::ensure_shared_chat_visibility_for_instance(&instance_id)
 }
 
 #[tauri::command]
@@ -481,6 +496,9 @@ pub async fn codex_start_instance(instance_id: String) -> Result<CodexInstancePr
         if let Some(ref account_id) = default_bind_account_id {
             inject_bound_account_to_profile(&default_dir, account_id).await?;
         }
+        modules::codex_session_manager::ensure_shared_chat_visibility_for_instance(
+            DEFAULT_INSTANCE_ID,
+        )?;
 
         if default_settings.launch_mode == InstanceLaunchMode::Cli {
             let context = resolve_instance_launch_context(DEFAULT_INSTANCE_ID)?;
@@ -497,7 +515,8 @@ pub async fn codex_start_instance(instance_id: String) -> Result<CodexInstancePr
 
         modules::process::ensure_codex_launch_path_configured()?;
         let extra_args = modules::process::parse_extra_args(&default_settings.extra_args);
-        let pid = modules::process::start_codex_default(&extra_args)?;
+        let pid =
+            modules::process::start_codex_with_args(&default_dir.to_string_lossy(), &extra_args)?;
         let updated = modules::codex_instance::update_default_pid(Some(pid))?;
         let running = modules::process::is_pid_running(pid);
         return Ok(default_instance_view(
@@ -523,17 +542,12 @@ pub async fn codex_start_instance(instance_id: String) -> Result<CodexInstancePr
         let _ = modules::codex_instance::update_instance_pid(&instance.id, None)?;
     }
 
-    if let Err(error) = modules::codex_thread_sync::sync_threads_across_instances() {
-        modules::logger::log_warn(&format!(
-            "Codex session sync before instance start failed: {}",
-            error
-        ));
-    }
     modules::codex_instance::ensure_instance_shared_skills(Path::new(&instance.user_data_dir))?;
 
     if let Some(ref account_id) = instance.bind_account_id {
         inject_bound_account_to_profile(Path::new(&instance.user_data_dir), account_id).await?;
     }
+    modules::codex_session_manager::ensure_shared_chat_visibility_for_instance(&instance.id)?;
 
     if instance.launch_mode == InstanceLaunchMode::Cli {
         let context = resolve_instance_launch_context(&instance.id)?;

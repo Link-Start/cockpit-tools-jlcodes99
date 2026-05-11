@@ -4066,6 +4066,12 @@ fn codex_electron_user_data_dir_for_home(codex_home: &str) -> Option<String> {
     if trimmed.is_empty() {
         return None;
     }
+    let default_codex_home = crate::modules::codex_instance::get_default_codex_home().ok()?;
+    if normalize_path_for_compare(trimmed)
+        == normalize_path_for_compare(&default_codex_home.to_string_lossy())
+    {
+        return get_default_codex_electron_user_data_dir_for_os();
+    }
     Some(
         Path::new(trimmed)
             .join("electron-user-data")
@@ -4086,7 +4092,8 @@ fn get_default_codex_electron_user_data_dir_for_os() -> Option<String> {
 
 #[cfg(target_os = "windows")]
 fn resolve_codex_target_and_fallback(codex_home: Option<&str>) -> Option<(String, bool)> {
-    let default_codex_home = crate::modules::codex_account::get_codex_home()
+    let default_codex_home = crate::modules::codex_instance::get_default_codex_home()
+        .ok()?
         .to_string_lossy()
         .to_string();
     let requested_user_data_dir = codex_home.and_then(|value| {
@@ -9276,6 +9283,24 @@ mod tests {
         assert_eq!(
             resolve_codex_pid_from_entries(None, Some("C:\\Profiles\\Codex Two"), &entries),
             Some(200)
+        );
+    }
+
+    #[test]
+    fn codex_windows_default_home_uses_os_electron_user_data_dir() {
+        let default_home = crate::modules::codex_instance::get_default_codex_home()
+            .expect("default Codex home")
+            .to_string_lossy()
+            .to_string();
+        let appdata = std::env::var("APPDATA").expect("APPDATA must be set on Windows");
+        let expected = Path::new(&appdata)
+            .join("Codex")
+            .to_string_lossy()
+            .to_string();
+
+        assert_eq!(
+            codex_electron_user_data_dir_for_home(&default_home),
+            Some(expected)
         );
     }
 }
