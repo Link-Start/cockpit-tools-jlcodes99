@@ -4976,7 +4976,7 @@ export function CodexAccountsPage() {
       return (
         <div
           key={groupKey ? `${groupKey}-${account.id}` : account.id}
-          className={`codex-account-card ${isCurrent ? "current" : ""} ${isSelected ? "selected" : ""} ${isNewApiAccount ? "new-api-exclusive" : ""}`}
+          className={`account-card codex-account-card ${isCurrent ? "current" : ""} ${isSelected ? "selected" : ""} ${isNewApiAccount ? "new-api-exclusive" : ""}`}
         >
           <div className="card-top">
             <div className="card-select">
@@ -5368,7 +5368,7 @@ export function CodexAccountsPage() {
     return (
       <div
         key="codex-local-access-card"
-        className={`codex-account-card folder-inline-card codex-local-access-card codex-local-access-card--${overviewLayoutMode} ${
+        className={`account-card codex-account-card folder-inline-card codex-local-access-card codex-local-access-card--${overviewLayoutMode} ${
           isLocalAccessCurrent ? "current" : ""
         } ${showLocalAccessDetails ? "is-expanded" : "is-collapsed"}`}
       >
@@ -5810,7 +5810,7 @@ export function CodexAccountsPage() {
           return (
             <div
               key={`codex-folder-${group.id}`}
-              className="codex-account-card folder-inline-card codex-group-folder-card"
+              className="account-card codex-account-card folder-inline-card codex-group-folder-card"
               onClick={() => handleEnterGroup(group.id)}
             >
               <div className="folder-inline-header">
@@ -6740,7 +6740,7 @@ export function CodexAccountsPage() {
 
   return (
     <div
-      className={`codex-accounts-page codex-accounts-page--${overviewLayoutMode}`}
+      className={`codex-accounts-page accounts-page codex-accounts-page--${overviewLayoutMode}`}
     >
       <CodexOverviewTabsHeader
         active={activeTab}

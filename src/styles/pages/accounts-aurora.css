@@ -2,6 +2,11 @@
    Accounts Page - Aurora Refresh
    ============================================ */
 
+.accounts-page {
+  --accounts-primary: #1d4ed8;
+  --accounts-accent: #0ea5a5;
+}
+
 /* .main-content.accounts-page {
   position: relative;
   isolation: isolate;
@@ -1015,6 +1020,15 @@
 
 [data-theme="dark"] .accounts-page .quota-progress-track {
   background: rgba(148, 163, 184, 0.18);
+}
+
+[data-theme="dark"] .accounts-page .card-quota-grid,
+[data-theme="dark"] .accounts-page .card-quota-list {
+  background: rgba(15, 23, 42, 0.42);
+}
+
+[data-theme="dark"] .accounts-page .quota-compact-bar-track {
+  background: rgba(226, 232, 240, 0.14);
 }
 
 [data-theme="dark"] .accounts-page .quota-name,
