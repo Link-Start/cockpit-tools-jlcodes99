@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Codex plan badges now reuse the raw account plan value with shared styling**: account cards, summaries, and routing views keep backend/local plan labels unchanged while using one presentation path for badge classes.
 
 ### Fixed
+- **Windows Antigravity 2.0 local data directory and process detection now support `Antigravity.exe` installs**: when the official client is installed under `Programs\Antigravity` and stores user data in `%APPDATA%\Antigravity`, local import, default profile injection, switching, launch, and PID matching prefer that layout while retaining the `Antigravity IDE` fallback.
 - **Legacy Antigravity account switching no longer fails when installed-version metadata is unavailable or unparseable**: cached known versions still block Antigravity `2.0.0` and later, while missing cache data allows the legacy path to proceed.
 - **Codex custom routing account lists now keep their header and rows within a bounded scroll area**: the modal body scrolls correctly and plan badges keep stable sizing in narrow layouts.
 
