@@ -1127,8 +1127,18 @@ fn normalize_workspace_root(value: &str) -> Option<String> {
         value = stripped;
     }
 
-    let mut normalized = value.replace('/', "\\");
-    while normalized.len() > 3 && (normalized.ends_with('\\') || normalized.ends_with('/')) {
+    let is_windows_path = value.starts_with("\\\\")
+        || value
+            .as_bytes()
+            .get(1)
+            .is_some_and(|separator| *separator == b':');
+    let separator = if is_windows_path { '\\' } else { '/' };
+    let mut normalized = if is_windows_path {
+        value.replace('/', "\\")
+    } else {
+        value.replace('\\', "/")
+    };
+    while normalized.len() > 3 && normalized.ends_with(separator) {
         normalized.pop();
     }
 
@@ -1588,5 +1598,25 @@ mod tests {
             original_modified_at
         );
         fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+    }
+
+    #[test]
+    fn normalize_workspace_root_preserves_posix_paths() {
+        assert_eq!(
+            normalize_workspace_root("/Users/demo/project/").as_deref(),
+            Some("/Users/demo/project")
+        );
+    }
+
+    #[test]
+    fn normalize_workspace_root_normalizes_windows_paths() {
+        assert_eq!(
+            normalize_workspace_root(r"\\?\C:\Users\demo\project\").as_deref(),
+            Some(r"C:\Users\demo\project")
+        );
+        assert_eq!(
+            normalize_workspace_root("C:/Users/demo/project/").as_deref(),
+            Some(r"C:\Users\demo\project")
+        );
     }
 }
