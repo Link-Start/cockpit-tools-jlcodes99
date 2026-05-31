@@ -7,6 +7,35 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
 ---
+## [0.24.10] - 2026-05-31
+
+### 新增
+- **Codex API 服务测试现使用内置流式对话游乐场**：API 服务测试操作会打开独立对话弹框，通过本地服务发起真实 `/v1/chat/completions` 请求，并将 assistant 输出流式回显到弹框中，不再依赖 Codex CLI 执行。
+- **Codex API 服务卡片现可快速查看账号池健康**：账号卡片与快速配置面板会汇总可用、异常和冷却账号，并与额度池统计分开展示。
+- **Codex 多实例会话记录新增手动与自动同步设置面板**：Codex 实例页新增记录同步设置弹框，保留手动全量同步，并可在所有 Codex 实例停止后自动合并本地会话记录。
+- **Codex macOS/Windows 多实例启动现适配最新版 Codex App 运行方式**：macOS 与 Windows 上的受管 Codex 实例会同时写入 `CODEX_ELECTRON_USER_DATA_PATH` 与 `--user-data-dir`，让每个 `CODEX_HOME` 使用稳定且隔离的 Electron App 数据目录。
+- **macOS App 包现包含显式 Info.plist 覆盖**：打包产物使用 Cockpit Tools 显示名称，并将 `LSRequiresCarbon` 设为 false。
+- **唤醒任务现支持可选确认模式**：Codex 定时唤醒任务可先发送通知，并仅在用户于超时时间内确认后执行，便于在唤醒前确认 VPN 或代理环境已就绪。感谢 @Ac-spider。
+- **账号现可单独覆盖自动刷新间隔**：账号级刷新设置可覆盖平台默认值，或对指定账号禁用自动刷新；未单独设置的账号继续继承平台默认配置。感谢 @Ac-spider。
+
+### 变更
+- **Codex API 服务调度现跳过已知异常账号**：连续出现阻断类鉴权、账号准备、Free 账号限制或额度失败的账号会从旧网关路由和 Sidecar 启动 manifest 中排除，优先使用健康账号。
+- **Codex API 服务诊断现改为直接请求本地网关**：服务测试通过 Cockpit 的 Tauri 后端调用本地 OpenAI 兼容端点，避免 Codex CLI 特有行为，同时保留本地网关、API Key、模型和上游响应校验。
+- **Codex OAuth 绑定现只允许带 `refresh_token` 的 OAuth 账号**：API Key 账号绑定与 Codex API 服务绑定都会按 `refresh_token` 过滤和校验，API 服务状态清理时也会移除不符合条件的旧绑定。
+- **Codex API 服务客户端 Base URL 主机现可配置**：可选择 `localhost` 或 `127.0.0.1` 写入 Codex Provider 并复制给客户端，不改变服务监听地址。
+- **添加账号弹框不再因点击遮罩而关闭**：各平台添加账号弹框仅能通过明确的关闭/返回操作或 Esc 关闭，避免误触中断填写。
+- **Codex API 服务账号行更靠前展示 Token 用量**：账号级统计会在请求结果详情旁展示紧凑 Token 用量，旧本地访问账号表格也将统计列前置到配额列之前。
+- **实例工具栏操作改为紧凑图标按钮**：新建、全部启动、全部关闭、刷新与 Codex 同步设置操作统一为带无障碍标签的图标按钮。
+
+### 修复
+- **Tauri 启动不再因 notification 插件配置失败**：应用配置不再向 `plugins.notification` 传入无效对象，避免应用初始化阶段 panic。
+- **Antigravity Windows 账号切换现可容忍版本检测失败**：当无法检测已安装 Antigravity 版本时会安全回退，并同时尝试系统凭据与旧版 SQLite 状态数据库两条注入路径；仅在两者都失败时才报错。感谢 @xdd666t。
+- **Antigravity Windows 版本检测现通过 PowerShell 参数传递可执行文件路径**：避免路径转义问题，保留 UTF-8 JSON 输出，并继续隐藏启动时的控制台窗口。
+- **Codex API 服务网关探测不再重复拼接 `/v1` 路径**：fallback 健康检查会保留已包含 `/v1` 的 Base URL，避免本地 API 服务诊断误报 `endpoint not supported`。感谢 @wjh4sg。
+- **Windows Antigravity 2.0 本地数据目录与进程识别现兼容 `Antigravity.exe` 安装**：本地导入、默认实例注入、切号、启动与 PID 匹配会优先使用 `%APPDATA%\Antigravity` 和 `Programs\Antigravity` 布局，并继续回退兼容 `Antigravity IDE`。感谢 @li6535202。
+- **Antigravity 安装版本检测现覆盖常见 Linux 安装目录**：Linux 检测会纳入 Antigravity 与 Antigravity IDE 在 `/usr/share` 和 `/opt` 下的安装路径。感谢 @vadbes46。
+
+---
 ## [0.24.9] - 2026-05-26
 
 ### 新增

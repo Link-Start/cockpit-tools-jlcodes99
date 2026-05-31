@@ -37,6 +37,7 @@ pub struct CodexInstanceProfileView {
     pub initialized: bool,
     pub is_default: bool,
     pub follow_local_account: bool,
+    pub auto_sync_threads: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub codex_launch_credential_change: Option<CodexLaunchCredentialChange>,
 }
@@ -59,6 +60,7 @@ impl CodexInstanceProfileView {
             initialized,
             is_default: false,
             follow_local_account: false,
+            auto_sync_threads: false,
             codex_launch_credential_change: None,
         }
     }
@@ -138,6 +140,7 @@ fn default_instance_view(
         initialized: modules::instance::is_profile_initialized(default_dir),
         is_default: true,
         follow_local_account: default_settings.follow_local_account,
+        auto_sync_threads: default_settings.auto_sync_threads,
         codex_launch_credential_change: None,
     }
 }
@@ -187,6 +190,20 @@ fn resolve_instance_launch_context(instance_id: &str) -> Result<CodexLaunchConte
 }
 
 fn sync_codex_threads_across_idle_instances(context: &str) {
+    let default_settings = match modules::codex_instance::load_default_settings() {
+        Ok(settings) => settings,
+        Err(error) => {
+            modules::logger::log_warn(&format!(
+                "[Codex Thread Sync] {}: skipped automatic idle sync, failed to read settings: {}",
+                context, error
+            ));
+            return;
+        }
+    };
+    if !default_settings.auto_sync_threads {
+        return;
+    }
+
     match modules::codex_thread_sync::sync_threads_across_instances_if_all_stopped() {
         Ok(Some(summary)) => {
             if summary.total_synced_thread_count > 0 {
@@ -529,6 +546,7 @@ pub async fn codex_update_instance(
     follow_local_account: Option<bool>,
     launch_mode: Option<InstanceLaunchMode>,
     app_speed: Option<CodexAppSpeed>,
+    auto_sync_threads: Option<bool>,
 ) -> Result<CodexInstanceProfileView, String> {
     if instance_id == DEFAULT_INSTANCE_ID {
         let default_dir = modules::codex_instance::get_default_codex_home()?;
@@ -537,6 +555,7 @@ pub async fn codex_update_instance(
             extra_args,
             follow_local_account,
             launch_mode,
+            auto_sync_threads,
         )?;
         if let Some(speed) = app_speed {
             updated = modules::codex_instance::update_default_app_speed(speed.clone())?;

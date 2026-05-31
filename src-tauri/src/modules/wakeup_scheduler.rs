@@ -7,6 +7,7 @@ use std::time::Duration;
 use chrono::{DateTime, Datelike, Local, TimeZone, Timelike};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
+use tauri_plugin_notification::NotificationExt;
 use tokio::time::sleep;
 
 use crate::modules;
@@ -124,7 +125,8 @@ struct PendingConfirmation {
     timeout_at: i64,
 }
 
-static PENDING_CONFIRMATIONS: OnceLock<Mutex<HashMap<String, PendingConfirmation>>> = OnceLock::new();
+static PENDING_CONFIRMATIONS: OnceLock<Mutex<HashMap<String, PendingConfirmation>>> =
+    OnceLock::new();
 
 fn pending_confirmations() -> &'static Mutex<HashMap<String, PendingConfirmation>> {
     PENDING_CONFIRMATIONS.get_or_init(|| Mutex::new(HashMap::new()))
@@ -366,10 +368,7 @@ pub fn ensure_started(app: AppHandle) {
             run_scheduler_once(&app).await;
             // 检查确认超时，避免因前端未调用导致确认任务堆积
             if let Err(e) = check_and_handle_timeouts(&app).await {
-                modules::logger::log_warn(&format!(
-                    "[WakeupTasks] 超时检查失败: {}",
-                    e
-                ));
+                modules::logger::log_warn(&format!("[WakeupTasks] 超时检查失败: {}", e));
             }
             sleep(Duration::from_secs(30)).await;
         }
@@ -1076,13 +1075,14 @@ async fn send_confirmation_notification(
         models.join(", ")
     );
 
-    match app.notification()
+    match app
+        .notification()
         .builder()
         .title("唤醒任务待确认")
         .body(&body)
         .show()
     {
-        Ok(notification_id) => notification_id,
+        Ok(()) => 0,
         Err(e) => {
             modules::logger::log_warn(&format!("[WakeupTasks] 发送通知失败: {}", e));
             0
@@ -1116,10 +1116,7 @@ fn store_pending_confirmation(
     }
 }
 
-pub async fn execute_pending_confirmation(
-    app: &AppHandle,
-    task_id: &str,
-) -> Result<(), String> {
+pub async fn execute_pending_confirmation(app: &AppHandle, task_id: &str) -> Result<(), String> {
     let pending = {
         let mut lock = lock_or_recover(pending_confirmations(), "pending confirmations lock");
         lock.remove(task_id)
@@ -1128,7 +1125,13 @@ pub async fn execute_pending_confirmation(
     if let Some(pending) = pending {
         // 检查是否超时
         if chrono::Local::now().timestamp() > pending.timeout_at {
-            record_task_history(app, &pending.task, &pending.trigger_source, "skipped_timeout").await;
+            record_task_history(
+                app,
+                &pending.task,
+                &pending.trigger_source,
+                "skipped_timeout",
+            )
+            .await;
             return Ok(());
         }
 
@@ -1138,7 +1141,8 @@ pub async fn execute_pending_confirmation(
             &pending.task,
             &pending.trigger_source,
             pending.task.schedule.selected_models.clone(),
-        ).await;
+        )
+        .await;
     }
 
     Ok(())
@@ -1167,7 +1171,13 @@ pub async fn check_and_handle_timeouts(app: &AppHandle) -> Result<(), String> {
     };
 
     for (_task_id, pending) in timed_out_tasks {
-        record_task_history(app, &pending.task, &pending.trigger_source, "skipped_timeout").await;
+        record_task_history(
+            app,
+            &pending.task,
+            &pending.trigger_source,
+            "skipped_timeout",
+        )
+        .await;
     }
 
     Ok(())
@@ -1276,7 +1286,11 @@ async fn run_task_with_models(
                 model_id: model.clone(),
                 prompt: Some(prompt.clone()),
                 success,
-                status: if success { Some("success".to_string()) } else { Some("failed".to_string()) },
+                status: if success {
+                    Some("success".to_string())
+                } else {
+                    Some("failed".to_string())
+                },
                 message,
                 duration: Some(duration),
             });

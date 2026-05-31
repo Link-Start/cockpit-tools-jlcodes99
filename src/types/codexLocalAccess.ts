@@ -1,29 +1,30 @@
-export type CodexLocalAccessAddressKind = 'local' | 'lan';
-export type CodexLocalAccessScope = 'localhost' | 'lan';
+export type CodexLocalAccessAddressKind = "local" | "lan";
+export type CodexLocalAccessScope = "localhost" | "lan";
+export type CodexLocalAccessClientBaseUrlHost = "localhost" | "127.0.0.1";
 export type CodexLocalAccessImageGenerationMode =
-  | 'enabled'
-  | 'images_only'
-  | 'disabled';
-export type CodexLocalAccessGatewayMode = 'legacy' | 'sidecar';
+  | "enabled"
+  | "images_only"
+  | "disabled";
+export type CodexLocalAccessGatewayMode = "legacy" | "sidecar";
 export type CodexLocalAccessRequestKind =
-  | 'text'
-  | 'image_generation'
-  | 'image_edit'
-  | 'other';
+  | "text"
+  | "image_generation"
+  | "image_edit"
+  | "other";
 export type CodexLocalAccessImageGenerationStatus =
-  | 'unknown'
-  | 'available'
-  | 'unavailable'
-  | 'disabled';
+  | "unknown"
+  | "available"
+  | "unavailable"
+  | "disabled";
 
 export type CodexLocalAccessRoutingStrategy =
-  | 'auto'
-  | 'quota_high_first'
-  | 'quota_low_first'
-  | 'plan_high_first'
-  | 'plan_low_first'
-  | 'expiry_soon_first'
-  | 'custom';
+  | "auto"
+  | "quota_high_first"
+  | "quota_low_first"
+  | "plan_high_first"
+  | "plan_low_first"
+  | "expiry_soon_first"
+  | "custom";
 
 export interface CodexLocalAccessCustomRoutingRule {
   accountId: string;
@@ -95,6 +96,7 @@ export interface CodexLocalAccessCollection {
   apiKey: string;
   apiKeys: CodexLocalAccessApiKey[];
   accessScope: CodexLocalAccessScope;
+  clientBaseUrlHost: CodexLocalAccessClientBaseUrlHost;
   imageGenerationMode: CodexLocalAccessImageGenerationMode;
   gatewayMode: CodexLocalAccessGatewayMode;
   upstreamProxyUrl?: string | null;
@@ -219,7 +221,7 @@ export interface CodexLocalAccessUsageEventPage {
 export interface CodexLocalAccessRequestLogQuery {
   page: number;
   pageSize: number;
-  statsRange?: 'daily' | 'weekly' | 'monthly' | null;
+  statsRange?: "daily" | "weekly" | "monthly" | null;
   modelQuery?: string | null;
   accountQuery?: string | null;
   apiKeyQuery?: string | null;
@@ -292,9 +294,39 @@ export interface CodexLocalAccessTestFailure {
   status: number | null;
   modelId: string | null;
   detail: string | null;
-  cliOutput: string | null;
   gatewayOutput: string | null;
 }
+
+export interface CodexLocalAccessChatMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+export interface CodexLocalAccessChatResult {
+  modelId: string;
+  latencyMs: number | null;
+  output: string | null;
+  failure: CodexLocalAccessTestFailure | null;
+}
+
+export type CodexLocalAccessChatStreamEvent =
+  | {
+      sessionId: string;
+      type: "delta";
+      content?: string;
+      reasoning?: string;
+    }
+  | {
+      sessionId: string;
+      type: "done";
+      modelId: string;
+      latencyMs: number | null;
+    }
+  | {
+      sessionId: string;
+      type: "error";
+      failure: CodexLocalAccessTestFailure;
+    };
 
 export interface CodexLocalAccessPortCleanupResult {
   killedCount: number;

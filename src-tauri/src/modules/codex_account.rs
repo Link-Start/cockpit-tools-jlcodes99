@@ -1261,7 +1261,7 @@ fn is_missing_refresh_token_reason(reason: &str) -> bool {
     reason.contains("缺少 refresh_token")
 }
 
-fn account_has_refresh_token(account: &CodexAccount) -> bool {
+pub(crate) fn account_has_refresh_token(account: &CodexAccount) -> bool {
     account
         .tokens
         .refresh_token
@@ -3252,6 +3252,9 @@ fn validate_api_key_bound_oauth_account(
         load_account(&bound_id).ok_or_else(|| format!("绑定的 OAuth 账号不存在: {}", bound_id))?;
     if oauth_account.is_api_key_auth() {
         return Err("只能绑定 OAuth 账号，不能绑定 API Key 账号".to_string());
+    }
+    if !account_has_refresh_token(&oauth_account) {
+        return Err("只能绑定带 refresh_token 的 OAuth 账号".to_string());
     }
 
     Ok(oauth_account)

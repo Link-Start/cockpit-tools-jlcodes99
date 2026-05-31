@@ -22,6 +22,8 @@ const CODEX_SHARED_AGENTS_FILE_NAME: &str = "AGENTS.md";
 const CODEX_SHARED_VENDOR_IMPORTS_SKILLS_DIR: &str = "vendor_imports/skills";
 #[cfg(target_os = "windows")]
 const CODEX_WINDOWS_APP_DATA_DIR_NAME: &str = "codex-app-data";
+#[cfg(target_os = "macos")]
+const CODEX_MACOS_APP_DATA_DIR_NAME: &str = "codex-app-data";
 
 pub fn is_api_service_bind_account_id(account_id: &str) -> bool {
     account_id.trim() == CODEX_API_SERVICE_BIND_ACCOUNT_ID
@@ -80,6 +82,7 @@ pub fn update_default_settings(
     extra_args: Option<String>,
     follow_local_account: Option<bool>,
     launch_mode: Option<InstanceLaunchMode>,
+    auto_sync_threads: Option<bool>,
 ) -> Result<DefaultInstanceSettings, String> {
     let _lock = CODEX_INSTANCE_STORE_LOCK
         .lock()
@@ -107,6 +110,10 @@ pub fn update_default_settings(
 
     if let Some(mode) = launch_mode {
         settings.launch_mode = mode;
+    }
+
+    if let Some(enabled) = auto_sync_threads {
+        settings.auto_sync_threads = enabled;
     }
 
     let updated = settings.clone();
@@ -228,6 +235,23 @@ pub fn get_windows_app_user_data_dir(codex_home: &Path) -> Result<PathBuf, Strin
 pub fn delete_windows_app_user_data_dir(codex_home: &Path) -> Result<(), String> {
     let app_user_data_dir = get_windows_app_user_data_dir(codex_home)?;
     modules::instance::delete_instance_directory(&app_user_data_dir)
+}
+
+#[cfg(target_os = "macos")]
+fn normalize_macos_codex_home_for_hash(path: &Path) -> String {
+    let resolved = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    resolved.to_string_lossy().to_string()
+}
+
+#[cfg(target_os = "macos")]
+pub fn get_macos_app_user_data_dir(codex_home: &Path) -> Result<PathBuf, String> {
+    let root = get_default_instances_root_dir()?
+        .parent()
+        .ok_or("无法获取 Codex 实例根目录")?
+        .join(CODEX_MACOS_APP_DATA_DIR_NAME);
+    let normalized = normalize_macos_codex_home_for_hash(codex_home);
+    let digest = format!("{:x}", md5::compute(normalized.as_bytes()));
+    Ok(root.join(digest))
 }
 
 #[cfg(unix)]

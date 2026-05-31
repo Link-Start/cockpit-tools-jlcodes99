@@ -7294,16 +7294,38 @@ pub fn start_codex_with_args(codex_home: &str, extra_args: &[String]) -> Result<
         // 如果指定了 codex_home 则需要回退到直接执行
         if !codex_home_trimmed.is_empty() {
             if let Ok(launch_path) = resolve_codex_launch_path() {
+                let app_user_data_dir =
+                    crate::modules::codex_instance::get_macos_app_user_data_dir(Path::new(
+                        codex_home_trimmed,
+                    ))?;
+                std::fs::create_dir_all(&app_user_data_dir).map_err(|e| {
+                    format!(
+                        "创建 Codex macOS 实例运行目录失败 ({}): {}",
+                        app_user_data_dir.to_string_lossy(),
+                        e
+                    )
+                })?;
+
                 let mut cmd = Command::new(&launch_path);
                 apply_managed_proxy_env_to_command(&mut cmd);
                 sanitize_macos_gui_launch_env(&mut cmd);
                 cmd.env("CODEX_HOME", codex_home_trimmed);
+                cmd.env("CODEX_ELECTRON_USER_DATA_PATH", &app_user_data_dir);
                 for arg in &args {
                     cmd.arg(arg);
                 }
+                cmd.arg(format!(
+                    "--user-data-dir={}",
+                    app_user_data_dir.to_string_lossy()
+                ));
                 let child =
                     spawn_detached_unix(&mut cmd).map_err(|e| format!("启动 Codex 失败: {}", e))?;
-                crate::modules::logger::log_info("Codex 启动命令已发送（直接执行，带 CODEX_HOME）");
+                crate::modules::logger::log_info(&format!(
+                    "[Codex Start] macOS managed instance using --user-data-dir and CODEX_ELECTRON_USER_DATA_PATH; codex_home={} electron_user_data={} launch_path={}",
+                    summarize_text_for_process_log(codex_home_trimmed, 96),
+                    app_user_data_dir.to_string_lossy(),
+                    launch_path.to_string_lossy()
+                ));
                 // 轮询获取真实 PID
                 let probe_started = Instant::now();
                 let timeout = Duration::from_secs(6);
@@ -7374,11 +7396,15 @@ pub fn start_codex_with_args(codex_home: &str, extra_args: &[String]) -> Result<
                 cmd.arg(trimmed);
             }
         }
+        cmd.arg(format!(
+            "--user-data-dir={}",
+            app_user_data_dir.to_string_lossy()
+        ));
 
         let child =
             spawn_command_with_trace(&mut cmd).map_err(|e| format!("启动 Codex 失败: {}", e))?;
         crate::modules::logger::log_info(&format!(
-            "[Codex Start] Windows 实例启动命令已发送 launch_path={} codex_home={} app_user_data_dir={} pid={}",
+            "[Codex Start] Windows managed instance using --user-data-dir and CODEX_ELECTRON_USER_DATA_PATH; launch_path={} codex_home={} app_user_data_dir={} pid={}",
             launch_path.to_string_lossy(),
             summarize_text_for_process_log(codex_home_trimmed, 96),
             app_user_data_dir.to_string_lossy(),

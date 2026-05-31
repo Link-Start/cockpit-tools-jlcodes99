@@ -137,8 +137,18 @@ pub fn record_status(
         trigger_type: "scheduled".to_string(),
         trigger_source: trigger_source.to_string(),
         task_name: Some(task.name.clone()),
-        account_email: task.schedule.selected_accounts.first().cloned().unwrap_or_default(),
-        model_id: task.schedule.selected_models.first().cloned().unwrap_or_default(),
+        account_email: task
+            .schedule
+            .selected_accounts
+            .first()
+            .cloned()
+            .unwrap_or_default(),
+        model_id: task
+            .schedule
+            .selected_models
+            .first()
+            .cloned()
+            .unwrap_or_default(),
         prompt: task.schedule.custom_prompt.clone(),
         success: status == "success",
         status: Some(status.to_string()),

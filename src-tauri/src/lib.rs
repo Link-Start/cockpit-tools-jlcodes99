@@ -542,6 +542,7 @@ pub fn run() {
             commands::codex::codex_local_access_update_gateway_mode,
             commands::codex::codex_local_access_update_debug_logs,
             commands::codex::codex_local_access_update_access_scope,
+            commands::codex::codex_local_access_update_client_base_url_host,
             commands::codex::codex_local_access_update_image_generation_mode,
             commands::codex::codex_local_access_create_api_key,
             commands::codex::codex_local_access_update_api_key,
@@ -550,6 +551,8 @@ pub fn run() {
             commands::codex::codex_local_access_set_enabled,
             commands::codex::codex_local_access_activate,
             commands::codex::codex_local_access_test,
+            commands::codex::codex_local_access_chat_test,
+            commands::codex::codex_local_access_chat_test_stream,
             // GitHub Copilot Commands
             commands::github_copilot::list_github_copilot_accounts,
             commands::github_copilot::delete_github_copilot_account,
