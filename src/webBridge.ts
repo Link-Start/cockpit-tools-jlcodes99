@@ -3,7 +3,7 @@ type BridgeInvokeResponse =
   | { ok: false; error: unknown };
 
 type CallbackEntry = {
-  callback: (...args: unknown[]) => void;
+  callback: (...args: unknown[]) => unknown;
   once: boolean;
 };
 
@@ -30,7 +30,7 @@ const bridgeAnyWindow = window as unknown as {
       currentWebview: { label: string };
     };
     invoke: (cmd: string, args?: Record<string, unknown>, options?: unknown) => Promise<unknown>;
-    transformCallback: (callback: (...args: unknown[]) => void, once?: boolean) => number;
+    transformCallback: (callback: (...args: unknown[]) => unknown, once?: boolean) => number;
     runCallback: (id: number, ...args: unknown[]) => void;
     unregisterCallback: (id: number) => void;
   };
@@ -106,12 +106,25 @@ if (!bridgeAnyWindow.__TAURI_INTERNALS__) {
     return title ? `${title}\n\n${message}` : message;
   };
 
+  const invokeCallbackSafely = (callback: (...args: unknown[]) => unknown, ...args: unknown[]) => {
+    try {
+      const result = callback(...args);
+      if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
+        void (result as PromiseLike<unknown>).then(undefined, (error) => {
+          console.error('[WebBridge] event callback failed:', error);
+        });
+      }
+    } catch (error) {
+      console.error('[WebBridge] event callback failed:', error);
+    }
+  };
+
   const dispatchWebEvent = (message: WebEventMessage) => {
     for (const [eventId, listener] of eventListeners) {
       if (listener.event !== message.event) continue;
       const entry = callbacks.get(listener.handlerId);
       if (!entry) continue;
-      entry.callback({ event: message.event, payload: message.payload, id: eventId });
+      invokeCallbackSafely(entry.callback, { event: message.event, payload: message.payload, id: eventId });
       if (entry.once) {
         callbacks.delete(listener.handlerId);
         eventListeners.delete(eventId);
@@ -241,7 +254,7 @@ if (!bridgeAnyWindow.__TAURI_INTERNALS__) {
     runCallback(id, ...args) {
       const entry = callbacks.get(id);
       if (!entry) return;
-      entry.callback(...args);
+      invokeCallbackSafely(entry.callback, ...args);
       if (entry.once) {
         callbacks.delete(id);
       }
