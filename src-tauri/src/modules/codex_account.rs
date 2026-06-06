@@ -3229,6 +3229,8 @@ pub fn write_auth_file_to_dir(base_dir: &Path, account: &CodexAccount) -> Result
         auth_path.display()
     ));
 
+    crate::modules::codex_local_access::cleanup_provider_gateway_profile_model_overrides(base_dir)?;
+
     let auth_file = build_auth_file_value(account)?;
     let content =
         serde_json::to_string_pretty(&auth_file).map_err(|e| format!("序列化失败: {}", e))?;
