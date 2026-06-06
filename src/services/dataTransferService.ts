@@ -211,6 +211,14 @@ export interface DataTransferConfigBundle {
   antigravity_wakeup: ExportedAntigravityWakeupState;
   codex_wakeup: ExportedCodexWakeupState;
   current_account_refresh_minutes: CurrentAccountRefreshMinutesMap;
+  mfa_vault_records?: unknown;
+  mfa_vault_history?: unknown;
+  platform_layout_config?: unknown;
+  platform_layout_custom_icons?: unknown;
+  compact_group_order?: unknown;
+  compact_group_colors?: unknown;
+  compact_hidden_groups?: unknown;
+  app_language?: string;
 }
 
 export interface DataTransferBundle {
@@ -329,6 +337,26 @@ function parseJsonOrThrow(jsonContent: string, errorCode: string): unknown {
     return JSON.parse(jsonContent) as unknown;
   } catch {
     throw new Error(errorCode);
+  }
+}
+
+function safeGetLocalStorageItem(key: string): unknown {
+  const value = localStorage.getItem(key);
+  if (!value) return undefined;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function safeSetLocalStorageItem(key: string, value: unknown): void {
+  if (value === null || value === undefined) {
+    localStorage.removeItem(key);
+  } else if (typeof value === 'string') {
+    localStorage.setItem(key, value);
+  } else {
+    localStorage.setItem(key, JSON.stringify(value));
   }
 }
 
@@ -971,6 +999,14 @@ async function exportConfigBundle(registry: AccountRegistry): Promise<DataTransf
       },
     ),
     current_account_refresh_minutes: loadCurrentAccountRefreshMinutesMap(),
+    mfa_vault_records: safeGetLocalStorageItem('agtools.mfa.vault.v2'),
+    mfa_vault_history: safeGetLocalStorageItem('agtools.mfa.vault.history'),
+    platform_layout_config: safeGetLocalStorageItem('agtools.platform_layout.v1'),
+    platform_layout_custom_icons: safeGetLocalStorageItem('agtools.platform_layout.custom_icons.v1'),
+    compact_group_order: safeGetLocalStorageItem('compactGroupOrder'),
+    compact_group_colors: safeGetLocalStorageItem('compactGroupColors'),
+    compact_hidden_groups: safeGetLocalStorageItem('compactHiddenGroups'),
+    app_language: localStorage.getItem('app-language') ?? undefined,
   };
 }
 
@@ -1051,6 +1087,17 @@ async function importConfigBundle(bundle: DataTransferConfigBundle): Promise<Dat
     normalizeString(codexWakeupImport.state.runtime.codex_cli_path) ?? undefined,
     normalizeString(codexWakeupImport.state.runtime.node_path) ?? undefined,
   );
+
+  if (bundle.mfa_vault_records !== undefined) safeSetLocalStorageItem('agtools.mfa.vault.v2', bundle.mfa_vault_records);
+  if (bundle.mfa_vault_history !== undefined) safeSetLocalStorageItem('agtools.mfa.vault.history', bundle.mfa_vault_history);
+  if (bundle.platform_layout_config !== undefined) safeSetLocalStorageItem('agtools.platform_layout.v1', bundle.platform_layout_config);
+  if (bundle.platform_layout_custom_icons !== undefined) safeSetLocalStorageItem('agtools.platform_layout.custom_icons.v1', bundle.platform_layout_custom_icons);
+  if (bundle.compact_group_order !== undefined) safeSetLocalStorageItem('compactGroupOrder', bundle.compact_group_order);
+  if (bundle.compact_group_colors !== undefined) safeSetLocalStorageItem('compactGroupColors', bundle.compact_group_colors);
+  if (bundle.compact_hidden_groups !== undefined) safeSetLocalStorageItem('compactHiddenGroups', bundle.compact_hidden_groups);
+  if (bundle.app_language !== undefined) {
+    localStorage.setItem('app-language', bundle.app_language);
+  }
 
   saveCurrentAccountRefreshMinutesMap(bundle.current_account_refresh_minutes);
   window.dispatchEvent(new Event('config-updated'));
