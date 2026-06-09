@@ -4664,6 +4664,24 @@ fn get_managed_codex_windows_app_user_data_dir(codex_home: &str) -> Option<Strin
 }
 
 #[cfg(target_os = "windows")]
+fn get_default_codex_windows_app_user_data_dirs(default_codex_home: &str) -> HashSet<String> {
+    let mut dirs = HashSet::new();
+    if let Some(app_dir) = get_default_codex_windows_app_user_data_dir() {
+        let normalized = normalize_path_for_compare(&app_dir);
+        if !normalized.is_empty() {
+            dirs.insert(normalized);
+        }
+    }
+    if let Some(app_dir) = get_managed_codex_windows_app_user_data_dir(default_codex_home) {
+        let normalized = normalize_path_for_compare(&app_dir);
+        if !normalized.is_empty() {
+            dirs.insert(normalized);
+        }
+    }
+    dirs
+}
+
+#[cfg(target_os = "windows")]
 fn is_codex_windows_main_process_command_line(cmdline: &str) -> bool {
     let lower = cmdline.to_ascii_lowercase();
     !lower.is_empty() && !is_helper_command_line(&lower) && !lower.contains("crashpad_handler")
@@ -8488,16 +8506,14 @@ pub fn close_codex_instances(codex_homes: &[String], timeout_secs: u64) -> Resul
             return Ok(());
         }
 
-        let current_default_app_dir = if includes_default {
-            get_managed_codex_windows_app_user_data_dir(
+        let current_default_app_dirs = if includes_default {
+            get_default_codex_windows_app_user_data_dirs(
                 crate::modules::codex_account::get_codex_home()
                     .to_string_lossy()
                     .as_ref(),
             )
-            .map(|value| normalize_path_for_compare(&value))
-            .filter(|value| !value.is_empty())
         } else {
-            None
+            HashSet::new()
         };
 
         let matches_target = |dir: Option<&String>,
@@ -8509,7 +8525,7 @@ pub fn close_codex_instances(codex_homes: &[String], timeout_secs: u64) -> Resul
                     !normalized.is_empty()
                         && (target_app_dirs.contains(&normalized)
                             || (includes_default
-                                && current_default_app_dir.as_deref() == Some(normalized.as_str())))
+                                && current_default_app_dirs.contains(&normalized)))
                 }
                 None => includes_default,
             }
