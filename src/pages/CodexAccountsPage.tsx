@@ -350,7 +350,7 @@ function getCodexAccountStructureKind(
 }
 
 function isCodexReferralInviteSupportedAccount(account: CodexAccount): boolean {
-  return !isCodexApiKeyAccount(account) && getCodexAccountStructureKind(account) != null;
+  return !isCodexApiKeyAccount(account);
 }
 
 function isCodexReferralLimitReached(
@@ -363,15 +363,10 @@ function isCodexReferralLimitReached(
   );
 }
 
-function shouldShowCodexReferralInvite(
-  eligibility?: CodexReferralInviteEligibility | null,
-): boolean {
-  return Boolean(eligibility?.should_show || isCodexReferralLimitReached(eligibility));
-}
-
 function getCodexReferralRewardType(
   eligibility?: CodexReferralInviteEligibility | null,
 ): CodexReferralRewardType {
+  if (!eligibility?.grant_action) return "rateLimitReset";
   return eligibility?.grant_action === "rate_limit_reset_credit"
     ? "rateLimitReset"
     : "credits";
@@ -2642,12 +2637,10 @@ export function CodexAccountsPage() {
           updatedAt: Date.now(),
         });
 
-        if (shouldShowCodexReferralInvite(eligibility)) {
-          void loadCodexReferralRules(
-            account.id,
-            eligibility.referral_key || CODEX_REFERRAL_INVITE_KEY,
-          );
-        }
+        void loadCodexReferralRules(
+          account.id,
+          eligibility.referral_key || CODEX_REFERRAL_INVITE_KEY,
+        );
         return eligibility;
       } catch (error) {
         if (referralInviteEligibilityRequestSeqRef.current !== requestSeq) {
@@ -2750,8 +2743,7 @@ export function CodexAccountsPage() {
     referralInviteEmails.length > 0 &&
     referralInviteEmails.every(isValidCodexReferralEmail);
   const referralInviteAvailable =
-    referralInviteAccount != null &&
-    shouldShowCodexReferralInvite(referralInviteEligibility);
+    referralInviteAccount != null;
   const referralInviteCanSubmit =
     referralInviteAvailable &&
     !referralInviteSubmitting &&
@@ -2785,7 +2777,7 @@ export function CodexAccountsPage() {
     ? t("codex.referralInvite.inviteFriendShort", "邀请好友")
     : t("codex.referralInvite.inviteCoworkerShort", "邀请同事");
   const referralInviteTriggerDisabled =
-    referralInviteEligibilityLoading || !referralInviteAvailable;
+    !referralInviteAvailable;
   const referralInviteModalVisible =
     referralInviteModalOpen && referralInviteAvailable;
   const referralInviteModalTitle = referralInviteIsPersonal
@@ -2793,12 +2785,11 @@ export function CodexAccountsPage() {
     : t("codex.referralInvite.titleWorkspace", "邀请同事");
 
   const handleOpenCodexReferralInviteModal = useCallback(() => {
-    if (referralInviteEligibilityLoading || !referralInviteAvailable) return;
+    if (!referralInviteAvailable) return;
     setReferralInviteError(null);
     setReferralInviteModalOpen(true);
   }, [
     referralInviteAvailable,
-    referralInviteEligibilityLoading,
     setReferralInviteError,
   ]);
 
@@ -2988,7 +2979,7 @@ export function CodexAccountsPage() {
   );
 
   async function handleSendCodexReferralInvites() {
-    if (!referralInviteAccount || !referralInviteEligibility || !referralInviteAvailable) {
+    if (!referralInviteAccount || !referralInviteAvailable) {
       return;
     }
     setReferralInviteError(null);
@@ -3038,7 +3029,7 @@ export function CodexAccountsPage() {
       const response = await codexService.sendCodexReferralInvites(
         referralInviteAccount.id,
         emails,
-        referralInviteEligibility.referral_key || CODEX_REFERRAL_INVITE_KEY,
+        referralInviteEligibility?.referral_key || CODEX_REFERRAL_INVITE_KEY,
       );
       const successEmails =
         response.invites?.map((invite) => invite.email).filter(Boolean) ??
