@@ -1,3 +1,15 @@
+# 体积优化：让所有依赖按体积编译并做跨 crate 裁剪，platform-package adapter 二进制收益最大。
+# 主应用 cockpit-tools 单独保留性能档（见下方 package override）。
+[profile.release]
+opt-level = "z"      # 体积优先
+lto = true           # 跨 crate 内联 + 裁剪未用代码
+codegen-units = 1    # 更彻底的优化（编译变慢，可接受）
+strip = true         # 去除符号表
+
+# 主应用代码保持运行时性能，不随依赖一起降到 z
+[profile.release.package.cockpit-tools]
+opt-level = 2
+
 [workspace]
 members = [
     "src-tauri",

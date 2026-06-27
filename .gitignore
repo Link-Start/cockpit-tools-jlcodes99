@@ -12,6 +12,8 @@ node_modules
 dist
 !platform-packages/dist/
 !platform-packages/dist/*.zip
+platform-packages/dist/*-local.zip
+platform-packages/index.local.json
 dist-ssr
 *.local
 .gemini
