@@ -7208,7 +7208,26 @@ pub fn close_processes_by_exact_exe_paths(
 }
 
 #[cfg(target_os = "windows")]
-fn try_launch_via_shortcut(shortcut_pattern: &str) -> Result<Option<u32>, String> {
+#[derive(Clone, Copy)]
+enum AntigravityShortcutTarget {
+    Ide,
+    Legacy,
+}
+
+#[cfg(target_os = "windows")]
+fn antigravity_shortcut_matches_target(
+    name_lower: &str,
+    target: AntigravityShortcutTarget,
+) -> bool {
+    let is_ide = name_lower.contains("antigravity ide") || name_lower.contains("antigravity-ide");
+    match target {
+        AntigravityShortcutTarget::Ide => is_ide,
+        AntigravityShortcutTarget::Legacy => name_lower.contains("antigravity") && !is_ide,
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn try_launch_via_shortcut(target: AntigravityShortcutTarget) -> Result<Option<u32>, String> {
     use std::fs;
     let Some(config_dir) = dirs::config_dir() else {
         return Ok(None);
@@ -7227,7 +7246,9 @@ fn try_launch_via_shortcut(shortcut_pattern: &str) -> Result<Option<u32>, String
                         .to_string_lossy()
                         .to_string();
                     let name_lower = name.to_lowercase();
-                    if name_lower.contains(shortcut_pattern) && name_lower.ends_with(".lnk") {
+                    if name_lower.ends_with(".lnk")
+                        && antigravity_shortcut_matches_target(&name_lower, target)
+                    {
                         crate::modules::logger::log_info(&format!(
                             "[Shortcut Launch] 找到任务栏快捷方式: {}, 尝试通过快捷方式启动",
                             name
@@ -7249,6 +7270,7 @@ fn try_launch_via_shortcut(shortcut_pattern: &str) -> Result<Option<u32>, String
                                     "[Shortcut Launch] 快捷方式启动命令已执行",
                                 );
                                 return Ok(Some(resolve_antigravity_pid_after_shortcut_launch(
+                                    target,
                                     child.id(),
                                 )));
                             }
@@ -7268,11 +7290,18 @@ fn try_launch_via_shortcut(shortcut_pattern: &str) -> Result<Option<u32>, String
 }
 
 #[cfg(target_os = "windows")]
-fn resolve_antigravity_pid_after_shortcut_launch(command_pid: u32) -> u32 {
+fn resolve_antigravity_pid_after_shortcut_launch(
+    target: AntigravityShortcutTarget,
+    command_pid: u32,
+) -> u32 {
     let probe_started = Instant::now();
     let timeout = Duration::from_secs(6);
     while probe_started.elapsed() < timeout {
-        if let Some(resolved_pid) = resolve_antigravity_pid(None, None) {
+        let resolved_pid = match target {
+            AntigravityShortcutTarget::Ide => resolve_antigravity_pid(None, None),
+            AntigravityShortcutTarget::Legacy => resolve_antigravity_legacy_pid(None, None),
+        };
+        if let Some(resolved_pid) = resolved_pid {
             crate::modules::logger::log_info(&format!(
                 "[Shortcut Launch] 已解析 Antigravity PID: command_pid={}, resolved_pid={}",
                 command_pid, resolved_pid
@@ -7370,7 +7399,7 @@ pub fn start_antigravity_with_args(
         use std::os::windows::process::CommandExt;
 
         if user_data_dir.trim().is_empty() && extra_args.is_empty() {
-            if let Ok(Some(pid)) = try_launch_via_shortcut("antigravity") {
+            if let Ok(Some(pid)) = try_launch_via_shortcut(AntigravityShortcutTarget::Ide) {
                 return Ok(pid);
             }
         }
@@ -7490,7 +7519,7 @@ pub fn start_antigravity_legacy_with_args(
         use std::os::windows::process::CommandExt;
 
         if user_data_dir.trim().is_empty() && extra_args.is_empty() {
-            if let Ok(Some(pid)) = try_launch_via_shortcut("antigravity") {
+            if let Ok(Some(pid)) = try_launch_via_shortcut(AntigravityShortcutTarget::Legacy) {
                 return Ok(pid);
             }
         }

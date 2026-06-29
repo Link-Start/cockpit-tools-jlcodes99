@@ -131,6 +131,11 @@ fn inject_token_to_path_with_metadata(
     }
 
     // 注入 Onboarding 标记
+    let _ = conn.execute(
+        "DELETE FROM ItemTable WHERE key = ?",
+        ["jetskiStateSync.agentManagerInitState"],
+    );
+
     let onboarding_key = "antigravityOnboarding";
     conn.execute(
         "INSERT OR REPLACE INTO ItemTable (key, value) VALUES (?, ?)",
