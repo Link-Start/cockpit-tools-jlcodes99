@@ -23,6 +23,50 @@ pub fn get_app_handle() -> Option<&'static tauri::AppHandle> {
     APP_HANDLE.get()
 }
 
+#[cfg(test)]
+mod tests {
+    use super::should_hide_startup_minimized_window;
+    use crate::modules::config::UserConfig;
+
+    #[test]
+    fn startup_minimized_does_not_hide_when_disabled() {
+        let mut config = UserConfig::default();
+        config.startup_minimized = false;
+        config.hide_dock_icon = true;
+
+        assert!(!should_hide_startup_minimized_window(&config, true));
+    }
+
+    #[test]
+    fn startup_minimized_hides_on_macos_when_dock_icon_is_hidden() {
+        let mut config = UserConfig::default();
+        config.startup_minimized = true;
+        config.hide_dock_icon = true;
+
+        assert!(should_hide_startup_minimized_window(&config, true));
+    }
+
+    #[test]
+    fn startup_minimized_does_not_hide_when_dock_icon_is_available() {
+        let mut config = UserConfig::default();
+        config.startup_minimized = true;
+        config.hide_dock_icon = false;
+
+        assert!(!should_hide_startup_minimized_window(&config, true));
+    }
+
+    #[test]
+    fn startup_minimized_does_not_wait_before_hiding_window() {
+        let source = include_str!("lib.rs");
+        let delayed_startup_hide = concat!(
+            "std::thread::sleep",
+            "(std::time::Duration::from_millis(300))"
+        );
+
+        assert!(!source.contains(delayed_startup_hide));
+    }
+}
+
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 fn raise_process_file_descriptor_limit() {
     const TARGET_NOFILE_LIMIT: libc::rlim_t = 4096;
@@ -70,19 +114,33 @@ fn raise_process_file_descriptor_limit() {
 #[cfg(not(any(target_os = "macos", target_os = "linux")))]
 fn raise_process_file_descriptor_limit() {}
 
+fn should_hide_startup_minimized_window(
+    config: &modules::config::UserConfig,
+    is_macos: bool,
+) -> bool {
+    config.startup_minimized && is_macos && config.hide_dock_icon
+}
+
 fn apply_startup_minimized(app: &tauri::AppHandle) {
     let config = modules::config::get_user_config();
     if !config.startup_minimized {
         return;
     }
 
+    let should_hide = should_hide_startup_minimized_window(&config, cfg!(target_os = "macos"));
     let Some(window) = app.get_webview_window("main") else {
         logger::log_warn("[Window] 启动后自动最小化失败: main window not found");
         return;
     };
 
-    match window.minimize() {
-        Ok(()) => logger::log_info("[Window] 启动后已自动最小化主窗口"),
+    let (result, action_label) = if should_hide {
+        (window.hide(), "隐藏")
+    } else {
+        (window.minimize(), "最小化")
+    };
+
+    match result {
+        Ok(()) => logger::log_info(&format!("[Window] 启动后已自动{}主窗口", action_label)),
         Err(err) => logger::log_warn(&format!("[Window] 启动后自动最小化失败: {}", err)),
     }
 }
