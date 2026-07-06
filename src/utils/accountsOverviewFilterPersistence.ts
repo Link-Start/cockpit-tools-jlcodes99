@@ -47,7 +47,7 @@ export function resolveAccountsOverviewScopeFromQuickSettingsType(type: string):
 export function readAccountsOverviewFilterPersistenceEnabled(rawScope: string): boolean {
   const scope = normalizeAccountsOverviewScope(rawScope);
   try {
-    return localStorage.getItem(getEnabledStorageKey(scope)) === '1';
+    return localStorage.getItem(getEnabledStorageKey(scope)) !== '0';
   } catch {
     return false;
   }
