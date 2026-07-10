@@ -156,7 +156,14 @@ const CODEX_OFFICIAL_EMPTY_HEADERS: &[&str] = &[
     "x-client-request-id",
     "x-responsesapi-include-timing-metrics",
 ];
-const DEFAULT_CODEX_MODELS: &[&str] = &["gpt-5.5", "gpt-5.4", "gpt-5.4-mini"];
+const DEFAULT_CODEX_MODELS: &[&str] = &[
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+    "gpt-5.5",
+    "gpt-5.4",
+    "gpt-5.4-mini",
+];
 const CODEX_IMAGE_MODEL_ID: &str = "gpt-image-2";
 const CODEX_AUTO_REVIEW_MODEL_ID: &str = "codex-auto-review";
 const DEFAULT_IMAGES_MAIN_MODEL: &str = "gpt-5.4-mini";
