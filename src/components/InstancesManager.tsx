@@ -134,6 +134,10 @@ type InlineAccountSelectProps<TAccount extends AccountLike> =
     renderAccountMenuItems: (
       args: AccountMenuItemsRenderArgs<TAccount>,
     ) => ReactNode;
+    unboundLabel: string;
+    selectAccountLabel: string;
+    missingAccountLabel: string;
+    followCurrentLabel: string;
     onOpenChange?: (open: boolean) => void;
     instanceId?: string;
     currentOpenId?: string | null;
@@ -327,6 +331,258 @@ const isSameAccountSelectPortalPosition = (
   left?.width === right?.width &&
   left?.maxHeight === right?.maxHeight &&
   left?.placement === right?.placement;
+
+const InlineAccountSelect = <TAccount extends AccountLike,>({
+  value,
+  onChange,
+  accounts,
+  launchMode,
+  filterAccountsForLaunchMode,
+  getAccountSearchText,
+  resolveAccountDisplayText,
+  isApiServiceBindId,
+  resolveBoundAccount,
+  renderAccountQuotaPreview,
+  renderAccountBadge,
+  maskAccountText,
+  resolveApiServiceLabel,
+  renderAccountMenuItems,
+  allowUnbound = false,
+  allowFollowCurrent = false,
+  isFollowingCurrent = false,
+  onFollowCurrent,
+  onOpenChange,
+  disabled = false,
+  missing = false,
+  placeholder,
+  instanceId,
+  currentOpenId,
+  unboundLabel,
+  selectAccountLabel,
+  missingAccountLabel,
+  followCurrentLabel,
+}: InlineAccountSelectProps<TAccount>) => {
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const portalMenuRef = useRef<HTMLDivElement | null>(null);
+  const activeItemScrolledRef = useRef(false);
+  const isOpen = instanceId ? currentOpenId === instanceId : false;
+  const [portalPos, setPortalPos] =
+    useState<AccountSelectPortalPosition | null>(null);
+  const [searchValue, setSearchValue] = useState("");
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
+  const selectableAccounts = useMemo(
+    () => filterAccountsForLaunchMode(accounts, launchMode),
+    [accounts, filterAccountsForLaunchMode, launchMode],
+  );
+
+  const availableTags = useMemo(
+    () => collectInstanceAccountTags(selectableAccounts),
+    [selectableAccounts],
+  );
+  const visibleAccounts = useMemo(() => {
+    const normalizedQuery = searchValue.trim().toLowerCase();
+    const selectedTags = new Set(tagFilter.map(normalizeInstanceAccountTag));
+    return selectableAccounts.filter((account) => {
+      if (selectedTags.size > 0) {
+        const accountTags = (account.tags || [])
+          .map(normalizeInstanceAccountTag)
+          .filter(Boolean);
+        if (!accountTags.some((tag) => selectedTags.has(tag))) {
+          return false;
+        }
+      }
+      if (!normalizedQuery) return true;
+      const haystack = [
+        resolveAccountDisplayText(account),
+        account.email,
+        getAccountSearchText ? getAccountSearchText(account) : "",
+        ...(account.tags || []),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [
+    getAccountSearchText,
+    resolveAccountDisplayText,
+    searchValue,
+    selectableAccounts,
+    tagFilter,
+  ]);
+
+  const toggleTagFilter = useCallback((tag: string) => {
+    setTagFilter((prev) =>
+      prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag],
+    );
+  }, []);
+
+  const updatePortalPos = useCallback((event?: Event) => {
+    const eventTarget = event?.target;
+    if (
+      event?.type === "scroll" &&
+      eventTarget instanceof Node &&
+      portalMenuRef.current?.contains(eventTarget)
+    ) {
+      return;
+    }
+    setPortalPos((prev) => {
+      const next = resolveAccountSelectPortalPosition(triggerRef.current);
+      return isSameAccountSelectPortalPosition(prev, next) ? prev : next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) return;
+    activeItemScrolledRef.current = false;
+    setSearchValue("");
+    setTagFilter([]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    updatePortalPos();
+
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      const inTrigger = Boolean(
+        menuRef.current && menuRef.current.contains(target),
+      );
+      const inPortalMenu = Boolean(
+        portalMenuRef.current && portalMenuRef.current.contains(target),
+      );
+      if (!inTrigger && !inPortalMenu) {
+        onOpenChange?.(false);
+      }
+    };
+    // 使用 setTimeout 延迟添加监听器，避免与打开菜单的点击事件冲突
+    const timer = setTimeout(() => {
+      document.addEventListener("click", handleClick);
+    }, 0);
+    window.addEventListener("resize", updatePortalPos);
+    window.addEventListener("scroll", updatePortalPos, true);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("click", handleClick);
+      window.removeEventListener("resize", updatePortalPos);
+      window.removeEventListener("scroll", updatePortalPos, true);
+    };
+  }, [isOpen, onOpenChange, updatePortalPos]);
+
+  useEffect(() => {
+    if (!isOpen || !portalPos || !portalMenuRef.current) return;
+    if (activeItemScrolledRef.current) return;
+    activeItemScrolledRef.current = true;
+
+    const frameId = window.requestAnimationFrame(() => {
+      const activeItem = portalMenuRef.current?.querySelector<HTMLElement>(
+        '[data-account-select-active="true"]',
+      );
+      activeItem?.scrollIntoView({
+        block: "nearest",
+        behavior: "auto",
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [isOpen, portalPos?.placement]);
+
+  useEffect(() => {
+    if (disabled && isOpen) {
+      onOpenChange?.(false);
+    }
+  }, [disabled, isOpen, onOpenChange]);
+
+  const isApiServiceSelected = isApiServiceBindId(value);
+  const selectedAccount = resolveBoundAccount(value).account;
+  const basePlaceholder =
+    placeholder || (allowUnbound ? unboundLabel : selectAccountLabel);
+  const selectedLabel = missing
+    ? missingAccountLabel
+    : isFollowingCurrent
+      ? maskAccountText(resolveAccountDisplayText(selectedAccount)) ||
+        followCurrentLabel
+      : isApiServiceSelected
+        ? resolveApiServiceLabel()
+        : maskAccountText(resolveAccountDisplayText(selectedAccount)) ||
+          basePlaceholder;
+  const selectedBadge =
+    !missing && selectedAccount ? renderAccountBadge?.(selectedAccount) : null;
+  const selectedQuota = selectedAccount
+    ? renderAccountQuotaPreview(selectedAccount)
+    : null;
+
+  return (
+    <div
+      className={`account-select ${disabled ? "disabled" : ""}`}
+      ref={menuRef}
+    >
+      <button
+        ref={triggerRef}
+        type="button"
+        className={`account-select-trigger ${isOpen ? "open" : ""}`}
+        onClick={() => {
+          if (disabled) return;
+          onOpenChange?.(!isOpen);
+        }}
+        disabled={disabled}
+      >
+        <span className="account-select-content">
+          <span className="account-select-label-row">
+            <span className="account-select-label" title={selectedLabel}>
+              {selectedLabel}
+            </span>
+            {selectedBadge}
+          </span>
+          {selectedQuota && (
+            <span className="account-select-meta">{selectedQuota}</span>
+          )}
+        </span>
+        <span className="account-select-arrow">
+          <ChevronDown size={14} />
+        </span>
+      </button>
+      {isOpen && !disabled && portalPos
+        ? createPortal(
+            <div
+              className={`instances-page account-select-portal-root ${portalPos.placement === "top" ? "placement-top" : "placement-bottom"}`}
+              style={{
+                position: "fixed",
+                top: `${portalPos.top}px`,
+                left: `${portalPos.left}px`,
+                width: `${portalPos.width}px`,
+                ["--account-select-max-height" as string]: `${portalPos.maxHeight}px`,
+                zIndex: ACCOUNT_SELECT_PORTAL_Z_INDEX,
+              }}
+            >
+              <div ref={portalMenuRef} className="account-select-menu">
+                {renderAccountMenuItems({
+                  visibleAccounts,
+                  availableTags,
+                  searchValue,
+                  onSearchChange: setSearchValue,
+                  tagFilter,
+                  onToggleTagFilter: toggleTagFilter,
+                  onClearTagFilter: () => setTagFilter([]),
+                  value,
+                  isFollowingCurrent,
+                  allowFollowCurrent,
+                  allowUnbound,
+                  onFollowCurrent,
+                  onChange,
+                  onClose: () => onOpenChange?.(false),
+                  selectedAccount,
+                })}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+    </div>
+  );
+};
 
 const resolveInstanceSortStorageKeys = (
   appType: InstancesManagerProps<AccountLike>["appType"],
@@ -1648,18 +1904,6 @@ export function InstancesManager<TAccount extends AccountLike>({
     t,
   ]);
 
-  type BaseAccountSelectProps = {
-    value: string | null;
-    onChange: (nextId: string | null) => void;
-    allowUnbound?: boolean;
-    allowFollowCurrent?: boolean;
-    isFollowingCurrent?: boolean;
-    onFollowCurrent?: () => void;
-    disabled?: boolean;
-    missing?: boolean;
-    placeholder?: string;
-  };
-
   const renderAccountMenuItems = ({
     visibleAccounts,
     availableTags,
@@ -1676,23 +1920,7 @@ export function InstancesManager<TAccount extends AccountLike>({
     onChange,
     onClose,
     selectedAccount,
-  }: {
-    visibleAccounts: TAccount[];
-    availableTags: string[];
-    searchValue: string;
-    onSearchChange: (value: string) => void;
-    tagFilter: string[];
-    onToggleTagFilter: (tag: string) => void;
-    onClearTagFilter: () => void;
-    value: string | null;
-    isFollowingCurrent?: boolean;
-    allowFollowCurrent?: boolean;
-    allowUnbound?: boolean;
-    onFollowCurrent?: () => void;
-    onChange: (nextId: string | null) => void;
-    onClose: () => void;
-    selectedAccount: TAccount | null;
-  }) => (
+  }: AccountMenuItemsRenderArgs<TAccount>) => (
     <>
       <div className="account-select-menu-toolbar">
         <label className="account-select-search-box">
@@ -1832,261 +2060,6 @@ export function InstancesManager<TAccount extends AccountLike>({
       ) : null}
     </>
   );
-
-  type InlineAccountSelectProps = BaseAccountSelectProps & {
-    onOpenChange?: (open: boolean) => void;
-    instanceId?: string;
-    currentOpenId?: string | null;
-  };
-
-  const InlineAccountSelect = ({
-    value,
-    onChange,
-    allowUnbound = false,
-    allowFollowCurrent = false,
-    isFollowingCurrent = false,
-    onFollowCurrent,
-    onOpenChange,
-    disabled = false,
-    missing = false,
-    placeholder,
-    instanceId,
-    currentOpenId,
-  }: InlineAccountSelectProps) => {
-    const menuRef = useRef<HTMLDivElement | null>(null);
-    const triggerRef = useRef<HTMLButtonElement | null>(null);
-    const portalMenuRef = useRef<HTMLDivElement | null>(null);
-    const activeItemScrolledRef = useRef(false);
-    const isOpen = instanceId ? currentOpenId === instanceId : false;
-    const [portalPos, setPortalPos] =
-      useState<AccountSelectPortalPosition | null>(null);
-    const [searchValue, setSearchValue] = useState("");
-    const [tagFilter, setTagFilter] = useState<string[]>([]);
-    const targetLaunchMode = useMemo(() => {
-      const instance = instanceId
-        ? instances.find((item) => item.id === instanceId)
-        : null;
-      return resolveInstanceLaunchMode(instance);
-    }, [instanceId, instances]);
-    const selectableAccounts = useMemo(
-      () => filterAccountsForLaunchMode(accounts, targetLaunchMode),
-      [accounts, filterAccountsForLaunchMode, targetLaunchMode],
-    );
-
-    const availableTags = useMemo(
-      () => collectInstanceAccountTags(selectableAccounts),
-      [selectableAccounts],
-    );
-    const visibleAccounts = useMemo(() => {
-      const normalizedQuery = searchValue.trim().toLowerCase();
-      const selectedTags = new Set(tagFilter.map(normalizeInstanceAccountTag));
-      return selectableAccounts.filter((account) => {
-        if (selectedTags.size > 0) {
-          const accountTags = (account.tags || [])
-            .map(normalizeInstanceAccountTag)
-            .filter(Boolean);
-          if (!accountTags.some((tag) => selectedTags.has(tag))) {
-            return false;
-          }
-        }
-        if (!normalizedQuery) return true;
-        const haystack = [
-          resolveAccountDisplayText(account),
-          account.email,
-          getAccountSearchText ? getAccountSearchText(account) : "",
-          ...(account.tags || []),
-        ]
-          .join(" ")
-          .toLowerCase();
-        return haystack.includes(normalizedQuery);
-      });
-    }, [
-      getAccountSearchText,
-      resolveAccountDisplayText,
-      searchValue,
-      selectableAccounts,
-      tagFilter,
-    ]);
-
-    const toggleTagFilter = useCallback((tag: string) => {
-      setTagFilter((prev) =>
-        prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag],
-      );
-    }, []);
-
-    const updatePortalPos = useCallback((event?: Event) => {
-      const eventTarget = event?.target;
-      if (
-        event?.type === "scroll" &&
-        eventTarget instanceof Node &&
-        portalMenuRef.current?.contains(eventTarget)
-      ) {
-        return;
-      }
-      setPortalPos((prev) => {
-        const next = resolveAccountSelectPortalPosition(triggerRef.current);
-        return isSameAccountSelectPortalPosition(prev, next) ? prev : next;
-      });
-    }, []);
-
-    useEffect(() => {
-      if (isOpen) return;
-      activeItemScrolledRef.current = false;
-      setSearchValue("");
-      setTagFilter([]);
-    }, [isOpen]);
-
-    useEffect(() => {
-      if (!isOpen) return;
-      updatePortalPos();
-
-      const handleClick = (event: MouseEvent) => {
-        const target = event.target as Node;
-        const inTrigger = Boolean(
-          menuRef.current && menuRef.current.contains(target),
-        );
-        const inPortalMenu = Boolean(
-          portalMenuRef.current && portalMenuRef.current.contains(target),
-        );
-        if (!inTrigger && !inPortalMenu) {
-          onOpenChange?.(false);
-        }
-      };
-      // 使用 setTimeout 延迟添加监听器，避免与打开菜单的点击事件冲突
-      const timer = setTimeout(() => {
-        document.addEventListener("click", handleClick);
-      }, 0);
-      window.addEventListener("resize", updatePortalPos);
-      window.addEventListener("scroll", updatePortalPos, true);
-      return () => {
-        clearTimeout(timer);
-        document.removeEventListener("click", handleClick);
-        window.removeEventListener("resize", updatePortalPos);
-        window.removeEventListener("scroll", updatePortalPos, true);
-      };
-    }, [isOpen, onOpenChange, updatePortalPos]);
-
-    useEffect(() => {
-      if (!isOpen || !portalPos || !portalMenuRef.current) return;
-      if (activeItemScrolledRef.current) return;
-      activeItemScrolledRef.current = true;
-
-      const frameId = window.requestAnimationFrame(() => {
-        const activeItem = portalMenuRef.current?.querySelector<HTMLElement>(
-          '[data-account-select-active="true"]',
-        );
-        activeItem?.scrollIntoView({
-          block: "nearest",
-          behavior: "auto",
-        });
-      });
-
-      return () => {
-        window.cancelAnimationFrame(frameId);
-      };
-    }, [
-      isOpen,
-      portalPos?.placement,
-    ]);
-
-    useEffect(() => {
-      if (disabled && isOpen) {
-        onOpenChange?.(false);
-      }
-    }, [disabled, isOpen, onOpenChange]);
-
-    const isApiServiceSelected = isApiServiceBindId(value);
-    const selectedAccount = resolveBoundAccount(value).account;
-    const basePlaceholder =
-      placeholder ||
-      (allowUnbound
-        ? t("instances.form.unbound", "不绑定")
-        : t("instances.form.selectAccount", "选择账号"));
-    const selectedLabel = missing
-      ? t("instances.quota.accountMissing", "账号不存在")
-      : isFollowingCurrent
-        ? maskAccountText(resolveAccountDisplayText(selectedAccount)) ||
-          t("instances.form.followCurrent", "跟随当前账号")
-        : isApiServiceSelected
-          ? resolveApiServiceLabel()
-          : maskAccountText(resolveAccountDisplayText(selectedAccount)) || basePlaceholder;
-    const selectedBadge =
-      !missing && selectedAccount
-        ? renderAccountBadge?.(selectedAccount)
-        : null;
-    const selectedQuota = selectedAccount
-      ? renderAccountQuotaPreview(selectedAccount)
-      : null;
-
-    return (
-      <div
-        className={`account-select ${disabled ? "disabled" : ""}`}
-        ref={menuRef}
-      >
-        <button
-          ref={triggerRef}
-          type="button"
-          className={`account-select-trigger ${isOpen ? "open" : ""}`}
-          onClick={() => {
-            if (disabled) return;
-            onOpenChange?.(!isOpen);
-          }}
-          disabled={disabled}
-        >
-          <span className="account-select-content">
-            <span className="account-select-label-row">
-              <span className="account-select-label" title={selectedLabel}>
-                {selectedLabel}
-              </span>
-              {selectedBadge}
-            </span>
-            {selectedQuota && (
-              <span className="account-select-meta">{selectedQuota}</span>
-            )}
-          </span>
-          <span className="account-select-arrow">
-            <ChevronDown size={14} />
-          </span>
-        </button>
-        {isOpen && !disabled && portalPos
-            ? createPortal(
-              <div
-                className={`instances-page account-select-portal-root ${portalPos.placement === "top" ? "placement-top" : "placement-bottom"}`}
-                style={{
-                  position: "fixed",
-                  top: `${portalPos.top}px`,
-                  left: `${portalPos.left}px`,
-                  width: `${portalPos.width}px`,
-                  ["--account-select-max-height" as string]: `${portalPos.maxHeight}px`,
-                  zIndex: ACCOUNT_SELECT_PORTAL_Z_INDEX,
-                }}
-              >
-                <div ref={portalMenuRef} className="account-select-menu">
-                  {renderAccountMenuItems({
-                    visibleAccounts,
-                    availableTags,
-                    searchValue,
-                    onSearchChange: setSearchValue,
-                    tagFilter,
-                    onToggleTagFilter: toggleTagFilter,
-                    onClearTagFilter: () => setTagFilter([]),
-                    value,
-                    isFollowingCurrent,
-                    allowFollowCurrent,
-                    allowUnbound,
-                    onFollowCurrent,
-                    onChange,
-                    onClose: () => onOpenChange?.(false),
-                    selectedAccount,
-                  })}
-                </div>
-              </div>,
-              document.body,
-            )
-          : null}
-      </div>
-    );
-  };
 
   type FormAccountSelectProps = BaseAccountSelectProps;
 
@@ -2759,9 +2732,34 @@ export function InstancesManager<TAccount extends AccountLike>({
                       onChange={(nextId) =>
                         handleInlineBindChange(instance, nextId)
                       }
+                      accounts={accounts}
+                      launchMode={launchMode}
+                      filterAccountsForLaunchMode={filterAccountsForLaunchMode}
+                      getAccountSearchText={getAccountSearchText}
+                      resolveAccountDisplayText={resolveAccountDisplayText}
+                      isApiServiceBindId={isApiServiceBindId}
+                      resolveBoundAccount={resolveBoundAccount}
+                      renderAccountQuotaPreview={renderAccountQuotaPreview}
+                      renderAccountBadge={renderAccountBadge}
+                      maskAccountText={maskAccountText}
+                      resolveApiServiceLabel={resolveApiServiceLabel}
+                      renderAccountMenuItems={renderAccountMenuItems}
                       disabled={isInstanceBusy}
                       missing={accountMissing}
                       placeholder={t("instances.labels.unbound", "未绑定")}
+                      unboundLabel={t("instances.form.unbound", "不绑定")}
+                      selectAccountLabel={t(
+                        "instances.form.selectAccount",
+                        "选择账号",
+                      )}
+                      missingAccountLabel={t(
+                        "instances.quota.accountMissing",
+                        "账号不存在",
+                      )}
+                      followCurrentLabel={t(
+                        "instances.form.followCurrent",
+                        "跟随当前账号",
+                      )}
                       instanceId={instance.id}
                       currentOpenId={openInlineMenuId}
                       onOpenChange={(open) => {

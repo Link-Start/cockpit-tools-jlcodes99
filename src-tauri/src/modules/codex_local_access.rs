@@ -1295,7 +1295,7 @@ fn has_date_snapshot_suffix(value: &str) -> bool {
             .all(|(index, byte)| matches!(index, 0 | 5 | 8) || byte.is_ascii_digit())
 }
 
-fn supported_codex_model_ids() -> Vec<String> {
+pub(crate) fn supported_codex_model_ids() -> Vec<String> {
     let mut seen = HashSet::new();
     let mut model_ids: Vec<String> = codex_wakeup::load_state_for_scheduler()
         .ok()

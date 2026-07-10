@@ -7,6 +7,23 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
 ---
+## [1.1.3] - 2026-07-10
+
+### 新增
+
+- **新增最新官方 Codex 5.6 模型条目支持**：API 服务、受管官方客户端模型目录和唤醒模型预设现在包含 `gpt-5.6-sol`、`gpt-5.6-terra` 和 `gpt-5.6-luna`；老用户会自动补齐新预设，同时保留自定义预设。
+
+### 变更
+
+- **Codex OAuth API 服务兼容更贴近官方客户端**：OAuth 账号的文本对话不再注入 hosted `image_generation` 工具，同时保留图片接口能力，API Key 账号继续保持原有图片生成行为。
+- **Codex 本地接入 profile 接管会持续刷新受管模型目录**：已接管的官方客户端 profile 也会在需要时重新写入配置，让更新后的模型目录继续同步到客户端。
+- **设置页默认不再显示顶部推广横幅**。
+
+### 修复
+
+- **修复 Codex API 服务请求同时包含官方 `image_gen.imagegen` 工具和 hosted `image_generation` 时的冲突**：Rust 网关和 Go sidecar 现在会在检测到官方图片工具时移除 hosted 图片工具及对应 `tool_choice`。
+
+---
 ## [1.1.2] - 2026-07-10
 
 ### 新增

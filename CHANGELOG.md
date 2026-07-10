@@ -7,6 +7,23 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [1.1.3] - 2026-07-10
+
+### Added
+
+- **Added support for the latest official Codex 5.6 model entries**: API Service, managed official-client model catalogs, and wakeup model presets now include `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna`; existing users receive the new presets without replacing custom presets.
+
+### Changed
+
+- **Codex OAuth API Service compatibility is closer to the official client**: OAuth-backed text conversations no longer inject the hosted `image_generation` tool, while image endpoints remain available and API Key accounts keep their existing image-generation behavior.
+- **Codex local access profile takeover keeps managed model catalogs refreshed**: already-attached official client profiles are rewritten when needed so updated model catalogs continue to reach the client.
+- **Settings no longer shows the top promotion banner by default**.
+
+### Fixed
+
+- **Fixed Codex API Service requests that mix official `image_gen.imagegen` tools with hosted `image_generation`**: the Rust gateway and Go sidecar now remove the hosted image tool and matching `tool_choice` when the official image tool is already present.
+
+---
 ## [1.1.2] - 2026-07-10
 
 ### Added

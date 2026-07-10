@@ -27,6 +27,7 @@ const REASONING_EFFORT_HIGH: &str = "high";
 const REASONING_EFFORT_XHIGH: &str = "xhigh";
 const CODEX_WAKEUP_TEST_CANCELLED_MESSAGE: &str = "Codex 唤醒测试已取消";
 const CODEX_WAKEUP_CANCEL_POLL_MS: u64 = 120;
+const GPT_5_6_MODEL_PRESETS_MIGRATION_ID: &str = "add-gpt-5-6-model-presets";
 const GPT_5_5_MODEL_PRESET_MIGRATION_ID: &str = "add-gpt-5-5-model-preset";
 const PRUNE_LEGACY_MODEL_PRESETS_MIGRATION_ID: &str =
     "prune-legacy-codex-model-presets-before-gpt-5-4";
@@ -364,6 +365,7 @@ impl Default for CodexWakeupState {
             tasks: Vec::new(),
             model_presets: default_model_presets(),
             model_preset_migrations: vec![
+                GPT_5_6_MODEL_PRESETS_MIGRATION_ID.to_string(),
                 GPT_5_5_MODEL_PRESET_MIGRATION_ID.to_string(),
                 PRUNE_LEGACY_MODEL_PRESETS_MIGRATION_ID.to_string(),
             ],
@@ -488,6 +490,9 @@ fn default_reasoning_efforts_for_model(model: &str) -> Vec<String> {
 
 fn default_model_presets() -> Vec<CodexWakeupModelPreset> {
     let items = [
+        ("preset-gpt-5-6-sol", "GPT-5.6 Sol", "gpt-5.6-sol"),
+        ("preset-gpt-5-6-terra", "GPT-5.6 Terra", "gpt-5.6-terra"),
+        ("preset-gpt-5-6-luna", "GPT-5.6 Luna", "gpt-5.6-luna"),
         ("preset-gpt-5-5", "GPT-5.5", "gpt-5.5"),
         ("preset-gpt-5-4", "GPT-5.4", "gpt-5.4"),
         ("preset-gpt-5-4-mini", "GPT-5.4-Mini", "gpt-5.4-mini"),
@@ -517,6 +522,43 @@ fn default_model_presets() -> Vec<CodexWakeupModelPreset> {
             }
         })
         .collect()
+}
+
+fn gpt_5_6_model_presets() -> Vec<CodexWakeupModelPreset> {
+    default_model_presets()
+        .into_iter()
+        .filter(|preset| preset.model.starts_with("gpt-5.6-"))
+        .collect()
+}
+
+fn ensure_gpt_5_6_model_presets(state: &mut CodexWakeupState) -> bool {
+    if state
+        .model_preset_migrations
+        .iter()
+        .any(|item| item == GPT_5_6_MODEL_PRESETS_MIGRATION_ID)
+    {
+        return false;
+    }
+
+    state
+        .model_preset_migrations
+        .push(GPT_5_6_MODEL_PRESETS_MIGRATION_ID.to_string());
+
+    let existing_models = state
+        .model_presets
+        .iter()
+        .map(|preset| preset.model.trim().to_ascii_lowercase())
+        .collect::<HashSet<_>>();
+    let additions = gpt_5_6_model_presets()
+        .into_iter()
+        .filter(|preset| !existing_models.contains(&preset.model.to_ascii_lowercase()))
+        .collect::<Vec<_>>();
+    if additions.is_empty() {
+        return true;
+    }
+
+    state.model_presets.splice(0..0, additions);
+    true
 }
 
 fn gpt_5_5_model_preset() -> CodexWakeupModelPreset {
@@ -599,6 +641,7 @@ fn prune_legacy_model_presets(state: &mut CodexWakeupState) -> bool {
 fn apply_model_preset_migrations(state: &mut CodexWakeupState) -> bool {
     let mut changed = false;
     changed |= prune_legacy_model_presets(state);
+    changed |= ensure_gpt_5_6_model_presets(state);
     changed |= ensure_gpt_5_5_model_preset(state);
     state.model_preset_migrations.sort();
     state.model_preset_migrations.dedup();
@@ -2491,7 +2534,8 @@ pub fn get_task(task_id: &str) -> Result<Option<CodexWakeupTask>, String> {
 mod tests {
     use super::{
         apply_model_preset_migrations, default_model_presets, CodexWakeupModelPreset,
-        CodexWakeupState, PRUNE_LEGACY_MODEL_PRESETS_MIGRATION_ID, REASONING_EFFORT_MEDIUM,
+        CodexWakeupState, GPT_5_5_MODEL_PRESET_MIGRATION_ID, GPT_5_6_MODEL_PRESETS_MIGRATION_ID,
+        PRUNE_LEGACY_MODEL_PRESETS_MIGRATION_ID, REASONING_EFFORT_MEDIUM,
     };
 
     fn model_preset(id: &str, name: &str, model: &str) -> CodexWakeupModelPreset {
@@ -2505,13 +2549,23 @@ mod tests {
     }
 
     #[test]
-    fn default_model_presets_only_include_gpt_5_4_and_newer() {
+    fn default_model_presets_include_gpt_5_6_models() {
         let models: Vec<String> = default_model_presets()
             .into_iter()
             .map(|preset| preset.model)
             .collect();
 
-        assert_eq!(models, vec!["gpt-5.5", "gpt-5.4", "gpt-5.4-mini"]);
+        assert_eq!(
+            models,
+            vec![
+                "gpt-5.6-sol",
+                "gpt-5.6-terra",
+                "gpt-5.6-luna",
+                "gpt-5.5",
+                "gpt-5.4",
+                "gpt-5.4-mini"
+            ]
+        );
     }
 
     #[test]
@@ -2535,10 +2589,57 @@ mod tests {
             .map(|preset| preset.model.clone())
             .collect();
 
-        assert_eq!(models, vec!["gpt-5.5", "gpt-5.4"]);
+        assert_eq!(
+            models,
+            vec![
+                "gpt-5.6-sol",
+                "gpt-5.6-terra",
+                "gpt-5.6-luna",
+                "gpt-5.5",
+                "gpt-5.4"
+            ]
+        );
         assert!(state
             .model_preset_migrations
             .iter()
             .any(|item| item == PRUNE_LEGACY_MODEL_PRESETS_MIGRATION_ID));
+        assert!(state
+            .model_preset_migrations
+            .iter()
+            .any(|item| item == GPT_5_6_MODEL_PRESETS_MIGRATION_ID));
+    }
+
+    #[test]
+    fn model_preset_migration_keeps_existing_5_6_and_custom_presets() {
+        let mut state = CodexWakeupState {
+            enabled: false,
+            tasks: Vec::new(),
+            model_presets: vec![
+                model_preset("custom-sol", "Custom Sol", "gpt-5.6-sol"),
+                model_preset("custom-model", "Custom Model", "custom-model"),
+            ],
+            model_preset_migrations: vec![
+                GPT_5_5_MODEL_PRESET_MIGRATION_ID.to_string(),
+                PRUNE_LEGACY_MODEL_PRESETS_MIGRATION_ID.to_string(),
+            ],
+        };
+
+        assert!(apply_model_preset_migrations(&mut state));
+        let models = state
+            .model_presets
+            .iter()
+            .map(|preset| preset.model.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            models,
+            vec![
+                "gpt-5.6-terra",
+                "gpt-5.6-luna",
+                "gpt-5.6-sol",
+                "custom-model"
+            ]
+        );
+        assert!(!apply_model_preset_migrations(&mut state));
     }
 }
