@@ -2716,7 +2716,8 @@
         "modelCatalog": "Danh mục mô hình",
         "visionCapability": "Nhập ảnh",
         "visionModels": "Mẫu hỗ trợ ảnh",
-        "visionRoutingModel": "Mẫu xử lý ảnh"
+        "visionRoutingModel": "Mẫu xử lý ảnh",
+        "supportsWebsockets": "Truyền tải WebSocket"
       },
       "validation": {
         "nameRequired": "Tên nhà cung cấp là bắt buộc.",
@@ -2952,6 +2953,12 @@
         "customMoveUp": "Chuyển lên",
         "customMoveDown": "Chuyển xuống",
         "customReset": "Đặt lại thứ tự"
+      },
+      "websockets": {
+        "title": "Cho phép Codex dùng Responses qua WebSocket",
+        "help": "Chỉ bật khi nhà cung cấp hỗ trợ rõ ràng Responses qua WebSocket; hãy xác nhận phương thức truyền trong nhật ký Codex hoặc dịch vụ proxy.",
+        "enabled": "Đã bật",
+        "disabled": "Đã tắt"
       }
     },
     "quickSwitch": {

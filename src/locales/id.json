@@ -2762,7 +2762,8 @@
         "modelCatalog": "Katalog Model",
         "visionCapability": "Input gambar",
         "visionModels": "Model visual",
-        "visionRoutingModel": "Model gambar"
+        "visionRoutingModel": "Model gambar",
+        "supportsWebsockets": "Transport WebSocket"
       },
       "validation": {
         "nameRequired": "Nama penyedia wajib diisi.",
@@ -2998,6 +2999,12 @@
         "customMoveUp": "Naikkan",
         "customMoveDown": "Turunkan",
         "customReset": "Reset urutan"
+      },
+      "websockets": {
+        "title": "Izinkan Codex menggunakan Responses melalui WebSocket",
+        "help": "Aktifkan hanya jika penyedia secara eksplisit mendukung Responses melalui WebSocket; pastikan transport melalui log Codex atau layanan proksi.",
+        "enabled": "Aktif",
+        "disabled": "Nonaktif"
       }
     },
     "quickSwitch": {

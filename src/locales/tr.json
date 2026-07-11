@@ -2716,7 +2716,8 @@
         "modelCatalog": "Model Kataloğu",
         "visionCapability": "Görsel girişi",
         "visionModels": "Görsel modeller",
-        "visionRoutingModel": "Görsel rota modeli"
+        "visionRoutingModel": "Görsel rota modeli",
+        "supportsWebsockets": "WebSocket aktarımı"
       },
       "validation": {
         "nameRequired": "Sağlayıcı adı gerekli.",
@@ -2952,6 +2953,12 @@
         "customMoveUp": "Yukarı taşı",
         "customMoveDown": "Aşağı taşı",
         "customReset": "Sıralamayı sıfırla"
+      },
+      "websockets": {
+        "title": "Codex’in Responses için WebSocket kullanmasına izin ver",
+        "help": "Yalnızca sağlayıcı Responses için WebSocket desteğini açıkça sunuyorsa etkinleştirin; bağlantı türünü Codex veya proxy hizmeti günlüklerinden doğrulayın.",
+        "enabled": "Etkin",
+        "disabled": "Devre dışı"
       }
     },
     "quickSwitch": {

@@ -2716,7 +2716,8 @@
         "modelCatalog": "모델 카탈로그",
         "visionCapability": "이미지 입력",
         "visionModels": "비전 모델",
-        "visionRoutingModel": "이미지 라우팅 모델"
+        "visionRoutingModel": "이미지 라우팅 모델",
+        "supportsWebsockets": "WebSocket 전송"
       },
       "validation": {
         "nameRequired": "공급자 이름은 필수입니다.",
@@ -2952,6 +2953,12 @@
         "customMoveUp": "위로",
         "customMoveDown": "아래로",
         "customReset": "순서 초기화"
+      },
+      "websockets": {
+        "title": "Codex가 WebSocket을 통해 Responses를 사용하도록 허용",
+        "help": "공급자가 WebSocket을 통한 Responses를 명시적으로 지원하는 경우에만 켜세요. 연결 방식은 Codex 또는 프록시 서비스 로그에서 확인할 수 있습니다.",
+        "enabled": "사용",
+        "disabled": "사용 안 함"
       }
     },
     "quickSwitch": {

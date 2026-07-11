@@ -2716,7 +2716,8 @@
         "modelCatalog": "模型目錄",
         "visionCapability": "圖片輸入能力",
         "visionModels": "支援圖片的模型",
-        "visionRoutingModel": "圖片請求預設模型"
+        "visionRoutingModel": "圖片請求預設模型",
+        "supportsWebsockets": "WebSocket 傳輸"
       },
       "validation": {
         "nameRequired": "供應商名稱不能為空",
@@ -2952,6 +2953,12 @@
         "customMoveUp": "上移",
         "customMoveDown": "下移",
         "customReset": "重設自訂順序"
+      },
+      "websockets": {
+        "title": "允許 Codex 使用 Responses WebSocket",
+        "help": "僅在供應商明確支援 Responses WebSocket 時開啟；連線方式可透過 Codex 或代理服務日誌確認。",
+        "enabled": "已啟用",
+        "disabled": "已停用"
       }
     },
     "quickSwitch": {

@@ -366,12 +366,24 @@ fn migrate_apikey_fun_wire_api(account: &mut CodexAccount) -> bool {
     true
 }
 
+fn normalize_api_key_websocket_capability(account: &mut CodexAccount) -> bool {
+    let normalized = account.is_api_key_auth()
+        && account.api_wire_api.as_deref() == Some("responses")
+        && account.api_supports_websockets;
+    if account.api_supports_websockets == normalized {
+        return false;
+    }
+    account.api_supports_websockets = normalized;
+    true
+}
+
 fn apply_api_key_fields(
     account: &mut CodexAccount,
     api_key: &str,
     provider_config: ApiProviderConfig,
     api_model_catalog: Vec<String>,
     api_wire_api: Option<String>,
+    api_supports_websockets: bool,
     api_supports_vision: bool,
     api_model_vision_support: std::collections::HashMap<String, bool>,
     api_vision_routing_model: Option<String>,
@@ -396,6 +408,8 @@ fn apply_api_key_fields(
     account.api_provider_name = provider_config.provider_name;
     account.api_model_catalog = normalize_api_model_catalog(api_model_catalog);
     account.api_wire_api = normalize_api_wire_api(api_wire_api);
+    account.api_supports_websockets =
+        account.api_wire_api.as_deref() == Some("responses") && api_supports_websockets;
     account.api_supports_vision = api_supports_vision;
     account.api_model_vision_support = normalize_api_model_vision_support(api_model_vision_support);
     account.api_vision_routing_model = normalize_optional_value(api_vision_routing_model);
@@ -1168,6 +1182,7 @@ fn write_api_key_provider_to_config_toml(
     base_dir: &Path,
     provider_config: &ApiProviderConfig,
     bearer_token: &str,
+    supports_websockets: bool,
 ) -> Result<(), String> {
     let config_path = get_config_toml_path(base_dir);
     let bearer_token = normalize_api_key(bearer_token)
@@ -1208,7 +1223,7 @@ fn write_api_key_provider_to_config_toml(
     provider_table["wire_api"] = value(CODEX_PROVIDER_WIRE_API);
     provider_table["requires_openai_auth"] = value(true);
     provider_table[CODEX_CONFIG_EXPERIMENTAL_BEARER_TOKEN_KEY] = value(bearer_token);
-    provider_table["supports_websockets"] = value(false);
+    provider_table["supports_websockets"] = value(supports_websockets);
 
     if let Some(parent) = config_path.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("创建 config.toml 目录失败: {}", e))?;
@@ -2417,6 +2432,11 @@ fn read_json_i64(value: &serde_json::Value, keys: &[&str]) -> Option<i64> {
     })
 }
 
+fn read_json_bool(value: &serde_json::Value, keys: &[&str]) -> Option<bool> {
+    keys.iter()
+        .find_map(|key| value.get(*key).and_then(|item| item.as_bool()))
+}
+
 fn read_json_string_array(value: &serde_json::Value, keys: &[&str]) -> Option<Vec<String>> {
     let items = keys
         .iter()
@@ -2567,6 +2587,15 @@ fn apply_api_key_import_metadata(account: &mut CodexAccount, value: &serde_json:
     if let Some(tags) = read_json_string_array(value, &["tags"]) {
         account.tags = Some(tags);
     }
+    if let Some(api_wire_api) = read_json_string(value, &["api_wire_api", "apiWireApi"]) {
+        account.api_wire_api = normalize_api_wire_api(Some(api_wire_api));
+    }
+    if let Some(supports_websockets) =
+        read_json_bool(value, &["api_supports_websockets", "apiSupportsWebsockets"])
+    {
+        account.api_supports_websockets =
+            account.api_wire_api.as_deref() == Some("responses") && supports_websockets;
+    }
 }
 
 fn parse_codex_account_compat(
@@ -2579,6 +2608,7 @@ fn parse_codex_account_compat(
             account.id = fallback_id.to_string();
         }
         apply_compat_account_metadata(&mut account, &value, summary);
+        normalize_api_key_websocket_capability(&mut account);
         return Ok(Some(account));
     }
 
@@ -2619,6 +2649,7 @@ fn parse_codex_account_compat(
             Vec::new(),
         );
         apply_compat_account_metadata(&mut account, &value, summary);
+        apply_api_key_import_metadata(&mut account, &value);
         account.plan_type = Some(API_KEY_LOGIN_PLAN_TYPE.to_string());
         return Ok(Some(account));
     }
@@ -2712,9 +2743,9 @@ fn load_account_with_summary(
             .as_ref()
             .map(|value| migrate_bound_oauth_use_local_gateway_if_missing(&mut account, value))
             .unwrap_or(false);
-        if migrate_apikey_fun_wire_api(&mut account)
-            || migrated_bound_oauth
-            || migrated_index_summary
+        let migrated_wire_api = migrate_apikey_fun_wire_api(&mut account);
+        let migrated_websocket = normalize_api_key_websocket_capability(&mut account);
+        if migrated_wire_api || migrated_websocket || migrated_bound_oauth || migrated_index_summary
         {
             if let Err(error) = save_account(&account) {
                 logger::log_warn(&format!(
@@ -2910,6 +2941,7 @@ pub fn upsert_api_key_account(
     api_provider_name: Option<String>,
     api_model_catalog: Vec<String>,
     api_wire_api: Option<String>,
+    api_supports_websockets: bool,
     api_supports_vision: bool,
     api_model_vision_support: std::collections::HashMap<String, bool>,
     api_vision_routing_model: Option<String>,
@@ -2933,6 +2965,7 @@ pub fn upsert_api_key_account(
             provider_config.clone(),
             api_model_catalog.clone(),
             api_wire_api.clone(),
+            api_supports_websockets,
             api_supports_vision,
             api_model_vision_support.clone(),
             api_vision_routing_model.clone(),
@@ -2961,6 +2994,8 @@ pub fn upsert_api_key_account(
         acc.plan_type = Some(API_KEY_LOGIN_PLAN_TYPE.to_string());
         acc.account_name = account_name;
         acc.api_wire_api = normalize_api_wire_api(api_wire_api.clone());
+        acc.api_supports_websockets =
+            acc.api_wire_api.as_deref() == Some("responses") && api_supports_websockets;
         acc.api_supports_vision = api_supports_vision;
         acc.api_model_vision_support = normalize_api_model_vision_support(api_model_vision_support);
         acc.api_vision_routing_model = normalize_optional_value(api_vision_routing_model);
@@ -4078,7 +4113,12 @@ pub fn write_auth_file_to_dir(base_dir: &Path, account: &CodexAccount) -> Result
             account.api_provider_id.as_deref(),
             account.api_provider_name.as_deref(),
         );
-        write_api_key_provider_to_config_toml(base_dir, &provider_config, &api_key)?;
+        write_api_key_provider_to_config_toml(
+            base_dir,
+            &provider_config,
+            &api_key,
+            account.api_supports_websockets,
+        )?;
         provider_config
     } else {
         let provider_config = ApiProviderConfig {
@@ -4178,7 +4218,12 @@ fn write_api_key_provider_override_to_config_toml(
         api_key_account.api_provider_id.as_deref(),
         api_key_account.api_provider_name.as_deref(),
     );
-    write_api_key_provider_to_config_toml(base_dir, &provider_config, &api_key)?;
+    write_api_key_provider_to_config_toml(
+        base_dir,
+        &provider_config,
+        &api_key,
+        api_key_account.api_supports_websockets,
+    )?;
     Ok(provider_config)
 }
 
@@ -4989,6 +5034,7 @@ pub fn import_from_local() -> Result<CodexAccount, String> {
             Vec::new(),
             None,
             false,
+            false,
             std::collections::HashMap::new(),
             None,
             None,
@@ -5008,6 +5054,7 @@ pub fn import_from_local() -> Result<CodexAccount, String> {
             fallback_provider.provider_name.clone(),
             Vec::new(),
             None,
+            false,
             false,
             std::collections::HashMap::new(),
             None,
@@ -5042,6 +5089,7 @@ fn import_account_struct(account: CodexAccount) -> Result<CodexAccount, String> 
             account.api_provider_name.clone(),
             account.api_model_catalog.clone(),
             account.api_wire_api.clone(),
+            account.api_supports_websockets,
             account.api_supports_vision,
             account.api_model_vision_support.clone(),
             account.api_vision_routing_model.clone(),
@@ -6076,6 +6124,7 @@ async fn import_account_from_json_value(
                 Vec::new(),
                 None,
                 false,
+                false,
                 std::collections::HashMap::new(),
                 None,
                 None,
@@ -6177,6 +6226,7 @@ pub async fn import_from_json(json_content: &str) -> Result<Vec<CodexAccount>, S
                 Vec::new(),
                 None,
                 false,
+                false,
                 std::collections::HashMap::new(),
                 None,
                 None,
@@ -6213,6 +6263,7 @@ pub async fn import_from_json(json_content: &str) -> Result<Vec<CodexAccount>, S
                 fallback_provider.provider_name.clone(),
                 Vec::new(),
                 None,
+                false,
                 false,
                 std::collections::HashMap::new(),
                 None,
@@ -7698,6 +7749,8 @@ mod tests {
                 "api_base_url": "https://example.com/v1",
                 "api_provider_id": "custom-openai",
                 "api_provider_name": "Custom OpenAI",
+                "api_wire_api": "responses",
+                "api_supports_websockets": true,
                 "email": "api@example.com",
                 "created_at": 100,
                 "last_used": 200
@@ -7718,8 +7771,32 @@ mod tests {
         );
         assert_eq!(account.api_provider_id.as_deref(), Some("custom-openai"));
         assert_eq!(account.api_provider_name.as_deref(), Some("Custom OpenAI"));
+        assert_eq!(account.api_wire_api.as_deref(), Some("responses"));
+        assert!(account.api_supports_websockets);
         assert_eq!(account.created_at, 100);
         assert_eq!(account.last_used, 200);
+    }
+
+    #[test]
+    fn compat_disables_websockets_for_chat_completions_account() {
+        let account = parse_codex_account_compat(
+            serde_json::json!({
+                "auth_mode": "apikey",
+                "OPENAI_API_KEY": "sk-test-chat",
+                "api_base_url": "https://example.com/v1",
+                "api_wire_api": "chat_completions",
+                "api_supports_websockets": true,
+                "created_at": 100,
+                "last_used": 200
+            }),
+            "stored-chat-apikey",
+            None,
+        )
+        .expect("compat parse")
+        .expect("account");
+
+        assert_eq!(account.api_wire_api.as_deref(), Some("chat_completions"));
+        assert!(!account.api_supports_websockets);
     }
 
     fn make_temp_dir(prefix: &str) -> std::path::PathBuf {
@@ -9639,7 +9716,7 @@ multi_agent = true
         )
         .expect("resolve provider config");
 
-        write_api_key_provider_to_config_toml(&base_dir, &provider_config, "sk-test")
+        write_api_key_provider_to_config_toml(&base_dir, &provider_config, "sk-test", false)
             .expect("write config");
 
         let config_path = base_dir.join("config.toml");
@@ -9677,7 +9754,7 @@ multi_agent = true
         )
         .expect("resolve provider config");
 
-        write_api_key_provider_to_config_toml(&base_dir, &provider_config, "sk-test")
+        write_api_key_provider_to_config_toml(&base_dir, &provider_config, "sk-test", false)
             .expect("write config");
 
         let config_path = base_dir.join("config.toml");
@@ -9701,6 +9778,26 @@ multi_agent = true
                 provider_name: Some("Relay".to_string()),
             }
         );
+
+        fs::remove_dir_all(&base_dir).expect("cleanup temp dir");
+    }
+
+    #[test]
+    fn api_key_config_toml_enables_websockets_when_account_supports_them() {
+        let base_dir = make_temp_dir("codex-api-key-config-websocket-test");
+        let provider_config = resolve_api_provider_config(
+            Some("https://relay.example.com/v1/"),
+            Some(CodexApiProviderMode::Custom),
+            Some("relay"),
+            Some("Relay"),
+        )
+        .expect("resolve provider config");
+
+        write_api_key_provider_to_config_toml(&base_dir, &provider_config, "sk-test", true)
+            .expect("write config");
+
+        let content = fs::read_to_string(base_dir.join("config.toml")).expect("read config");
+        assert!(content.contains("supports_websockets = true"));
 
         fs::remove_dir_all(&base_dir).expect("cleanup temp dir");
     }
@@ -10250,7 +10347,7 @@ multi_agent = true
         )
         .expect("resolve provider config");
 
-        write_api_key_provider_to_config_toml(&base_dir, &provider_config, "sk-test")
+        write_api_key_provider_to_config_toml(&base_dir, &provider_config, "sk-test", false)
             .expect("write config");
 
         let content = fs::read_to_string(&config_path).expect("read config");
@@ -10828,6 +10925,7 @@ pub fn update_api_key_credentials(
     api_provider_name: Option<String>,
     api_model_catalog: Vec<String>,
     api_wire_api: Option<String>,
+    api_supports_websockets: bool,
     api_supports_vision: bool,
     api_model_vision_support: std::collections::HashMap<String, bool>,
     api_vision_routing_model: Option<String>,
@@ -10868,6 +10966,7 @@ pub fn update_api_key_credentials(
         provider_config,
         api_model_catalog,
         api_wire_api,
+        api_supports_websockets,
         api_supports_vision,
         api_model_vision_support,
         api_vision_routing_model,

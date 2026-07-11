@@ -2716,7 +2716,8 @@
         "modelCatalog": "Catalogo modelli",
         "visionCapability": "Input immagini",
         "visionModels": "Modelli visivi",
-        "visionRoutingModel": "Modello immagini"
+        "visionRoutingModel": "Modello immagini",
+        "supportsWebsockets": "Trasporto WebSocket"
       },
       "validation": {
         "nameRequired": "Il nome del provider è obbligatorio.",
@@ -2952,6 +2953,12 @@
         "customMoveUp": "Sposta su",
         "customMoveDown": "Sposta giù",
         "customReset": "Reimposta ordine"
+      },
+      "websockets": {
+        "title": "Consenti a Codex di usare Responses tramite WebSocket",
+        "help": "Attiva solo se il provider supporta esplicitamente Responses tramite WebSocket; verifica il trasporto nei log di Codex o del servizio proxy.",
+        "enabled": "Attivato",
+        "disabled": "Disattivato"
       }
     },
     "quickSwitch": {

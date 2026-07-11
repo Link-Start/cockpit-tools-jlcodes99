@@ -2716,7 +2716,8 @@
         "modelCatalog": "モデルカタログ",
         "visionCapability": "画像入力",
         "visionModels": "画像対応モデル",
-        "visionRoutingModel": "画像ルートモデル"
+        "visionRoutingModel": "画像ルートモデル",
+        "supportsWebsockets": "WebSocket 転送"
       },
       "validation": {
         "nameRequired": "プロバイダー名は必須です。",
@@ -2952,6 +2953,12 @@
         "customMoveUp": "上へ",
         "customMoveDown": "下へ",
         "customReset": "順序をリセット"
+      },
+      "websockets": {
+        "title": "Codex に Responses WebSocket の使用を許可",
+        "help": "プロバイダーが Responses WebSocket を明示的にサポートしている場合のみ有効にしてください。接続方式は Codex またはプロキシサービスのログで確認できます。",
+        "enabled": "有効",
+        "disabled": "無効"
       }
     },
     "quickSwitch": {

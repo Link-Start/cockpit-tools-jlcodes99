@@ -3662,6 +3662,7 @@ export function CodexAccountsPage() {
       apiProviderName?: string;
       apiModelCatalog?: string[];
       apiWireApi?: "responses" | "chat_completions";
+      apiSupportsWebsockets?: boolean;
       apiSupportsVision?: boolean;
       apiModelVisionSupport?: Record<string, boolean>;
       apiVisionRoutingModel?: string;
@@ -3722,6 +3723,7 @@ export function CodexAccountsPage() {
           apiProviderName: managedProvider.name,
           apiModelCatalog: managedProvider.modelCatalog,
           apiWireApi: managedProvider.wireApi ?? undefined,
+          apiSupportsWebsockets: managedProvider.supportsWebsockets,
           apiSupportsVision: managedProvider.supportsVision,
           apiModelVisionSupport: Object.fromEntries(
             Object.entries(managedProvider.modelCapabilities ?? {}).map(
@@ -5872,6 +5874,7 @@ export function CodexAccountsPage() {
         ),
         selectedQuickSwitchProvider.visionRoutingModel,
         selectedQuickSwitchProvider.wireApi ?? undefined,
+        selectedQuickSwitchProvider.supportsWebsockets,
       );
       setMessage({
         text: t("codex.quickSwitch.success", {
@@ -5967,6 +5970,7 @@ export function CodexAccountsPage() {
             apiModelCatalog: savedProvider.modelCatalog,
             apiSupportsVision: savedProvider.supportsVision,
             apiWireApi: savedProvider.wireApi ?? undefined,
+            apiSupportsWebsockets: savedProvider.supportsWebsockets,
             accountName: savedProvider.name,
           };
           try {
@@ -6009,6 +6013,7 @@ export function CodexAccountsPage() {
         finalProviderPayload.apiVisionRoutingModel,
         finalProviderPayload.accountName,
         finalProviderPayload.apiWireApi,
+        finalProviderPayload.apiSupportsWebsockets,
       );
       await fetchAccounts();
       await fetchCurrentAccount();
@@ -7080,6 +7085,7 @@ export function CodexAccountsPage() {
         providerPayload.apiModelVisionSupport,
         providerPayload.apiVisionRoutingModel,
         providerPayload.apiWireApi,
+        providerPayload.apiSupportsWebsockets,
       );
       if (
         validation.apiBaseUrl &&
@@ -7103,6 +7109,7 @@ export function CodexAccountsPage() {
             website: providerPayload.sponsorTemplate?.website,
             apiKeyUrl: providerPayload.sponsorTemplate?.apiKeyUrl,
             wireApi: providerPayload.apiWireApi,
+            supportsWebsockets: providerPayload.apiSupportsWebsockets,
             integrationType: providerPayload.sponsorTemplate?.integrationType,
           });
           try {

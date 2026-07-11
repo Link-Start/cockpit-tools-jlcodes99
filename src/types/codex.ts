@@ -27,6 +27,7 @@ export interface CodexAccount {
   api_provider_name?: string;
   api_model_catalog?: string[];
   api_wire_api?: CodexProviderWireApi | null;
+  api_supports_websockets?: boolean;
   api_supports_vision?: boolean;
   api_model_vision_support?: Record<string, boolean>;
   api_vision_routing_model?: string | null;

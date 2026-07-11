@@ -2716,7 +2716,8 @@
         "modelCatalog": "Katalog modeli",
         "visionCapability": "Wejście obrazów",
         "visionModels": "Modele wizyjne",
-        "visionRoutingModel": "Model obrazów"
+        "visionRoutingModel": "Model obrazów",
+        "supportsWebsockets": "Transport WebSocket"
       },
       "validation": {
         "nameRequired": "Nazwa dostawcy jest wymagana.",
@@ -2952,6 +2953,12 @@
         "customMoveUp": "W górę",
         "customMoveDown": "W dół",
         "customReset": "Resetuj kolejność"
+      },
+      "websockets": {
+        "title": "Zezwalaj Codex na używanie Responses przez WebSocket",
+        "help": "Włącz tylko wtedy, gdy dostawca jawnie obsługuje Responses przez WebSocket; sprawdź sposób połączenia w dziennikach Codex lub usługi proxy.",
+        "enabled": "Włączono",
+        "disabled": "Wyłączono"
       }
     },
     "quickSwitch": {

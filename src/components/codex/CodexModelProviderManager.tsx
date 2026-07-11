@@ -373,6 +373,7 @@ interface ProviderFormState {
   website: string;
   apiKeyUrl: string;
   wireApi: CodexProviderWireApi;
+  supportsWebsockets: boolean;
   enableModePreference: CodexProviderEnableModePreference;
   integrationType: "sub2api" | "new_api" | "";
   newApiKeyName: string;
@@ -390,6 +391,7 @@ const EMPTY_FORM: ProviderFormState = {
   website: "",
   apiKeyUrl: "",
   wireApi: "responses",
+  supportsWebsockets: false,
   enableModePreference: "direct",
   integrationType: "",
   newApiKeyName: "",
@@ -1465,6 +1467,8 @@ export function CodexModelProviderManager({
       website: provider.website ?? "",
       apiKeyUrl: provider.apiKeyUrl ?? "",
       wireApi: resolvedWireApi,
+      supportsWebsockets:
+        resolvedWireApi === "responses" && provider.supportsWebsockets === true,
       enableModePreference:
         provider.enableModePreference ??
         resolveEnableModePreferenceForWireApi(resolvedWireApi),
@@ -1498,7 +1502,10 @@ export function CodexModelProviderManager({
     (presetId: string) => {
       setSelectedPresetId(presetId);
       setSelectedSponsorTemplateId(null);
-      if (presetId === CODEX_API_PROVIDER_CUSTOM_ID) return;
+      if (presetId === CODEX_API_PROVIDER_CUSTOM_ID) {
+        mutateForm({ supportsWebsockets: false });
+        return;
+      }
       const preset = findCodexApiProviderPresetById(presetId);
       if (!preset) return;
       const wireApi = resolveDefaultProviderWireApi(preset.id);
@@ -1512,6 +1519,7 @@ export function CodexModelProviderManager({
         website: preset.website ?? "",
         apiKeyUrl: preset.apiKeyUrl ?? "",
         wireApi,
+        supportsWebsockets: false,
         enableModePreference: resolveEnableModePreferenceForWireApi(wireApi),
         integrationType: "",
       });
@@ -1537,6 +1545,7 @@ export function CodexModelProviderManager({
         website: template.website,
         apiKeyUrl: template.apiKeyUrl,
         wireApi,
+        supportsWebsockets: false,
         enableModePreference: resolveEnableModePreferenceForWireApi(wireApi),
         integrationType: template.integrationType ?? "",
       });
@@ -2014,6 +2023,7 @@ export function CodexModelProviderManager({
           website: form.website,
           apiKeyUrl: form.apiKeyUrl,
           wireApi: form.wireApi,
+          supportsWebsockets: form.supportsWebsockets,
           enableModePreference: form.enableModePreference,
           integrationType: form.integrationType || undefined,
           initialApiKey: newApiKey || undefined,
@@ -2031,6 +2041,7 @@ export function CodexModelProviderManager({
           website: form.website,
           apiKeyUrl: form.apiKeyUrl,
           wireApi: form.wireApi,
+          supportsWebsockets: form.supportsWebsockets,
           enableModePreference: form.enableModePreference,
           integrationType: form.integrationType || null,
         });
@@ -2604,6 +2615,7 @@ export function CodexModelProviderManager({
           provider.visionRoutingModel,
           undefined,
           wireApi,
+          provider.supportsWebsockets,
         );
         await updateCodexApiKeyBoundOAuthAccount(
           account.id,
@@ -4419,6 +4431,7 @@ export function CodexModelProviderManager({
                     onClick={() =>
                       mutateForm({
                         wireApi: "chat_completions",
+                        supportsWebsockets: false,
                         enableModePreference:
                           resolveEnableModePreferenceForWireApi(
                             "chat_completions",
@@ -4435,6 +4448,41 @@ export function CodexModelProviderManager({
                     </span>
                   </button>
                 </div>
+              </div>
+              <div className="form-group">
+                <label>
+                  {t(
+                    "codex.modelProviders.fields.supportsWebsockets",
+                    "WebSocket 传输",
+                  )}
+                </label>
+                <label className="provider-vision-toggle">
+                  <span className="provider-vision-toggle-copy">
+                    <span className="provider-vision-toggle-title">
+                      {t(
+                        "codex.modelProviders.websockets.title",
+                        "允许 Codex 使用 Responses WebSocket",
+                      )}
+                    </span>
+                    <span className="provider-vision-toggle-desc">
+                      {t(
+                        "codex.modelProviders.websockets.help",
+                        "仅在供应商明确支持 Responses WebSocket 时开启；连接方式可通过 Codex 或代理服务日志确认。",
+                      )}
+                    </span>
+                  </span>
+                  <span className="provider-vision-switch">
+                    <input
+                      type="checkbox"
+                      checked={form.supportsWebsockets}
+                      onChange={(event) =>
+                        mutateForm({ supportsWebsockets: event.target.checked })
+                      }
+                      disabled={saving || form.wireApi !== "responses"}
+                    />
+                    <span className="provider-vision-switch-track" />
+                  </span>
+                </label>
               </div>
               {form.wireApi === "chat_completions" && (
                 <>
@@ -5241,6 +5289,18 @@ export function CodexModelProviderManager({
                     "Responses 原生",
                   ),
             rawKey: "wireApi",
+          },
+          {
+            key: "supportsWebsockets",
+            label: t(
+              "codex.modelProviders.fields.supportsWebsockets",
+              "WebSocket 传输",
+            ),
+            value:
+              resolvedWireApi === "responses" && provider.supportsWebsockets
+                ? t("codex.modelProviders.websockets.enabled", "已启用")
+                : t("codex.modelProviders.websockets.disabled", "已停用"),
+            rawKey: "supportsWebsockets",
           },
           {
             key: "oauthBinding",

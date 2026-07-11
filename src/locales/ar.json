@@ -2762,7 +2762,8 @@
         "modelCatalog": "كتالوج النماذج",
         "visionCapability": "إدخال الصور",
         "visionModels": "نماذج الصور",
-        "visionRoutingModel": "نموذج توجيه الصور"
+        "visionRoutingModel": "نموذج توجيه الصور",
+        "supportsWebsockets": "نقل WebSocket"
       },
       "validation": {
         "nameRequired": "اسم المزوّد مطلوب.",
@@ -2998,6 +2999,12 @@
         "customMoveUp": "نقل للأعلى",
         "customMoveDown": "نقل للأسفل",
         "customReset": "إعادة ضبط الترتيب"
+      },
+      "websockets": {
+        "title": "السماح لـ Codex باستخدام Responses عبر WebSocket",
+        "help": "فعّل هذا الخيار فقط عندما يدعم المزوّد Responses عبر WebSocket صراحةً؛ ويمكن تأكيد طريقة الاتصال من سجلات Codex أو خدمة الوكيل.",
+        "enabled": "مفعّل",
+        "disabled": "معطّل"
       }
     },
     "quickSwitch": {

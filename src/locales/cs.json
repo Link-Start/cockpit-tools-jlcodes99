@@ -2716,7 +2716,8 @@
         "modelCatalog": "Katalog modelů",
         "visionCapability": "Vstup obrázků",
         "visionModels": "Vizuální modely",
-        "visionRoutingModel": "Model pro obrázky"
+        "visionRoutingModel": "Model pro obrázky",
+        "supportsWebsockets": "Přenos přes WebSocket"
       },
       "validation": {
         "nameRequired": "Název poskytovatele je povinný.",
@@ -2952,6 +2953,12 @@
         "customMoveUp": "Posunout nahoru",
         "customMoveDown": "Posunout dolů",
         "customReset": "Obnovit pořadí"
+      },
+      "websockets": {
+        "title": "Povolit Codexu používat Responses přes WebSocket",
+        "help": "Zapněte pouze tehdy, když poskytovatel výslovně podporuje Responses přes WebSocket; způsob připojení ověřte v protokolech Codexu nebo proxy služby.",
+        "enabled": "Zapnuto",
+        "disabled": "Vypnuto"
       }
     },
     "quickSwitch": {

@@ -2495,7 +2495,8 @@
         "newApiKey": "New API Key",
         "visionCapability": "Image Input",
         "visionModels": "Vision Models",
-        "visionRoutingModel": "Image Route Model"
+        "visionRoutingModel": "Image Route Model",
+        "supportsWebsockets": "WebSocket Transport"
       },
       "validation": {
         "nameRequired": "Provider name is required.",
@@ -2727,6 +2728,12 @@
         "customMoveUp": "Move up",
         "customMoveDown": "Move down",
         "customReset": "Reset custom order"
+      },
+      "websockets": {
+        "title": "Allow Codex to use Responses over WebSocket",
+        "help": "Enable only when the provider explicitly supports Responses over WebSocket; confirm the transport in Codex or proxy service logs.",
+        "enabled": "Enabled",
+        "disabled": "Disabled"
       }
     },
     "quickSwitch": {

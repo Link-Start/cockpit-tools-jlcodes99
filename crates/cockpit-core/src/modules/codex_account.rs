@@ -810,6 +810,7 @@ fn write_api_key_provider_to_config_toml(
     base_dir: &Path,
     provider_config: &ApiProviderConfig,
     bearer_token: &str,
+    supports_websockets: bool,
 ) -> Result<(), String> {
     let config_path = get_config_toml_path(base_dir);
     let bearer_token = normalize_api_key(bearer_token)
@@ -848,7 +849,7 @@ fn write_api_key_provider_to_config_toml(
     provider_table["wire_api"] = value(CODEX_PROVIDER_WIRE_API);
     provider_table["requires_openai_auth"] = value(true);
     provider_table[CODEX_CONFIG_EXPERIMENTAL_BEARER_TOKEN_KEY] = value(bearer_token);
-    provider_table["supports_websockets"] = value(false);
+    provider_table["supports_websockets"] = value(supports_websockets);
 
     if let Some(parent) = config_path.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("创建 config.toml 目录失败: {}", e))?;
@@ -2480,7 +2481,12 @@ pub fn write_auth_file_to_dir(base_dir: &Path, account: &CodexAccount) -> Result
             account.api_provider_id.as_deref(),
             account.api_provider_name.as_deref(),
         );
-        write_api_key_provider_to_config_toml(base_dir, &provider_config, &api_key)?;
+        write_api_key_provider_to_config_toml(
+            base_dir,
+            &provider_config,
+            &api_key,
+            account.api_supports_websockets,
+        )?;
         provider_config
     } else {
         let provider_config = ApiProviderConfig {
@@ -4370,7 +4376,7 @@ requires_openai_auth = false
         )
         .expect("resolve provider config");
 
-        write_api_key_provider_to_config_toml(&base_dir, &provider_config, "sk-test")
+        write_api_key_provider_to_config_toml(&base_dir, &provider_config, "sk-test", false)
             .expect("write config");
 
         let config_path = base_dir.join("config.toml");
@@ -4384,6 +4390,26 @@ requires_openai_auth = false
         assert!(content.contains("experimental_bearer_token = \"sk-test\""));
         assert!(content.contains("supports_websockets = false"));
         assert!(!content.contains("openai_base_url"));
+
+        fs::remove_dir_all(&base_dir).expect("cleanup temp dir");
+    }
+
+    #[test]
+    fn api_key_config_toml_enables_websockets_when_account_supports_them() {
+        let base_dir = make_temp_dir("codex-config-api-key-websocket-test");
+        let provider_config = resolve_api_provider_config(
+            Some("https://relay.example.com/v1/"),
+            Some(CodexApiProviderMode::Custom),
+            Some("relay"),
+            Some("Relay"),
+        )
+        .expect("resolve provider config");
+
+        write_api_key_provider_to_config_toml(&base_dir, &provider_config, "sk-test", true)
+            .expect("write config");
+
+        let content = fs::read_to_string(base_dir.join("config.toml")).expect("read config");
+        assert!(content.contains("supports_websockets = true"));
 
         fs::remove_dir_all(&base_dir).expect("cleanup temp dir");
     }
