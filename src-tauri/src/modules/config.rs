@@ -276,6 +276,9 @@ pub struct UserConfig {
     /// Qoder 启动路径（为空则使用默认路径）
     #[serde(default = "default_qoder_app_path")]
     pub qoder_app_path: String,
+    /// ZCode 启动路径（为空则使用默认路径）
+    #[serde(default = "default_zcode_app_path")]
+    pub zcode_app_path: String,
     /// Trae 启动路径（为空则使用默认路径）
     #[serde(default = "default_trae_app_path")]
     pub trae_app_path: String,
@@ -774,6 +777,9 @@ fn default_codebuddy_cn_app_path() -> String {
 fn default_qoder_app_path() -> String {
     String::new()
 }
+fn default_zcode_app_path() -> String {
+    String::new()
+}
 fn default_trae_app_path() -> String {
     String::new()
 }
@@ -1034,6 +1040,7 @@ impl Default for UserConfig {
             codebuddy_app_path: default_codebuddy_app_path(),
             codebuddy_cn_app_path: default_codebuddy_cn_app_path(),
             qoder_app_path: default_qoder_app_path(),
+            zcode_app_path: default_zcode_app_path(),
             trae_app_path: default_trae_app_path(),
             trae_solo_app_path: default_trae_app_path(),
             trae_cn_app_path: default_trae_app_path(),

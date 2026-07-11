@@ -152,7 +152,7 @@ export function CodebuddySuiteAccountsSharedView<TAccount extends CodebuddySuite
     oauthUrl, oauthUrlCopied, oauthUserCode, oauthUserCodeCopied, oauthMeta,
     oauthPolling, oauthTimedOut,
     oauthPrepareError, oauthCompleteError,
-    handleCopyOauthUrl, handleCopyOauthUserCode, handleRetryOauth, handleOpenOauthUrl,
+    handleCopyOauthUrl, handleCopyOauthUserCode, handleRetryOauth, handleOpenOauthUrlWithMode,
     oauthManualCallbackInput, setOauthManualCallbackInput,
     oauthManualCallbackSubmitting, oauthManualCallbackError,
     oauthSupportsManualCallback, handleSubmitOauthCallbackUrl,
@@ -718,7 +718,7 @@ export function CodebuddySuiteAccountsSharedView<TAccount extends CodebuddySuite
                       <div className={platformConfig.showOauthIncognitoOpenButton ? 'zcode-oauth-window-actions' : undefined}>
                         <button
                           className="btn btn-primary btn-full"
-                          onClick={() => void handleOpenOauthUrl(false)}
+                          onClick={() => void handleOpenOauthUrlWithMode(false)}
                         >
                           <Globe size={16} />
                           {platformConfig.showOauthIncognitoOpenButton
@@ -733,7 +733,7 @@ export function CodebuddySuiteAccountsSharedView<TAccount extends CodebuddySuite
                         {platformConfig.showOauthIncognitoOpenButton && (
                           <button
                             className="btn btn-secondary btn-full"
-                            onClick={() => void handleOpenOauthUrl(true)}
+                            onClick={() => void handleOpenOauthUrlWithMode(true)}
                           >
                             <ShieldCheck size={16} />
                             {t('common.shared.oauth.incognitoWindow', '打开无痕授权窗口')}

@@ -1,11 +1,13 @@
 use chrono::Utc;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
+#[cfg(not(target_os = "macos"))]
 use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
+#[cfg(not(target_os = "macos"))]
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 use uuid::Uuid;
 
@@ -303,30 +305,7 @@ pub fn clear_all_pids() -> Result<(), String> {
 }
 
 pub fn resolve_executable() -> Result<PathBuf, String> {
-    let mut candidates = Vec::new();
-    #[cfg(target_os = "macos")]
-    candidates.push(PathBuf::from(
-        "/Applications/ZCode.app/Contents/MacOS/ZCode",
-    ));
-    #[cfg(target_os = "windows")]
-    {
-        if let Ok(local) = std::env::var("LOCALAPPDATA") {
-            candidates.push(PathBuf::from(local).join("Programs/ZCode/ZCode.exe"));
-        }
-        if let Ok(program_files) = std::env::var("ProgramFiles") {
-            candidates.push(PathBuf::from(program_files).join("ZCode/ZCode.exe"));
-        }
-    }
-    #[cfg(target_os = "linux")]
-    {
-        candidates.push(PathBuf::from("/usr/bin/zcode"));
-        candidates.push(PathBuf::from("/opt/ZCode/zcode"));
-        candidates.push(PathBuf::from("/opt/zcode/zcode"));
-    }
-    candidates
-        .into_iter()
-        .find(|path| path.is_file())
-        .ok_or_else(|| "未找到 ZCode 客户端，请先安装 ZCode".to_string())
+    modules::process::resolve_zcode_launch_path()
 }
 
 fn normalize_path_for_compare(path: &Path) -> String {
@@ -340,6 +319,7 @@ fn normalize_path_for_compare(path: &Path) -> String {
     value
 }
 
+#[cfg(not(target_os = "macos"))]
 fn extract_user_data_dir(arguments: &[OsString]) -> Option<String> {
     let mut index = 0;
     while index < arguments.len() {
@@ -390,6 +370,7 @@ fn is_helper_command(command: &str) -> bool {
         || lower.contains("crashpad_handler")
 }
 
+#[cfg(not(target_os = "macos"))]
 fn is_main_process(process: &sysinfo::Process) -> bool {
     let name = process.name().to_string_lossy().to_ascii_lowercase();
     let executable_name = process
@@ -434,6 +415,9 @@ fn collect_process_entries_from_ps(output: &str) -> Vec<(u32, Option<String>)> {
             continue;
         };
         let lower = command.to_ascii_lowercase();
+        if !lower.contains("zcode") {
+            continue;
+        }
         if is_helper_command(command) {
             if let Some(user_data_dir) = extract_user_data_dir_from_command_line(command) {
                 user_data_by_parent
@@ -484,6 +468,14 @@ pub fn collect_process_entries() -> Vec<(u32, Option<String>)> {
         let mut main_entries = Vec::new();
         let mut user_data_by_parent = HashMap::new();
         for (pid, process) in system.processes() {
+            let name = process.name().to_string_lossy().to_ascii_lowercase();
+            let executable = process
+                .exe()
+                .map(|value| value.to_string_lossy().to_ascii_lowercase())
+                .unwrap_or_default();
+            if !name.contains("zcode") && !executable.contains("zcode") {
+                continue;
+            }
             let command = process
                 .cmd()
                 .iter()

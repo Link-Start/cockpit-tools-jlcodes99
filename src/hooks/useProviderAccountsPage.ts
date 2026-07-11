@@ -727,7 +727,8 @@ export interface UseProviderAccountsPageReturn {
   handleCopyOauthUserCode: () => Promise<void>;
   handleRetryOauth: () => void;
   handleRetryOauthComplete: () => void;
-  handleOpenOauthUrl: (incognito?: boolean) => Promise<void>;
+  handleOpenOauthUrl: () => Promise<void>;
+  handleOpenOauthUrlWithMode: (incognito: boolean) => Promise<void>;
   handleSubmitOauthCallbackUrl: () => Promise<void>;
 
   // Inject / Switch
@@ -2238,7 +2239,7 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
     handleOauthCompleteError,
   ]);
 
-  const handleOpenOauthUrl = useCallback(async (incognito = false) => {
+  const handleOpenOauthUrlWithMode = useCallback(async (incognito: boolean) => {
     if (!oauthUrl) return;
     setOauthCompleteError(null);
     oauthLog('用户点击打开授权链接', {
@@ -2261,6 +2262,11 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
       setTimeout(() => setOauthUrlCopied(false), 1200);
     }
   }, [oauthUrl, oauthLog, oauthService, t]);
+
+  const handleOpenOauthUrl = useCallback(
+    () => handleOpenOauthUrlWithMode(false),
+    [handleOpenOauthUrlWithMode],
+  );
 
   const oauthSupportsManualCallback = useMemo(
     () => Boolean(oauthService?.submitCallbackUrl && oauthCallbackUrl),
@@ -2504,6 +2510,7 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
     handleRetryOauth,
     handleRetryOauthComplete,
     handleOpenOauthUrl,
+    handleOpenOauthUrlWithMode,
     handleSubmitOauthCallbackUrl,
     handleInjectToVSCode,
     isFlowNoticeCollapsed,

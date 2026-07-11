@@ -156,6 +156,8 @@ pub struct GeneralConfig {
     pub codebuddy_cn_app_path: String,
     /// Qoder 启动路径（为空则使用默认路径）
     pub qoder_app_path: String,
+    /// ZCode 启动路径（为空则使用默认路径）
+    pub zcode_app_path: String,
     /// Trae 启动路径（为空则使用默认路径）
     pub trae_app_path: String,
     /// Trae Windows 应用扫描范围（每行一个目录）
@@ -2024,6 +2026,7 @@ pub fn save_network_config(
         codebuddy_app_path: current.codebuddy_app_path,
         codebuddy_cn_app_path: current.codebuddy_cn_app_path,
         qoder_app_path: current.qoder_app_path,
+        zcode_app_path: current.zcode_app_path,
         trae_app_path: current.trae_app_path,
         trae_solo_app_path: current.trae_solo_app_path,
         trae_cn_app_path: current.trae_cn_app_path,
@@ -2347,6 +2350,7 @@ pub fn get_general_config(app: tauri::AppHandle) -> Result<GeneralConfig, String
         codebuddy_app_path: user_config.codebuddy_app_path,
         codebuddy_cn_app_path: user_config.codebuddy_cn_app_path,
         qoder_app_path: user_config.qoder_app_path,
+        zcode_app_path: user_config.zcode_app_path,
         trae_app_path: user_config.trae_app_path,
         trae_solo_app_path: user_config.trae_solo_app_path,
         trae_cn_app_path: user_config.trae_cn_app_path,
@@ -2500,6 +2504,7 @@ pub fn save_general_config(
     codebuddy_app_path: Option<String>,
     codebuddy_cn_app_path: Option<String>,
     qoder_app_path: Option<String>,
+    zcode_app_path: Option<String>,
     trae_app_path: Option<String>,
     trae_solo_app_path: Option<String>,
     trae_cn_app_path: Option<String>,
@@ -2610,6 +2615,9 @@ pub fn save_general_config(
     let normalized_qoder_path = qoder_app_path
         .map(|value| value.trim().to_string())
         .unwrap_or_else(|| current.qoder_app_path.clone());
+    let normalized_zcode_path = zcode_app_path
+        .map(|value| value.trim().to_string())
+        .unwrap_or_else(|| current.zcode_app_path.clone());
     let normalized_trae_path = trae_app_path
         .map(|value| value.trim().to_string())
         .unwrap_or_else(|| current.trae_app_path.clone());
@@ -2786,6 +2794,7 @@ pub fn save_general_config(
         codebuddy_app_path: normalized_codebuddy_path,
         codebuddy_cn_app_path: normalized_codebuddy_cn_path,
         qoder_app_path: normalized_qoder_path,
+        zcode_app_path: normalized_zcode_path,
         trae_app_path: normalized_trae_path,
         trae_solo_app_path: normalized_trae_solo_path,
         trae_cn_app_path: normalized_trae_cn_path,
@@ -3025,6 +3034,7 @@ pub fn set_app_path(app: String, path: String) -> Result<(), String> {
         "codebuddy" => current.codebuddy_app_path = normalized_path,
         "codebuddy_cn" => current.codebuddy_cn_app_path = normalized_path,
         "qoder" => current.qoder_app_path = normalized_path,
+        "zcode" => current.zcode_app_path = normalized_path,
         "trae" => current.trae_app_path = normalized_path,
         "trae_solo" => current.trae_solo_app_path = normalized_path,
         "trae_cn" => current.trae_cn_app_path = normalized_path,
@@ -3139,7 +3149,7 @@ pub fn detect_app_path(app: String, force: Option<bool>) -> Result<Option<String
         "cursor" => Ok(modules::cursor_instance::detect_and_save_cursor_launch_path(force)),
         "claude" => Ok(modules::claude_instance::detect_and_save_claude_launch_path(force)),
         "antigravity" | "antigravity_ide" | "antigravity_legacy" | "codex" | "zed" | "vscode"
-        | "codebuddy" | "codebuddy_cn" | "qoder" | "trae" | "trae_solo" | "trae_cn"
+        | "codebuddy" | "codebuddy_cn" | "qoder" | "zcode" | "trae" | "trae_solo" | "trae_cn"
         | "trae_solo_cn" | "opencode" | "workbuddy" => Ok(
             modules::process::detect_and_save_app_path(app.as_str(), force),
         ),
@@ -3166,7 +3176,8 @@ pub fn scan_app_launch_targets(
     match app.as_str() {
         "antigravity" | "antigravity_ide" | "antigravity_legacy" | "codex" | "claude"
         | "vscode" | "windsurf" | "kiro" | "cursor" | "codebuddy" | "codebuddy_cn" | "qoder"
-        | "trae" | "trae_solo" | "trae_cn" | "trae_solo_cn" | "workbuddy" | "zed" | "opencode" => {}
+        | "zcode" | "trae" | "trae_solo" | "trae_cn" | "trae_solo_cn" | "workbuddy" | "zed"
+        | "opencode" => {}
         _ => return Err("未知应用类型".to_string()),
     }
 

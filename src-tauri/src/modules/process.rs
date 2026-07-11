@@ -789,6 +789,15 @@ fn windows_app_launch_signature(app: &str) -> Option<WindowsAppLaunchSignature> 
             common_paths: &["Qoder\\Qoder.exe"],
             supports_multi_instance: true,
         }),
+        "zcode" => Some(WindowsAppLaunchSignature {
+            label: "ZCode",
+            exe_names: &["ZCode.exe"],
+            command_names: &["zcode"],
+            protocol_names: &["zcode"],
+            display_keywords: &["zcode", "z.ai"],
+            common_paths: &["ZCode\\ZCode.exe"],
+            supports_multi_instance: true,
+        }),
         "trae" => Some(WindowsAppLaunchSignature {
             label: "Trae",
             exe_names: &["Trae.exe"],
@@ -1868,6 +1877,13 @@ fn update_app_path_in_config(app: &str, path: &Path) {
                 return;
             }
         }
+        "zcode" => {
+            if current.zcode_app_path != normalized {
+                current.zcode_app_path = normalized;
+            } else {
+                return;
+            }
+        }
         "trae" => {
             if current.trae_app_path != normalized {
                 current.trae_app_path = normalized;
@@ -1926,6 +1942,7 @@ fn resolve_macos_app_root_from_config(app: &str) -> Option<String> {
         "vscode" => current.vscode_app_path,
         "codebuddy" => current.codebuddy_app_path,
         "codebuddy_cn" => current.codebuddy_cn_app_path,
+        "zcode" => current.zcode_app_path,
         _ => String::new(),
     };
     let trimmed = raw.trim();
@@ -2652,6 +2669,72 @@ fn detect_qoder_exec_path() -> Option<std::path::PathBuf> {
         for candidate in candidates {
             let path = std::path::PathBuf::from(candidate);
             if path.exists() {
+                return Some(path);
+            }
+        }
+    }
+
+    None
+}
+
+fn detect_zcode_exec_path() -> Option<std::path::PathBuf> {
+    #[cfg(target_os = "macos")]
+    {
+        let mut candidates = vec![std::path::PathBuf::from(
+            "/Applications/ZCode.app/Contents/MacOS/ZCode",
+        )];
+        if let Some(home) = dirs::home_dir() {
+            candidates.push(home.join("Applications/ZCode.app/Contents/MacOS/ZCode"));
+        }
+        if let Some(path) = candidates.into_iter().find(|path| path.is_file()) {
+            return Some(path);
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let mut candidates = Vec::new();
+        if let Ok(local_appdata) = std::env::var("LOCALAPPDATA") {
+            candidates
+                .push(std::path::PathBuf::from(&local_appdata).join("Programs/ZCode/ZCode.exe"));
+            candidates.push(std::path::PathBuf::from(local_appdata).join("ZCode/ZCode.exe"));
+        }
+        for variable in ["PROGRAMFILES", "PROGRAMFILES(X86)"] {
+            if let Ok(root) = std::env::var(variable) {
+                candidates.push(std::path::PathBuf::from(root).join("ZCode/ZCode.exe"));
+            }
+        }
+        if let Some(path) = candidates.into_iter().find(|path| path.is_file()) {
+            return Some(path);
+        }
+        if let Some(path) = detect_windows_exec_path_by_signatures(
+            "ZCode",
+            &["ZCode.exe"],
+            &["zcode"],
+            &["zcode"],
+            &["zcode", "z.ai"],
+        ) {
+            return Some(path);
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        for candidate in [
+            "/usr/bin/zcode",
+            "/usr/local/bin/zcode",
+            "/opt/ZCode/zcode",
+            "/opt/zcode/zcode",
+            "/snap/bin/zcode",
+        ] {
+            let path = std::path::PathBuf::from(candidate);
+            if path.is_file() {
+                return Some(path);
+            }
+        }
+        if let Some(home) = dirs::home_dir() {
+            let path = home.join(".local/bin/zcode");
+            if path.is_file() {
                 return Some(path);
             }
         }
@@ -3985,6 +4068,25 @@ fn resolve_qoder_launch_path() -> Result<std::path::PathBuf, String> {
     Err(app_path_missing_error("qoder"))
 }
 
+pub fn resolve_zcode_launch_path() -> Result<std::path::PathBuf, String> {
+    if let Some(custom) = normalize_custom_path(Some(&config::get_user_config().zcode_app_path)) {
+        if let Some(exec) = resolve_macos_exec_path(&custom, "ZCode") {
+            return Ok(exec);
+        }
+        return Err(app_path_missing_error("zcode"));
+    }
+
+    if let Some(detected) = detect_zcode_exec_path() {
+        update_app_path_in_config("zcode", &detected);
+        let detected = detected.to_string_lossy();
+        if let Some(exec) = resolve_macos_exec_path(&detected, "ZCode") {
+            return Ok(exec);
+        }
+    }
+
+    Err(app_path_missing_error("zcode"))
+}
+
 pub fn ensure_zed_launch_path_configured() -> Result<(), String> {
     resolve_zed_launch_path().map(|_| ())
 }
@@ -4231,6 +4333,15 @@ pub fn detect_and_save_app_path(app: &str, force: bool) -> Option<String> {
             if let Some(detected) = detect_qoder_exec_path() {
                 update_app_path_in_config("qoder", &detected);
                 return Some(config::get_user_config().qoder_app_path);
+            }
+        }
+        "zcode" => {
+            if !force && !current.zcode_app_path.trim().is_empty() {
+                return Some(current.zcode_app_path);
+            }
+            if let Some(detected) = detect_zcode_exec_path() {
+                update_app_path_in_config("zcode", &detected);
+                return Some(config::get_user_config().zcode_app_path);
             }
         }
         "trae" | "trae_solo" | "trae_cn" | "trae_solo_cn" => {
