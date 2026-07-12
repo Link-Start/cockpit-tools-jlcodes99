@@ -3367,6 +3367,17 @@
       "started": "Exclusão de {{count}} conta(s) Codex iniciada",
       "pollFailed": "Falha ao atualizar progresso da exclusão: {{error}}",
       "actionFailed": "Ação de exclusão em lote falhou: {{error}}"
+    },
+    "filters": {
+      "allPlans": "Todos ({{count}})",
+      "visibleOfTotal": "{{visible}} / {{total}}",
+      "activeBanner": "Filtros: {{visible}}/{{total}} contas",
+      "clearAll": "Limpar",
+      "chipGroup": "Grupo",
+      "chipTags": "Etiquetas",
+      "chipSearch": "Busca",
+      "chipPlan": "Plano",
+      "chipFolder": "Pasta"
     }
   },
   "githubCopilot": {

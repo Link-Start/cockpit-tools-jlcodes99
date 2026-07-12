@@ -3367,6 +3367,17 @@
       "started": "已開始刪除 {{count}} 個 Codex 帳號",
       "pollFailed": "重新整理批量刪除進度失敗：{{error}}",
       "actionFailed": "批量刪除操作失敗：{{error}}"
+    },
+    "filters": {
+      "allPlans": "全部方案 ({{count}})",
+      "visibleOfTotal": "顯示 {{visible}} / 共 {{total}}",
+      "activeBanner": "目前篩選僅顯示 {{visible}}/{{total}} 個帳號",
+      "clearAll": "清除篩選",
+      "chipGroup": "分組",
+      "chipTags": "標籤",
+      "chipSearch": "搜尋",
+      "chipPlan": "方案",
+      "chipFolder": "分組目錄"
     }
   },
   "githubCopilot": {

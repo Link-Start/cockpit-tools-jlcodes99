@@ -3367,6 +3367,17 @@
       "started": "{{count}} 件の Codex アカウント削除を開始しました",
       "pollFailed": "一括削除の進行状況を更新できません: {{error}}",
       "actionFailed": "一括削除操作に失敗しました: {{error}}"
+    },
+    "filters": {
+      "allPlans": "全プラン ({{count}})",
+      "visibleOfTotal": "{{visible}} / {{total}}",
+      "activeBanner": "フィルター表示 {{visible}}/{{total}}",
+      "clearAll": "解除",
+      "chipGroup": "グループ",
+      "chipTags": "タグ",
+      "chipSearch": "検索",
+      "chipPlan": "プラン",
+      "chipFolder": "フォルダ"
     }
   },
   "githubCopilot": {

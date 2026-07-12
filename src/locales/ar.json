@@ -3414,6 +3414,17 @@
       "started": "بدأ حذف {{count}} حساب Codex",
       "pollFailed": "فشل تحديث تقدم الحذف الدفعي: {{error}}",
       "actionFailed": "فشل إجراء الحذف الدفعي: {{error}}"
+    },
+    "filters": {
+      "allPlans": "كل الخطط ({{count}})",
+      "visibleOfTotal": "{{visible}} / {{total}}",
+      "activeBanner": "الفلاتر: {{visible}}/{{total}}",
+      "clearAll": "مسح الفلاتر",
+      "chipGroup": "مجموعة",
+      "chipTags": "وسوم",
+      "chipSearch": "بحث",
+      "chipPlan": "خطة",
+      "chipFolder": "مجلد"
     }
   },
   "githubCopilot": {

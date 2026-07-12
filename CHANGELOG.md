@@ -20,12 +20,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Changed
 
 - **Codex plan filters and quota summaries support dynamic plans**: local access, custom routing, wakeup, and model-provider binding share the same plan-filter and quota-summary rules instead of a fixed plan list.
-- **Codex API proxy compatibility is closer to current protocol details**: request normalization for input roles/metadata and built-in tool names, account selection that prefers regular accounts before backup accounts, and more stable proxy HTTP transport reuse.
 - **Codex API Service request logs show account display names**: log rows prefer the account presentation name so multi-account traffic under one API key is easier to tell apart. Thanks @lcpdeb for #1312.
 - **Windows CLI and background process launching is more consistent**: console windows stay hidden by default on related startup paths, reducing black-console flashes during use.
 
 ### Fixed
 
+- **Fixed high CPU and memory usage on long Codex API Service conversations**: input role/metadata and built-in tool normalization now run in linear passes instead of repeatedly scanning the full JSON document for every item, while explicit proxies reuse HTTP transports to reduce connection and allocation overhead.
+- **Fixed Codex overview filters that looked like missing accounts**: when group, tag, search, plan, or folder filters hide some accounts, the page shows visible/total counts, lists active filter chips, and offers one-click clear-all; plan “All” is labeled as all plans so it is not confused with the full account list; stale group filter IDs are dropped after groups load.
+- **Fixed auto-switch “all accounts” scope keeping a stale selected-ID list**: switching to or loading `all_accounts` clears residual selected account IDs for Codex and Antigravity so config matches runtime (which already monitors every account in that mode).
+- **Fixed Cockpit startup automatically rewriting Codex configuration**: enabled Codex API Service and sidecar processes still recover automatically with Cockpit, but startup no longer takes over or restores Codex profiles and does not rewrite `config.toml` or `auth.json`; existing writes now occur only after explicit service enable/disable, account switching, binding, or instance launch actions.
 - **Fixed Codex API Key switch and sidecar rebuild writing a localhost upstream `base-url`**: local-access runtime endpoints are no longer synced back into the account's real upstream URL; sidecar `codex-api-key` entries avoid loopback addresses and try to recover the real Base URL from model-provider config, preventing gateway `no auth available` failures. See #1526.
 - **Fixed Codex batch-import task bars that stayed on the account page after a failed or empty import**: closing an invalid preview discards the task, and the sticky task bar can also be dismissed manually. See #1445.
 - **Fixed Codex CLI / Node discovery when installed via nvm, fnm, or asdf under GUI launches**: wakeup and CLI detection now scan common version-manager directories. See #1496.

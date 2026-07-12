@@ -3566,6 +3566,17 @@
       "started": "Started deleting {{count}} Codex account(s)",
       "pollFailed": "Failed to refresh batch delete progress: {{error}}",
       "actionFailed": "Batch delete action failed: {{error}}"
+    },
+    "filters": {
+      "allPlans": "All plans ({{count}})",
+      "visibleOfTotal": "{{visible}} / {{total}}",
+      "activeBanner": "Filters show {{visible}}/{{total}} accounts",
+      "clearAll": "Clear filters",
+      "chipGroup": "Group",
+      "chipTags": "Tags",
+      "chipSearch": "Search",
+      "chipPlan": "Plan",
+      "chipFolder": "Folder"
     }
   },
   "codebuddy": {

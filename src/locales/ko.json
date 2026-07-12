@@ -3367,6 +3367,17 @@
       "started": "Codex 계정 {{count}}개 삭제를 시작했습니다",
       "pollFailed": "일괄 삭제 진행 상황을 새로 고치지 못했습니다: {{error}}",
       "actionFailed": "일괄 삭제 작업 실패: {{error}}"
+    },
+    "filters": {
+      "allPlans": "전체 요금제 ({{count}})",
+      "visibleOfTotal": "{{visible}} / {{total}}",
+      "activeBanner": "필터 표시 {{visible}}/{{total}}",
+      "clearAll": "필터 해제",
+      "chipGroup": "그룹",
+      "chipTags": "태그",
+      "chipSearch": "검색",
+      "chipPlan": "요금제",
+      "chipFolder": "폴더"
     }
   },
   "githubCopilot": {

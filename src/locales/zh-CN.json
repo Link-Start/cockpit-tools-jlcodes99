@@ -3566,6 +3566,17 @@
       "started": "已开始删除 {{count}} 个 Codex 账号",
       "pollFailed": "刷新批量删除进度失败：{{error}}",
       "actionFailed": "批量删除操作失败：{{error}}"
+    },
+    "filters": {
+      "allPlans": "全部套餐 ({{count}})",
+      "visibleOfTotal": "显示 {{visible}} / 共 {{total}}",
+      "activeBanner": "当前筛选仅显示 {{visible}}/{{total}} 个账号",
+      "clearAll": "清除筛选",
+      "chipGroup": "分组",
+      "chipTags": "标签",
+      "chipSearch": "搜索",
+      "chipPlan": "套餐",
+      "chipFolder": "分组目录"
     }
   },
   "codebuddy": {

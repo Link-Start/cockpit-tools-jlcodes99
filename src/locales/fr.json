@@ -3367,6 +3367,17 @@
       "started": "Suppression de {{count}} compte(s) Codex démarrée",
       "pollFailed": "Impossible d’actualiser la progression de suppression: {{error}}",
       "actionFailed": "Action de suppression par lot échouée: {{error}}"
+    },
+    "filters": {
+      "allPlans": "Tous plans ({{count}})",
+      "visibleOfTotal": "{{visible}} / {{total}}",
+      "activeBanner": "Filtres : {{visible}}/{{total}} comptes",
+      "clearAll": "Effacer",
+      "chipGroup": "Groupe",
+      "chipTags": "Étiquettes",
+      "chipSearch": "Recherche",
+      "chipPlan": "Offre",
+      "chipFolder": "Dossier"
     }
   },
   "githubCopilot": {

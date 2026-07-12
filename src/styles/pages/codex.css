@@ -36,6 +36,65 @@
   background: color-mix(in srgb, var(--bg-card) 88%, transparent);
 }
 
+.codex-overview-filter-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-tertiary) 90%, transparent);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.codex-overview-filter-banner.is-active {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  background: color-mix(in srgb, var(--primary) 8%, var(--bg-card));
+  color: var(--text-primary);
+}
+
+.codex-overview-filter-banner-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.codex-overview-filter-banner-count {
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.codex-overview-filter-banner-text {
+  font-weight: 600;
+}
+
+.codex-overview-filter-banner-chips {
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.codex-overview-filter-clear-btn {
+  flex-shrink: 0;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+[data-theme="dark"] .codex-overview-filter-banner.is-active {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  background: color-mix(in srgb, var(--primary) 12%, var(--bg-card));
+}
+
 .codex-overview-select-all {
   display: inline-flex;
   align-items: center;

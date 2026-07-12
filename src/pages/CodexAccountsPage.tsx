@@ -1082,8 +1082,10 @@ export function CodexAccountsPage() {
     [ensureLocalAccessEntryVisible],
   );
 
+  const [codexGroupsReady, setCodexGroupsReady] = useState(false);
   const reloadCodexGroups = useCallback(async () => {
     setCodexGroups(await getCodexAccountGroups());
+    setCodexGroupsReady(true);
   }, []);
 
   const codexAddTargetGroup = useMemo(() => {
@@ -1184,6 +1186,17 @@ export function CodexAccountsPage() {
   const clearGroupFilter = useCallback(() => {
     setGroupFilter([]);
   }, []);
+
+  /** Drop stale group filter IDs after groups are loaded (not on empty initial state). */
+  useEffect(() => {
+    if (!codexGroupsReady) return;
+    const validIds = new Set(codexGroups.map((group) => group.id));
+    setGroupFilter((prev) => {
+      if (prev.length === 0) return prev;
+      const next = prev.filter((id) => validIds.has(id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [codexGroups, codexGroupsReady]);
 
   const [overviewLayoutMode, setOverviewLayoutMode] =
     useState<CodexOverviewLayoutMode>(() => {
@@ -1384,6 +1397,16 @@ export function CodexAccountsPage() {
     saveJsonFile,
   } = page;
   const [isAllFilteredSelected, setIsAllFilteredSelected] = useState(false);
+
+  /** Clear every overview filter so the table matches the full account total. */
+  const clearAllOverviewFilters = useCallback(() => {
+    setSearchQuery("");
+    setFilterTypes([]);
+    clearTagFilter();
+    setGroupFilter([]);
+    setActiveGroupId(null);
+    setSelected(new Set());
+  }, [clearTagFilter, setSearchQuery, setSelected]);
 
   const handleSyncImportedToApiServiceChange = useCallback(
     (enabled: boolean) => {
@@ -8750,6 +8773,42 @@ export function CodexAccountsPage() {
     () => filteredAccounts.map((account) => account.id),
     [filteredAccounts],
   );
+  const overviewTotalCount = overviewAccounts.length;
+  const overviewVisibleCount = filteredAccounts.length;
+  const hasActiveOverviewFilters =
+    Boolean(searchQuery.trim()) ||
+    filterTypes.length > 0 ||
+    tagFilter.length > 0 ||
+    groupFilter.length > 0 ||
+    Boolean(activeGroupId);
+  const showOverviewFilterBanner =
+    hasActiveOverviewFilters && overviewVisibleCount !== overviewTotalCount;
+  const overviewFilterChips = useMemo(() => {
+    const chips: string[] = [];
+    if (activeGroupId) {
+      chips.push(t("codex.filters.chipFolder", "分组目录"));
+    }
+    if (groupFilter.length > 0) {
+      chips.push(t("codex.filters.chipGroup", "分组"));
+    }
+    if (tagFilter.length > 0) {
+      chips.push(t("codex.filters.chipTags", "标签"));
+    }
+    if (searchQuery.trim()) {
+      chips.push(t("codex.filters.chipSearch", "搜索"));
+    }
+    if (filterTypes.length > 0) {
+      chips.push(t("codex.filters.chipPlan", "套餐"));
+    }
+    return chips;
+  }, [
+    activeGroupId,
+    filterTypes.length,
+    groupFilter.length,
+    searchQuery,
+    t,
+    tagFilter.length,
+  ]);
   const errorAccountIds = useMemo(
     () =>
       filteredAccounts
@@ -12754,8 +12813,9 @@ export function CodexAccountsPage() {
               <MultiSelectFilterDropdown
                 options={tierFilterOptions}
                 selectedValues={filterTypes}
-                allLabel={t("common.shared.filter.all", {
+                allLabel={t("codex.filters.allPlans", {
                   count: tierCounts.all,
+                  defaultValue: "全部套餐 ({{count}})",
                 })}
                 filterLabel={t("common.shared.filterLabel", "筛选")}
                 clearLabel={t("accounts.clearFilter", "清空筛选")}
@@ -12936,6 +12996,47 @@ export function CodexAccountsPage() {
             </div>
           </div>
 
+          {(showOverviewFilterBanner || hasActiveOverviewFilters) && (
+            <div
+              className={`codex-overview-filter-banner${
+                showOverviewFilterBanner ? " is-active" : ""
+              }`}
+              role="status"
+            >
+              <div className="codex-overview-filter-banner-main">
+                <span className="codex-overview-filter-banner-count">
+                  {t("codex.filters.visibleOfTotal", {
+                    visible: overviewVisibleCount,
+                    total: overviewTotalCount,
+                    defaultValue: "显示 {{visible}} / 共 {{total}}",
+                  })}
+                </span>
+                {showOverviewFilterBanner && (
+                  <span className="codex-overview-filter-banner-text">
+                    {t("codex.filters.activeBanner", {
+                      visible: overviewVisibleCount,
+                      total: overviewTotalCount,
+                      defaultValue:
+                        "当前筛选仅显示 {{visible}}/{{total}} 个账号",
+                    })}
+                  </span>
+                )}
+                {overviewFilterChips.length > 0 && (
+                  <span className="codex-overview-filter-banner-chips">
+                    {overviewFilterChips.join(" · ")}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary codex-overview-filter-clear-btn"
+                onClick={clearAllOverviewFilters}
+              >
+                {t("codex.filters.clearAll", "清除筛选")}
+              </button>
+            </div>
+          )}
+
           {loading && accounts.length === 0 ? (
             <div className="loading-container">
               <RefreshCw size={24} className="loading-spinner" />
@@ -12987,6 +13088,15 @@ export function CodexAccountsPage() {
               <p>
                 {t("common.shared.noMatch.desc", "请尝试调整搜索或筛选条件")}
               </p>
+              {hasActiveOverviewFilters && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={clearAllOverviewFilters}
+                >
+                  {t("codex.filters.clearAll", "清除筛选")}
+                </button>
+              )}
             </div>
           ) : (
             <>

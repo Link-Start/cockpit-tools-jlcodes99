@@ -3367,6 +3367,17 @@
       "started": "Avviata eliminazione di {{count}} account Codex",
       "pollFailed": "Impossibile aggiornare l’avanzamento eliminazione: {{error}}",
       "actionFailed": "Azione di eliminazione batch non riuscita: {{error}}"
+    },
+    "filters": {
+      "allPlans": "Tutti ({{count}})",
+      "visibleOfTotal": "{{visible}} / {{total}}",
+      "activeBanner": "Filtri: {{visible}}/{{total}} account",
+      "clearAll": "Azzera",
+      "chipGroup": "Gruppo",
+      "chipTags": "Tag",
+      "chipSearch": "Cerca",
+      "chipPlan": "Piano",
+      "chipFolder": "Cartella"
     }
   },
   "githubCopilot": {

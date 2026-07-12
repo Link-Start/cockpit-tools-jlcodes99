@@ -1526,6 +1526,34 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
   );
   const codexAutoSwitchSelectedAccountIds = config?.codex_auto_switch_selected_account_ids ?? [];
 
+  // Drop stale selected-ID lists when scope is "all accounts" (runtime already ignores them).
+  useEffect(() => {
+    if (!config) return;
+    if (
+      type === 'codex' &&
+      codexAutoSwitchAccountScopeMode === AUTO_SWITCH_SCOPE_ALL_ACCOUNTS &&
+      codexAutoSwitchSelectedAccountIds.length > 0
+    ) {
+      void saveConfig({ codex_auto_switch_selected_account_ids: [] });
+      return;
+    }
+    if (
+      type === 'antigravity' &&
+      autoSwitchAccountScopeMode === AUTO_SWITCH_SCOPE_ALL_ACCOUNTS &&
+      autoSwitchSelectedAccountIds.length > 0
+    ) {
+      void saveConfig({ auto_switch_selected_account_ids: [] });
+    }
+  }, [
+    autoSwitchAccountScopeMode,
+    autoSwitchSelectedAccountIds.length,
+    codexAutoSwitchAccountScopeMode,
+    codexAutoSwitchSelectedAccountIds.length,
+    config,
+    saveConfig,
+    type,
+  ]);
+
   const handleRefreshSelectChange = (val: string) => {
     if (val === 'custom') {
       setCustomRefresh(String(refreshValue > 0 ? refreshValue : 1));
@@ -2879,9 +2907,18 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
                         <div className="qs-row-control qs-row-control--fill">
                           <AutoSwitchAccountScopeSelector
                             mode={codexAutoSwitchAccountScopeMode}
-                            onModeChange={(mode) =>
-                              saveConfig({ codex_auto_switch_account_scope_mode: mode })
-                            }
+                            onModeChange={(mode) => {
+                              // all_accounts ignores selected IDs at runtime; clear
+                              // the list so config does not keep a stale subset.
+                              if (mode === AUTO_SWITCH_SCOPE_ALL_ACCOUNTS) {
+                                saveConfig({
+                                  codex_auto_switch_account_scope_mode: mode,
+                                  codex_auto_switch_selected_account_ids: [],
+                                });
+                                return;
+                              }
+                              saveConfig({ codex_auto_switch_account_scope_mode: mode });
+                            }}
                             selectedAccountIds={codexAutoSwitchSelectedAccountIds}
                             onSelectedAccountIdsChange={(ids) =>
                               saveConfig({ codex_auto_switch_selected_account_ids: ids })
@@ -3234,9 +3271,16 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
                       <div className="qs-row-control qs-row-control--fill">
                         <AutoSwitchAccountScopeSelector
                           mode={autoSwitchAccountScopeMode}
-                          onModeChange={(mode) =>
-                            saveConfig({ auto_switch_account_scope_mode: mode })
-                          }
+                          onModeChange={(mode) => {
+                            if (mode === AUTO_SWITCH_SCOPE_ALL_ACCOUNTS) {
+                              saveConfig({
+                                auto_switch_account_scope_mode: mode,
+                                auto_switch_selected_account_ids: [],
+                              });
+                              return;
+                            }
+                            saveConfig({ auto_switch_account_scope_mode: mode });
+                          }}
                           selectedAccountIds={autoSwitchSelectedAccountIds}
                           onSelectedAccountIdsChange={(ids) =>
                             saveConfig({ auto_switch_selected_account_ids: ids })

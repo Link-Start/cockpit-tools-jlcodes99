@@ -3367,6 +3367,17 @@
       "started": "Запущено удаление аккаунтов Codex: {{count}}",
       "pollFailed": "Не удалось обновить ход массового удаления: {{error}}",
       "actionFailed": "Действие массового удаления завершилось ошибкой: {{error}}"
+    },
+    "filters": {
+      "allPlans": "Все планы ({{count}})",
+      "visibleOfTotal": "{{visible}} / {{total}}",
+      "activeBanner": "Фильтр: {{visible}}/{{total}}",
+      "clearAll": "Сбросить",
+      "chipGroup": "Группа",
+      "chipTags": "Теги",
+      "chipSearch": "Поиск",
+      "chipPlan": "План",
+      "chipFolder": "Папка"
     }
   },
   "githubCopilot": {

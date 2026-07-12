@@ -3367,6 +3367,17 @@
       "started": "{{count}} Codex hesabı için silme başlatıldı",
       "pollFailed": "Toplu silme ilerlemesi yenilenemedi: {{error}}",
       "actionFailed": "Toplu silme işlemi başarısız: {{error}}"
+    },
+    "filters": {
+      "allPlans": "Tüm planlar ({{count}})",
+      "visibleOfTotal": "{{visible}} / {{total}}",
+      "activeBanner": "Filtre: {{visible}}/{{total}}",
+      "clearAll": "Temizle",
+      "chipGroup": "Grup",
+      "chipTags": "Etiket",
+      "chipSearch": "Ara",
+      "chipPlan": "Abonelik",
+      "chipFolder": "Klasör"
     }
   },
   "githubCopilot": {

@@ -3367,6 +3367,17 @@
       "started": "Spuštěno mazání {{count}} účtů Codex",
       "pollFailed": "Nelze obnovit průběh hromadného mazání: {{error}}",
       "actionFailed": "Akce hromadného mazání selhala: {{error}}"
+    },
+    "filters": {
+      "allPlans": "Všechny ({{count}})",
+      "visibleOfTotal": "{{visible}} / {{total}}",
+      "activeBanner": "Filtry: {{visible}}/{{total}}",
+      "clearAll": "Vymazat",
+      "chipGroup": "Skupina",
+      "chipTags": "Štítky",
+      "chipSearch": "Hledat",
+      "chipPlan": "Plán",
+      "chipFolder": "Složka"
     }
   },
   "githubCopilot": {

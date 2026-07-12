@@ -3367,6 +3367,17 @@
       "started": "Rozpoczęto usuwanie kont Codex: {{count}}",
       "pollFailed": "Nie udało się odświeżyć postępu usuwania: {{error}}",
       "actionFailed": "Akcja usuwania zbiorczego nie powiodła się: {{error}}"
+    },
+    "filters": {
+      "allPlans": "Wszystkie ({{count}})",
+      "visibleOfTotal": "{{visible}} / {{total}}",
+      "activeBanner": "Filtry: {{visible}}/{{total}}",
+      "clearAll": "Wyczyść",
+      "chipGroup": "Grupa",
+      "chipTags": "Tagi",
+      "chipSearch": "Szukaj",
+      "chipPlan": "Taryfa",
+      "chipFolder": "Katalog"
     }
   },
   "githubCopilot": {

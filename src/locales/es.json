@@ -3367,6 +3367,17 @@
       "started": "Se inició la eliminación de {{count}} cuenta(s) Codex",
       "pollFailed": "No se pudo actualizar el progreso de eliminación: {{error}}",
       "actionFailed": "Falló la acción de eliminación por lote: {{error}}"
+    },
+    "filters": {
+      "allPlans": "Todos ({{count}})",
+      "visibleOfTotal": "{{visible}} / {{total}}",
+      "activeBanner": "Filtros: {{visible}}/{{total}} cuentas",
+      "clearAll": "Quitar filtros",
+      "chipGroup": "Grupo",
+      "chipTags": "Etiquetas",
+      "chipSearch": "Buscar",
+      "chipPlan": "Plan tarifario",
+      "chipFolder": "Carpeta"
     }
   },
   "githubCopilot": {

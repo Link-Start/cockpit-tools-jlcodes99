@@ -3414,6 +3414,17 @@
       "started": "Mulai menghapus {{count}} akun Codex",
       "pollFailed": "Gagal memuat ulang progres hapus massal: {{error}}",
       "actionFailed": "Aksi hapus massal gagal: {{error}}"
+    },
+    "filters": {
+      "allPlans": "Semua ({{count}})",
+      "visibleOfTotal": "{{visible}} / {{total}}",
+      "activeBanner": "Filter: {{visible}}/{{total}}",
+      "clearAll": "Hapus filter",
+      "chipGroup": "Grup",
+      "chipTags": "Tag",
+      "chipSearch": "Cari",
+      "chipPlan": "Paket",
+      "chipFolder": "Direktori"
     }
   },
   "codebuddy": {

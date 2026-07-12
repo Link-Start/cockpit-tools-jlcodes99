@@ -3367,6 +3367,17 @@
       "started": "Löschen von {{count}} Codex-Konto/Konten gestartet",
       "pollFailed": "Fortschritt der Massenlöschung konnte nicht aktualisiert werden: {{error}}",
       "actionFailed": "Aktion zur Massenlöschung fehlgeschlagen: {{error}}"
+    },
+    "filters": {
+      "allPlans": "Alle Pläne ({{count}})",
+      "visibleOfTotal": "{{visible}} / {{total}}",
+      "activeBanner": "Filter: {{visible}}/{{total}} Konten",
+      "clearAll": "Filter löschen",
+      "chipGroup": "Gruppe",
+      "chipTags": "Schlagworte",
+      "chipSearch": "Suche",
+      "chipPlan": "Tarif",
+      "chipFolder": "Ordner"
     }
   },
   "githubCopilot": {

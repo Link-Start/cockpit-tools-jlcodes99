@@ -3367,6 +3367,17 @@
       "started": "Đã bắt đầu xóa {{count}} tài khoản Codex",
       "pollFailed": "Không thể làm mới tiến trình xóa hàng loạt: {{error}}",
       "actionFailed": "Thao tác xóa hàng loạt thất bại: {{error}}"
+    },
+    "filters": {
+      "allPlans": "Mọi gói ({{count}})",
+      "visibleOfTotal": "{{visible}} / {{total}}",
+      "activeBanner": "Bộ lọc: {{visible}}/{{total}}",
+      "clearAll": "Xóa lọc",
+      "chipGroup": "Nhóm",
+      "chipTags": "Thẻ",
+      "chipSearch": "Tìm",
+      "chipPlan": "Gói",
+      "chipFolder": "Thư mục"
     }
   },
   "githubCopilot": {
