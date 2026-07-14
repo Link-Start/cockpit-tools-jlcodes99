@@ -89,6 +89,7 @@ const CODEX_LOCAL_ACCESS_RUNTIME_PROVIDER_ID: &str = "codex_local_access";
 const CODEX_LOCAL_ACCESS_RUNTIME_ACCOUNT_ID: &str = "codex_local_access_runtime";
 const CODEX_PROFILE_AUTH_FILE: &str = "auth.json";
 const CODEX_PROFILE_CONFIG_FILE: &str = "config.toml";
+const CODEX_LOCAL_ACCESS_MODEL_CATALOG_FILE: &str = "cockpit-local-access-model-catalog.json";
 const CODEX_PROVIDER_MODEL_CATALOG_FILE: &str = "cockpit-provider-model-catalog.json";
 const CODEX_PROVIDER_MODEL_BACKUP_FILE: &str = ".cockpit-provider-model-backup.json";
 const MAX_HTTP_REQUEST_BYTES: usize = 256 * 1024 * 1024;
@@ -4767,8 +4768,12 @@ fn prioritize_account_ids(
     let mut ordered = Vec::with_capacity(account_ids.len());
     for priority_account_id in priority_account_ids {
         if priority_account_id.trim().is_empty()
-            || !account_ids.iter().any(|account_id| account_id == priority_account_id)
-            || ordered.iter().any(|account_id| account_id == priority_account_id)
+            || !account_ids
+                .iter()
+                .any(|account_id| account_id == priority_account_id)
+            || ordered
+                .iter()
+                .any(|account_id| account_id == priority_account_id)
         {
             continue;
         }
@@ -6677,6 +6682,11 @@ fn restore_profile_takeover_backup(
     )?;
     write_optional_profile_file(&auth_path, backup.auth_json.as_deref())?;
     write_optional_profile_file(&config_path, restored_config.as_deref())?;
+    let catalog_path = profile_dir.join(CODEX_LOCAL_ACCESS_MODEL_CATALOG_FILE);
+    if catalog_path.exists() {
+        std::fs::remove_file(&catalog_path)
+            .map_err(|e| format!("删除 Codex API 服务模型目录失败: {}", e))?;
+    }
     Ok(true)
 }
 
@@ -6706,6 +6716,13 @@ fn cleanup_profile_takeover_without_backup(
             write_optional_profile_file(&auth_path, None)?;
             changed = true;
         }
+    }
+
+    let catalog_path = profile_dir.join(CODEX_LOCAL_ACCESS_MODEL_CATALOG_FILE);
+    if catalog_path.exists() {
+        std::fs::remove_file(&catalog_path)
+            .map_err(|e| format!("删除 Codex API 服务模型目录失败: {}", e))?;
+        changed = true;
     }
 
     Ok(changed)
@@ -7215,12 +7232,17 @@ fn sidecar_api_key_manifest_values(collection: &CodexLocalAccessCollection) -> V
 fn sidecar_api_key_priority_state_values(collection: &CodexLocalAccessCollection) -> Value {
     let mut priority_account_ids = Map::new();
     for item in &collection.api_keys {
-        if api_key_inherits_account_pool(item) || api_key_has_fixed_account_scope(collection, item) {
+        if api_key_inherits_account_pool(item) || api_key_has_fixed_account_scope(collection, item)
+        {
             continue;
         }
         let priorities = normalize_account_id_list(item.priority_account_ids.clone())
             .into_iter()
-            .filter(|account_id| item.account_ids.iter().any(|selected_id| selected_id == account_id))
+            .filter(|account_id| {
+                item.account_ids
+                    .iter()
+                    .any(|selected_id| selected_id == account_id)
+            })
             .collect::<Vec<_>>();
         if !priorities.is_empty() {
             priority_account_ids.insert(
@@ -7661,10 +7683,7 @@ fn parse_http_url_host_port(raw: &str) -> Option<(String, u16)> {
 }
 
 /// True when `raw` is the Cockpit API Service client URL (gateway), not a real upstream.
-fn is_local_access_gateway_base_url(
-    raw: &str,
-    collection: &CodexLocalAccessCollection,
-) -> bool {
+fn is_local_access_gateway_base_url(raw: &str, collection: &CodexLocalAccessCollection) -> bool {
     if profile_base_url_matches(Some(raw), &build_collection_base_url(collection)) {
         return true;
     }
@@ -7677,10 +7696,7 @@ fn is_local_access_gateway_base_url(
 
 /// True when `raw` must not be used as a sidecar upstream Base URL.
 /// Rejects the local gateway URL and any loopback host (polluted account sync).
-fn is_unsafe_sidecar_upstream_base_url(
-    raw: &str,
-    collection: &CodexLocalAccessCollection,
-) -> bool {
+fn is_unsafe_sidecar_upstream_base_url(raw: &str, collection: &CodexLocalAccessCollection) -> bool {
     if is_local_access_gateway_base_url(raw, collection) {
         return true;
     }
@@ -7711,7 +7727,9 @@ fn lookup_codex_model_provider_base_url_in_dir(
     let items = serde_json::from_str::<Value>(&raw).ok()?;
     let arr = items.as_array()?;
     let id = provider_id.map(str::trim).filter(|value| !value.is_empty());
-    let name = provider_name.map(str::trim).filter(|value| !value.is_empty());
+    let name = provider_name
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
 
     let read_base = |item: &Value| -> Option<String> {
         item.get("baseUrl")
@@ -7793,18 +7811,23 @@ fn resolve_sidecar_upstream_base_url_with(
     }
 
     // Polluted gateway / loopback URL on a built-in OpenAI key: fall back to official default.
-    if matches!(account.api_provider_mode, CodexApiProviderMode::OpenaiBuiltin)
-        && candidate
-            .as_ref()
-            .map(|url| is_unsafe_sidecar_upstream_base_url(url, collection))
-            .unwrap_or(false)
+    if matches!(
+        account.api_provider_mode,
+        CodexApiProviderMode::OpenaiBuiltin
+    ) && candidate
+        .as_ref()
+        .map(|url| is_unsafe_sidecar_upstream_base_url(url, collection))
+        .unwrap_or(false)
     {
         return Some(DEFAULT_OPENAI_RESPONSES_BASE_URL.to_string());
     }
 
     // Empty base URL + OpenAI builtin → official default.
     if candidate.is_none()
-        && matches!(account.api_provider_mode, CodexApiProviderMode::OpenaiBuiltin)
+        && matches!(
+            account.api_provider_mode,
+            CodexApiProviderMode::OpenaiBuiltin
+        )
     {
         return Some(DEFAULT_OPENAI_RESPONSES_BASE_URL.to_string());
     }
@@ -9061,6 +9084,37 @@ fn build_runtime_account(
     runtime_account
 }
 
+fn write_local_access_profile_model_catalog(profile_dir: &Path) -> Result<(), String> {
+    let client_models =
+        codex_protocol::build_codex_client_models_response(&supported_codex_model_ids());
+    let catalog = json!({
+        "models": client_models
+            .get("models")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default(),
+    });
+    let content = serde_json::to_string_pretty(&catalog)
+        .map_err(|e| format!("生成 Codex API 服务模型目录失败: {}", e))?;
+    write_string_atomic(
+        &profile_dir.join(CODEX_LOCAL_ACCESS_MODEL_CATALOG_FILE),
+        &content,
+    )
+    .map_err(|e| format!("写入 Codex API 服务模型目录失败: {}", e))?;
+
+    let config_path = profile_config_path(profile_dir);
+    let existing = std::fs::read_to_string(&config_path).unwrap_or_default();
+    let mut doc = if existing.trim().is_empty() {
+        Document::new()
+    } else {
+        crate::modules::codex_config_format::read_codex_config_doc_from_str(&existing)
+            .map_err(|e| format!("解析 Codex config.toml 失败: {}", e))?
+    };
+    doc["model_catalog_json"] = value(CODEX_LOCAL_ACCESS_MODEL_CATALOG_FILE);
+    let content = crate::modules::codex_config_format::codex_config_doc_to_string(&mut doc);
+    crate::modules::codex_config_format::write_codex_config_toml_atomic(&config_path, &content)
+}
+
 async fn write_local_access_profile_takeover(
     profile_dir: &Path,
     collection: &CodexLocalAccessCollection,
@@ -9081,7 +9135,8 @@ async fn write_local_access_profile_takeover(
             .unwrap_or_else(|| collection.api_key.clone()),
         bound_oauth_account_id,
     );
-    codex_account::write_account_bundle_to_dir(profile_dir, &runtime_account)
+    codex_account::write_account_bundle_to_dir(profile_dir, &runtime_account)?;
+    write_local_access_profile_model_catalog(profile_dir)
 }
 
 fn push_local_access_takeover_dir(
@@ -9351,9 +9406,7 @@ fn normalize_collection_api_keys(collection: &mut CodexLocalAccessCollection) ->
                 priority_account_ids.push(preferred_account_id);
             }
         }
-        if inherit_account_pool
-            || api_key_has_fixed_account_scope(collection, &item)
-        {
+        if inherit_account_pool || api_key_has_fixed_account_scope(collection, &item) {
             priority_account_ids.clear();
         } else {
             priority_account_ids.retain(|account_id| {
@@ -9482,7 +9535,11 @@ fn api_key_priority_account_ids(
     if api_key.inherit_account_pool {
         return Vec::new();
     }
-    let Some(stored_api_key) = collection.api_keys.iter().find(|item| item.id == api_key.id) else {
+    let Some(stored_api_key) = collection
+        .api_keys
+        .iter()
+        .find(|item| item.id == api_key.id)
+    else {
         return Vec::new();
     };
     if api_key_has_fixed_account_scope(collection, stored_api_key) {
@@ -9492,9 +9549,9 @@ fn api_key_priority_account_ids(
         .into_iter()
         .filter(|priority_account_id| {
             api_key
-            .account_ids
-            .iter()
-            .any(|account_id| account_id == priority_account_id)
+                .account_ids
+                .iter()
+                .any(|account_id| account_id == priority_account_id)
         })
         .collect()
 }
@@ -15488,12 +15545,19 @@ pub async fn set_local_access_api_key_account_priority(
     };
 
     let api_key = &collection.api_keys[index];
-    if api_key_inherits_account_pool(api_key) || api_key_has_fixed_account_scope(&collection, api_key) {
+    if api_key_inherits_account_pool(api_key)
+        || api_key_has_fixed_account_scope(&collection, api_key)
+    {
         return Err("仅自定义账号池的 API Key 支持置顶账号".to_string());
     }
     let account_id = normalize_optional_account_ref(Some(&account_id))
         .ok_or_else(|| "请选择要置顶的账号".to_string())?;
-    if pinned && !api_key.account_ids.iter().any(|selected_id| selected_id == &account_id) {
+    if pinned
+        && !api_key
+            .account_ids
+            .iter()
+            .any(|selected_id| selected_id == &account_id)
+    {
         return Err("置顶账号不在当前 API Key 的自定义账号池中".to_string());
     }
 
@@ -16411,7 +16475,10 @@ fn account_upstream_base_url(account: &CodexAccount) -> String {
         }
     }
 
-    if matches!(account.api_provider_mode, CodexApiProviderMode::OpenaiBuiltin) {
+    if matches!(
+        account.api_provider_mode,
+        CodexApiProviderMode::OpenaiBuiltin
+    ) {
         return DEFAULT_OPENAI_RESPONSES_BASE_URL.to_string();
     }
 
@@ -20500,8 +20567,8 @@ mod tests {
     use super::{
         account_model_rule_blocks_model, account_requires_bound_oauth_local_gateway,
         account_requires_provider_gateway, account_upstream_base_url, align_codex_prompt_cache,
-        api_key_inherits_account_pool, append_eligible_local_access_account_ids,
-        append_usage_event, apply_codex_official_headers,
+        api_key_inherits_account_pool, api_key_priority_account_ids,
+        append_eligible_local_access_account_ids, append_usage_event, apply_codex_official_headers,
         apply_routing_strategy, backup_current_profile_model_before_provider_gateway,
         bound_oauth_quota_refresh_failures, bound_oauth_quota_reserve_blocks_account,
         bridge_websocket_streams, build_account_scoped_upstream_body, build_base_url_with_host,
@@ -20519,9 +20586,10 @@ mod tests {
         insert_local_access_usage_event, inspect_local_access_profile_config,
         is_codex_local_access_auth_text, is_codex_local_access_config_for_api_key,
         is_image_generation_capability_error, is_local_access_eligible_account,
-        is_provider_gateway_eligible_account, is_responses_completion_event,
-        is_stream_incomplete_error_message, is_upstream_response_failed_error_message,
-        legacy_stream_error_category, local_access_chat_completions_url,
+        is_local_access_gateway_base_url, is_provider_gateway_eligible_account,
+        is_responses_completion_event, is_stream_incomplete_error_message,
+        is_upstream_response_failed_error_message, legacy_stream_error_category,
+        local_access_chat_completions_url, lookup_codex_model_provider_base_url_in_dir,
         macos_proxy_url_from_scutil_map, max_credential_attempts_for_strategy,
         merge_collection_and_account_excluded_models, model_pricing,
         model_provider_direct_test_client_model, model_provider_test_uses_provider_gateway,
@@ -20531,34 +20599,29 @@ mod tests {
         parse_responses_payload_from_upstream, parse_websocket_upstream_error,
         pin_account_to_front_for_strategy, prepare_gateway_request,
         prepare_gateway_request_with_default_service_tier, prepare_sidecar_launch_config_in_dir,
-        api_key_priority_account_ids, prepare_websocket_initial_request,
-        profile_base_url_matches,
-        is_local_access_gateway_base_url, lookup_codex_model_provider_base_url_in_dir,
-        resolve_sidecar_upstream_base_url, resolve_sidecar_upstream_base_url_with,
-        sidecar_codex_key_config_value, provider_gateway_api_key_id,
+        prepare_websocket_initial_request, profile_base_url_matches, provider_gateway_api_key_id,
         provider_gateway_bound_oauth_account_id_for_account,
         provider_gateway_default_model_for_account,
         provider_gateway_image_generation_mode_for_account, provider_gateway_model_slots,
         provider_gateway_models_for_account, read_http_request, recompute_time_windows,
-        recover_invalid_stats_file,
-        remove_account_refs_from_collection, remove_codex_local_access_config,
-        reprice_request_logs_for_collection, request_image_generation_mode,
-        request_ordered_account_ids, resolve_plan_rank,
+        recover_invalid_stats_file, remove_account_refs_from_collection,
+        remove_codex_local_access_config, reprice_request_logs_for_collection,
+        request_image_generation_mode, request_ordered_account_ids, resolve_plan_rank,
+        resolve_sidecar_upstream_base_url, resolve_sidecar_upstream_base_url_with,
         resolve_supported_model_alias, resolve_upstream_target,
         restore_config_toml_from_takeover_backup, sanitize_collection_with_accounts,
         scutil_proxy_map, should_retry_single_account_upstream_status,
         should_treat_response_as_stream, should_try_next_account, sidecar_account_manifest_value,
         sidecar_api_key_account_scope_values, sidecar_api_key_manifest_values,
-        sidecar_api_key_priority_state_values,
-        sidecar_auth_file_name, sidecar_auth_json_for_account, sidecar_auths_dir,
+        sidecar_api_key_priority_state_values, sidecar_auth_file_name,
+        sidecar_auth_json_for_account, sidecar_auths_dir,
         sidecar_cached_account_usable_after_prepare_error, sidecar_client_api_keys,
-        sidecar_codex_api_key_auth_id,
-        sidecar_config_fingerprint, sidecar_payload_default_service_tier,
-        sidecar_quota_reserve_snapshot_value, sidecar_routing_strategy_value, sidecar_stable_id,
-        supported_codex_model_ids, system_proxy_target_scheme, system_proxy_value_url,
-        validate_api_key_account_scope_update, validate_client_model_visible,
-        visible_codex_model_ids_for_api_key, visible_codex_model_ids_for_api_key_with_accounts,
-        websocket_accept_value,
+        sidecar_codex_api_key_auth_id, sidecar_codex_key_config_value, sidecar_config_fingerprint,
+        sidecar_payload_default_service_tier, sidecar_quota_reserve_snapshot_value,
+        sidecar_routing_strategy_value, sidecar_stable_id, supported_codex_model_ids,
+        system_proxy_target_scheme, system_proxy_value_url, validate_api_key_account_scope_update,
+        validate_client_model_visible, visible_codex_model_ids_for_api_key,
+        visible_codex_model_ids_for_api_key_with_accounts, websocket_accept_value,
         websocket_connect_error_from_http_response, windows_proxy_url_from_server,
         windows_reg_dword_enabled, windows_reg_query_map,
         write_local_access_profile_model_override, write_local_access_profile_takeover,
@@ -20567,7 +20630,7 @@ mod tests {
         CodexModelProviderGatewayChatTestRequest, GatewayResponseAdapter, ParsedRequest,
         ResolvedLocalApiKey, ResponseUsageCollector, RoutingCandidate, SidecarUsageDetails,
         SidecarUsageEvent, UsageCapture, BOUND_OAUTH_QUOTA_RESERVE_MAX_SNAPSHOT_AGE_SECONDS,
-        CODEX_AUTO_REVIEW_MODEL_ID, CODEX_IMAGE_MODEL_ID,
+        CODEX_AUTO_REVIEW_MODEL_ID, CODEX_IMAGE_MODEL_ID, CODEX_LOCAL_ACCESS_MODEL_CATALOG_FILE,
         CODEX_LOCAL_ACCESS_TEST_DISABLE_IMAGE_GENERATION_HEADER, CODEX_PROFILE_AUTH_FILE,
         CODEX_PROFILE_CONFIG_FILE, CODEX_PROVIDER_MODEL_BACKUP_FILE,
         CODEX_PROVIDER_MODEL_CATALOG_FILE, DEFAULT_MAX_RETRY_INTERVAL_MS,
@@ -25376,7 +25439,7 @@ data: {"error":{"code":"server_error","type":"upstream","message":"stream aborte
     }
 
     #[tokio::test]
-    async fn local_access_takeover_uses_dynamic_model_discovery() {
+    async fn local_access_takeover_writes_a_complete_model_catalog() {
         let profile_dir = make_temp_dir("codex-local-access-model-catalog-test");
         let mut collection = test_local_access_collection(Vec::new());
         collection.api_key = "local-service-key".to_string();
@@ -25388,8 +25451,28 @@ data: {"error":{"code":"server_error","type":"upstream","message":"stream aborte
         let config =
             fs::read_to_string(profile_dir.join(CODEX_PROFILE_CONFIG_FILE)).expect("read config");
         assert!(config.contains("model_provider = \"codex_local_access\""));
-        assert!(!config.contains("model_catalog_json"));
-        assert!(!profile_dir.join(CODEX_PROVIDER_MODEL_CATALOG_FILE).exists());
+        assert!(config.contains(&format!(
+            "model_catalog_json = \"{}\"",
+            CODEX_LOCAL_ACCESS_MODEL_CATALOG_FILE
+        )));
+        let catalog: Value = serde_json::from_str(
+            &fs::read_to_string(profile_dir.join(CODEX_LOCAL_ACCESS_MODEL_CATALOG_FILE))
+                .expect("read local access model catalog"),
+        )
+        .expect("parse local access model catalog");
+        let spark = catalog
+            .get("models")
+            .and_then(Value::as_array)
+            .and_then(|models| {
+                models.iter().find(|model| {
+                    model.get("slug").and_then(Value::as_str) == Some("gpt-5.3-codex-spark")
+                })
+            })
+            .expect("Spark should be present in the local access model catalog");
+        assert_eq!(
+            spark.get("display_name").and_then(Value::as_str),
+            Some("GPT-5.3 Codex Spark")
+        );
 
         fs::remove_dir_all(&profile_dir).expect("cleanup temp dir");
     }
@@ -25649,11 +25732,9 @@ data: {"error":{"code":"server_error","type":"upstream","message":"stream aborte
             Some("https://relay.example/v1")
         );
         // Avoid mutating process-global COCKPIT_TOOLS_DATA_DIR (races other tests).
-        let resolved = resolve_sidecar_upstream_base_url_with(
-            &account,
-            &collection,
-            |id, name| lookup_codex_model_provider_base_url_in_dir(&data_dir, id, name),
-        );
+        let resolved = resolve_sidecar_upstream_base_url_with(&account, &collection, |id, name| {
+            lookup_codex_model_provider_base_url_in_dir(&data_dir, id, name)
+        });
         assert_eq!(resolved.as_deref(), Some("https://relay.example/v1"));
 
         // sidecar_codex_key_config_value uses the same resolve rules with production lookup;
