@@ -166,6 +166,7 @@ const CODEX_OFFICIAL_EMPTY_HEADERS: &[&str] = &[
     "x-responsesapi-include-timing-metrics",
 ];
 const LEGACY_DEFAULT_CODEX_MODELS: &[&str] = &["gpt-5.5", "gpt-5.4", "gpt-5.4-mini"];
+const COMPATIBILITY_CODEX_MODELS: &[&str] = &["gpt-5.3-codex", "gpt-5.3-codex-spark"];
 const CODEX_IMAGE_MODEL_ID: &str = "gpt-image-2";
 const CODEX_AUTO_REVIEW_MODEL_ID: &str = "codex-auto-review";
 const DEFAULT_IMAGES_MAIN_MODEL: &str = "gpt-5.4-mini";
@@ -1576,6 +1577,11 @@ fn default_codex_model_ids() -> Vec<String> {
         .into_iter()
         .chain(
             LEGACY_DEFAULT_CODEX_MODELS
+                .iter()
+                .map(|model| model.to_string()),
+        )
+        .chain(
+            COMPATIBILITY_CODEX_MODELS
                 .iter()
                 .map(|model| model.to_string()),
         )
@@ -25335,10 +25341,16 @@ data: {"error":{"code":"server_error","type":"upstream","message":"stream aborte
     }
 
     #[test]
-    fn supported_codex_models_include_official_5_6_models() {
+    fn supported_codex_models_include_official_and_compatibility_models() {
         let models = supported_codex_model_ids();
 
-        for model_id in ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"] {
+        for model_id in [
+            "gpt-5.6-sol",
+            "gpt-5.6-terra",
+            "gpt-5.6-luna",
+            "gpt-5.3-codex",
+            "gpt-5.3-codex-spark",
+        ] {
             assert!(
                 models.iter().any(|model| model == model_id),
                 "missing official model {model_id}"
@@ -25347,7 +25359,7 @@ data: {"error":{"code":"server_error","type":"upstream","message":"stream aborte
     }
 
     #[test]
-    fn default_codex_models_follow_official_order_without_5_2() {
+    fn default_codex_models_include_compatibility_5_3_models() {
         assert_eq!(
             default_codex_model_ids(),
             vec![
@@ -25357,6 +25369,8 @@ data: {"error":{"code":"server_error","type":"upstream","message":"stream aborte
                 "gpt-5.5",
                 "gpt-5.4",
                 "gpt-5.4-mini",
+                "gpt-5.3-codex",
+                "gpt-5.3-codex-spark",
             ]
         );
     }

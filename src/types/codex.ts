@@ -661,6 +661,8 @@ function normalizeCodexAdditionalLimitLabel(
     .replace(/^gpt[-\s]*/i, "GPT ")
     .replace(/[-_]+/g, " ")
     .replace(/\s+/g, " ")
+    .replace(/\bcodex\b/gi, "Codex")
+    .replace(/\bspark\b/gi, "Spark")
     .trim();
 }
 
@@ -691,21 +693,6 @@ function normalizeAdditionalRateLimitWindow(
   };
 }
 
-function isCodexSparkAdditionalLimit(
-  limitName: string,
-  meteredFeature: string,
-  limitLabel: string,
-): boolean {
-  const haystack = [limitName, meteredFeature, limitLabel]
-    .join(" ")
-    .toLowerCase();
-  return (
-    haystack.includes("spark") ||
-    haystack.includes("codex-spark") ||
-    haystack.includes("gpt-5.3-codex-spark")
-  );
-}
-
 export function getCodexAdditionalQuotaWindows(
   quota: CodexQuota | undefined,
 ): CodexAdditionalQuotaWindow[] {
@@ -724,11 +711,6 @@ export function getCodexAdditionalQuotaWindows(
       limitName,
       meteredFeature,
     );
-    // Official payloads may include Spark-only rate windows that clutter the
-    // main quota card; hide them from the default account presentation.
-    if (isCodexSparkAdditionalLimit(limitName, meteredFeature, limitLabel)) {
-      return [];
-    }
     const allowed = toBoolValue(rateLimit.allowed);
     const limitReached = toBoolValue(rateLimit.limit_reached);
     const result: CodexAdditionalQuotaWindow[] = [];
