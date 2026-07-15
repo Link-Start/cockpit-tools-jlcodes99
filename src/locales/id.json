@@ -3337,6 +3337,7 @@
         "disableCooling": "Matikan cooldown",
         "saveOptions": "Simpan Opsi",
         "immediateSseResponse": "SSE 200 langsung",
+        "maxConcurrentImageRequests": "Permintaan gambar per akun",
         "optionsSaved": "Opsi routing tersimpan"
       },
       "validation": {

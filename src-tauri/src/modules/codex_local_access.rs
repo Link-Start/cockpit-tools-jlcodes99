@@ -107,6 +107,7 @@ const DEFAULT_SESSION_AFFINITY_TTL_MS: i64 = 60 * 60 * 1000;
 const MAX_RETRY_INTERVAL_MIN_MS: u64 = 0;
 const MAX_RETRY_INTERVAL_MAX_MS: u64 = 30 * 1000;
 const DEFAULT_MAX_RETRY_INTERVAL_MS: u64 = 3 * 1000;
+const MAX_CONCURRENT_IMAGE_REQUESTS_PER_ACCOUNT: u16 = 16;
 const LOCAL_ACCESS_TIMEOUT_MIN_MS: u64 = 1_000;
 const LOCAL_ACCESS_TIMEOUT_MAX_MS: u64 = 600_000;
 const LEGACY_STREAM_TOTAL_TIMEOUT_MAX_MS: u64 = 30 * 60 * 1000;
@@ -10016,6 +10017,7 @@ async fn prepare_sidecar_launch_config_in_dir(
         })).collect::<Vec<_>>(),
         "debugLogs": collection.debug_logs,
         "immediateSseResponse": collection.immediate_sse_response,
+        "maxConcurrentImageRequests": collection.max_concurrent_image_requests,
     });
 
     let mut config = Map::new();
@@ -12845,6 +12847,7 @@ async fn ensure_runtime_loaded_without_start_with_profile_restore(
             restrict_free_accounts: true,
             debug_logs: true,
             immediate_sse_response: false,
+            max_concurrent_image_requests: 1,
             bound_oauth_account_id: None,
             bound_oauth_quota_reserve: None,
             account_ids: Vec::new(),
@@ -14117,6 +14120,7 @@ fn new_empty_local_access_collection() -> Result<CodexLocalAccessCollection, Str
         restrict_free_accounts: true,
         debug_logs: true,
         immediate_sse_response: false,
+        max_concurrent_image_requests: 1,
         bound_oauth_account_id: None,
         bound_oauth_quota_reserve: None,
         account_ids: Vec::new(),
@@ -16775,6 +16779,7 @@ fn new_local_access_collection() -> Result<CodexLocalAccessCollection, String> {
         restrict_free_accounts: true,
         debug_logs: true,
         immediate_sse_response: false,
+        max_concurrent_image_requests: 1,
         bound_oauth_account_id: None,
         bound_oauth_quota_reserve: None,
         account_ids: Vec::new(),
@@ -17214,6 +17219,7 @@ pub async fn update_local_access_routing_options(
     max_retry_interval_ms: u64,
     disable_cooling: bool,
     immediate_sse_response: bool,
+    max_concurrent_image_requests: u16,
 ) -> Result<CodexLocalAccessState, String> {
     ensure_runtime_loaded().await?;
 
@@ -17236,6 +17242,8 @@ pub async fn update_local_access_routing_options(
         max_retry_interval_ms.clamp(MAX_RETRY_INTERVAL_MIN_MS, MAX_RETRY_INTERVAL_MAX_MS);
     collection.disable_cooling = disable_cooling;
     collection.immediate_sse_response = immediate_sse_response;
+    collection.max_concurrent_image_requests = max_concurrent_image_requests
+        .clamp(1, MAX_CONCURRENT_IMAGE_REQUESTS_PER_ACCOUNT);
     collection.updated_at = now_ms();
     save_collection_to_disk(&collection)?;
 
@@ -22939,6 +22947,7 @@ mod tests {
             restrict_free_accounts: true,
             debug_logs: true,
             immediate_sse_response: false,
+            max_concurrent_image_requests: 1,
             bound_oauth_account_id: None,
             bound_oauth_quota_reserve: None,
             account_ids,

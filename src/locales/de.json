@@ -3290,6 +3290,7 @@
         "disableCooling": "Cooldown deaktivieren",
         "saveOptions": "Optionen speichern",
         "immediateSseResponse": "Sofortiges SSE 200",
+        "maxConcurrentImageRequests": "Bildanfragen pro Konto",
         "optionsSaved": "Routingoptionen gespeichert"
       },
       "validation": {

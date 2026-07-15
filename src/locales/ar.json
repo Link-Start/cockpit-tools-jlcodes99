@@ -3337,6 +3337,7 @@
         "disableCooling": "تعطيل cooldown",
         "saveOptions": "حفظ الخيارات",
         "immediateSseResponse": "SSE فوري 200",
+        "maxConcurrentImageRequests": "طلبات الصور لكل حساب",
         "optionsSaved": "تم حفظ خيارات التوجيه"
       },
       "validation": {

@@ -3513,6 +3513,7 @@
         "disableCooling": "禁用冷却",
         "saveOptions": "保存选项",
         "immediateSseResponse": "SSE 立即返回 200",
+        "maxConcurrentImageRequests": "每个账户的图片请求数",
         "optionsSaved": "调度选项已保存"
       },
       "timeouts": {

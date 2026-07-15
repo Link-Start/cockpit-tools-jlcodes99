@@ -89,8 +89,9 @@ type manifest struct {
 	ExcludedModels     []string            `json:"excludedModels"`
 	RoutingStrategy    string              `json:"routingStrategy"`
 	CustomRoutingRules []customRoutingRule `json:"customRoutingRules"`
-	ImmediateSSEResponse bool              `json:"immediateSseResponse"`
-	DebugLogs          *bool               `json:"debugLogs,omitempty"`
+	ImmediateSSEResponse       bool              `json:"immediateSseResponse"`
+	MaxConcurrentImageRequests int               `json:"maxConcurrentImageRequests"`
+	DebugLogs                  *bool               `json:"debugLogs,omitempty"`
 
 	apiKeyByValue     map[string]*apiKeySpec
 	accountByID       map[string]*accountSpec
@@ -323,7 +324,7 @@ func (t *requestUsageTracker) imageInFlightCount(authID string) int {
 	return t.imageInFlight[strings.TrimSpace(authID)]
 }
 
-func (t *requestUsageTracker) tryReserveImageJob(requestID, authID string) bool {
+func (t *requestUsageTracker) tryReserveImageJob(requestID, authID string, maxConcurrent int) bool {
 	if t == nil {
 		return true
 	}
@@ -331,6 +332,9 @@ func (t *requestUsageTracker) tryReserveImageJob(requestID, authID string) bool 
 	authID = strings.TrimSpace(authID)
 	if requestID == "" || authID == "" {
 		return false
+	}
+	if maxConcurrent < 1 {
+		maxConcurrent = 1
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -342,7 +346,7 @@ func (t *requestUsageTracker) tryReserveImageJob(requestID, authID string) bool 
 	if _, alreadyReserved := jobs[authID]; alreadyReserved {
 		return true
 	}
-	if t.imageInFlight[authID] > 0 {
+	if t.imageInFlight[authID] >= maxConcurrent {
 		return false
 	}
 	jobs[authID] = struct{}{}
@@ -1889,7 +1893,7 @@ func (s *cockpitSelector) Pick(ctx context.Context, provider, model string, opts
 		for {
 			changed := s.tracker.imageJobChangeSignal()
 			for _, candidate := range s.orderImageAuths(available, start) {
-				if s.tracker.tryReserveImageJob(requestID, candidate.ID) {
+				if s.tracker.tryReserveImageJob(requestID, candidate.ID, s.maxConcurrentImageRequests()) {
 					s.emitAuthSelected(ctx, candidate, provider, model, len(auths), len(available))
 					return candidate, nil
 				}
@@ -1904,6 +1908,13 @@ func (s *cockpitSelector) Pick(ctx context.Context, provider, model string, opts
 	selected := ordered[0]
 	s.emitAuthSelected(ctx, selected, provider, model, len(auths), len(available))
 	return selected, nil
+}
+
+func (s *cockpitSelector) maxConcurrentImageRequests() int {
+	if s == nil || s.manifest == nil || s.manifest.MaxConcurrentImageRequests < 1 {
+		return 1
+	}
+	return s.manifest.MaxConcurrentImageRequests
 }
 
 func isImageRequestKind(requestKind string) bool {

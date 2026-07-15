@@ -664,6 +664,8 @@ export function CodexApiServicePage() {
   const [maxRetryIntervalDraft, setMaxRetryIntervalDraft] = useState("3");
   const [disableCoolingDraft, setDisableCoolingDraft] = useState(false);
   const [immediateSseResponseDraft, setImmediateSseResponseDraft] = useState(false);
+  const [maxConcurrentImageRequestsDraft, setMaxConcurrentImageRequestsDraft] =
+    useState("1");
   const [requestLogPage, setRequestLogPage] = useState(1);
   const [requestLogPageSize, setRequestLogPageSize] = useState(() =>
     readStoredRequestLogPageSize(),
@@ -1295,6 +1297,9 @@ export function CodexApiServicePage() {
     );
     setDisableCoolingDraft(collection?.disableCooling ?? false);
     setImmediateSseResponseDraft(collection?.immediateSseResponse ?? false);
+    setMaxConcurrentImageRequestsDraft(
+      String(collection?.maxConcurrentImageRequests ?? 1),
+    );
     setTimeoutDrafts(timeoutDraftsFromValue(collection?.timeouts));
     setSelectedTimeoutPresetId(
       collection?.activeTimeoutPresetId || "long_wait",
@@ -1309,6 +1314,7 @@ export function CodexApiServicePage() {
     collection?.maxRetryIntervalMs,
     collection?.disableCooling,
     collection?.immediateSseResponse,
+    collection?.maxConcurrentImageRequests,
     collection?.timeouts,
     collection?.activeTimeoutPresetId,
   ]);
@@ -2262,6 +2268,21 @@ export function CodexApiServicePage() {
       );
       return;
     }
+    const maxConcurrentImageRequests = parseIntegerDraft(
+      maxConcurrentImageRequestsDraft,
+      1,
+      16,
+    );
+    if (maxConcurrentImageRequests === null) {
+      setError(
+        t("codex.apiService.validation.numberRange", {
+          min: 1,
+          max: 16,
+          defaultValue: "Please enter a number between {{min}} and {{max}}",
+        }),
+      );
+      return;
+    }
     await runAction(
       async () => {
         const next =
@@ -2272,6 +2293,7 @@ export function CodexApiServicePage() {
             maxRetryIntervalMs: maxRetryIntervalSeconds * 1000,
             disableCooling: disableCoolingDraft,
             immediateSseResponse: immediateSseResponseDraft,
+            maxConcurrentImageRequests,
           });
         setState(next);
       },
@@ -3855,6 +3877,24 @@ export function CodexApiServicePage() {
                     checked={immediateSseResponseDraft}
                     onChange={(event) =>
                       setImmediateSseResponseDraft(event.target.checked)
+                    }
+                    disabled={busy || !collection || gatewayMode !== "sidecar"}
+                  />
+                </label>
+                <label>
+                  <span>
+                    {t(
+                      "codex.apiService.routing.maxConcurrentImageRequests",
+                      "Image requests per account",
+                    )}
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={16}
+                    value={maxConcurrentImageRequestsDraft}
+                    onChange={(event) =>
+                      setMaxConcurrentImageRequestsDraft(event.target.value)
                     }
                     disabled={busy || !collection || gatewayMode !== "sidecar"}
                   />

@@ -3290,6 +3290,7 @@
         "disableCooling": "Отключить cooldown",
         "saveOptions": "Сохранить параметры",
         "immediateSseResponse": "Немедленный SSE 200",
+        "maxConcurrentImageRequests": "Запросы изображений на аккаунт",
         "optionsSaved": "Параметры маршрута сохранены"
       },
       "validation": {

@@ -277,10 +277,10 @@ func TestCockpitSelectorPrefersAccountWithFewerImageJobs(t *testing.T) {
 	busyAccount := &accountSpec{ID: "busy", AuthID: "busy.json"}
 	idleAccount := &accountSpec{ID: "idle", AuthID: "idle.json"}
 	tracker := newRequestUsageTracker()
-	if !tracker.tryReserveImageJob("existing-image", "busy.json") {
+	if !tracker.tryReserveImageJob("existing-image", "busy.json", 1) {
 		t.Fatal("expected initial busy image reservation")
 	}
-	if tracker.tryReserveImageJob("competing-image", "busy.json") {
+	if tracker.tryReserveImageJob("competing-image", "busy.json", 1) {
 		t.Fatal("expected busy image auth to reject a second concurrent reservation")
 	}
 	selector := &cockpitSelector{
@@ -319,6 +319,22 @@ func TestCockpitSelectorPrefersAccountWithFewerImageJobs(t *testing.T) {
 	}
 	if got := tracker.imageInFlightCount("idle.json"); got != 0 {
 		t.Fatalf("idle auth in-flight count after release = %d, want 0", got)
+	}
+}
+
+func TestRequestUsageTrackerHonorsConfiguredImageJobLimit(t *testing.T) {
+	tracker := newRequestUsageTracker()
+	if !tracker.tryReserveImageJob("first-image", "shared.json", 2) {
+		t.Fatal("expected first image reservation")
+	}
+	if !tracker.tryReserveImageJob("second-image", "shared.json", 2) {
+		t.Fatal("expected second image reservation within configured limit")
+	}
+	if tracker.tryReserveImageJob("third-image", "shared.json", 2) {
+		t.Fatal("expected image reservation above configured limit to be rejected")
+	}
+	if got := tracker.imageInFlightCount("shared.json"); got != 2 {
+		t.Fatalf("shared auth in-flight count = %d, want 2", got)
 	}
 }
 

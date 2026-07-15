@@ -3290,6 +3290,7 @@
         "disableCooling": "Tắt cooldown",
         "saveOptions": "Lưu tùy chọn",
         "immediateSseResponse": "SSE trả 200 ngay",
+        "maxConcurrentImageRequests": "Yêu cầu ảnh mỗi tài khoản",
         "optionsSaved": "Đã lưu tùy chọn định tuyến"
       },
       "validation": {

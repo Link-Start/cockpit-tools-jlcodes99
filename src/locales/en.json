@@ -3513,6 +3513,7 @@
         "disableCooling": "Disable Cooldown",
         "saveOptions": "Save Options",
         "immediateSseResponse": "Immediate SSE 200",
+        "maxConcurrentImageRequests": "Image requests per account",
         "optionsSaved": "Routing options saved"
       },
       "timeouts": {

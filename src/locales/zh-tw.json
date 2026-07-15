@@ -3290,6 +3290,7 @@
         "disableCooling": "停用冷卻",
         "saveOptions": "儲存選項",
         "immediateSseResponse": "SSE 立即回傳 200",
+        "maxConcurrentImageRequests": "每個帳戶的圖片請求數",
         "optionsSaved": "調度選項已儲存"
       },
       "validation": {
