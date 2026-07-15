@@ -663,6 +663,8 @@ function normalizeCodexAdditionalLimitLabel(
     .replace(/^gpt[-\s]*/i, "GPT ")
     .replace(/[-_]+/g, " ")
     .replace(/\s+/g, " ")
+    .replace(/\bcodex\b/gi, "Codex")
+    .replace(/\bspark\b/gi, "Spark")
     .trim();
 }
 

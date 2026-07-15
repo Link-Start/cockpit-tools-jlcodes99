@@ -3411,6 +3411,11 @@
         "models": "Models & Capabilities",
         "logs": "Stats & Logs"
       },
+      "statsRange": {
+        "today": "Today",
+        "thisWeek": "This week",
+        "thisMonth": "This month"
+      },
       "healthTitle": "Service Health",
       "compat": {
         "title": "Protocol Compat",
@@ -3498,8 +3503,26 @@
         "pricingRepriceSaveBlocked": "Historical estimate update in progress; save after it finishes"
       },
       "keys": {
-        "policyTitle": "Model Policy",
-        "advancedPolicyTitle": "Advanced: Model Policy",
+        "policyTitle": "Account Pool & Model Policy",
+        "advancedPolicyTitle": "Account Pool & Model Policy",
+        "accountScope": "Account Rotation Scope",
+        "accountScopeInherit": "Follow the service account pool automatically",
+        "accountScopeFixed": "This Key is fixed to its bound account and cannot inherit the service pool",
+        "accountScopeSelected": "{{count}} accounts selected",
+        "accountScopeInheritedCount": "Account pool: inheriting {{count}}",
+        "accountScopeUnavailable": "Account pool: no available accounts",
+        "accountScopeCount": "Account pool: {{selected}}/{{total}}",
+        "accountScopeRequired": "Select at least one account for a custom pool",
+        "accountScopeModeInherit": "Inherit Service Pool",
+        "accountScopeModeCustom": "Custom Account Pool",
+        "accountPrioritySet": "Pin account for priority routing",
+        "accountPriorityPromote": "Move account to highest priority",
+        "accountPriorityClear": "Remove priority account pin",
+        "accountPrioritySaved": "Priority account pinned",
+        "accountPriorityCleared": "Priority account pin removed",
+        "usageRange": "API key usage period",
+        "unsaved": "Unsaved",
+        "resetPolicy": "Discard Changes",
         "modelPrefix": "Model Prefix",
         "modelPrefixPlaceholder": "Example: codex",
         "allowedModels": "Allowed Models",
@@ -3507,7 +3530,7 @@
         "excludedModels": "Excluded Models",
         "excludedModelsPlaceholder": "One model or wildcard per line",
         "savePolicy": "Save Policy",
-        "policySaved": "Key model policy saved"
+        "policySaved": "API key policy saved"
       },
       "routing": {
         "optionsTitle": "Routing Options",

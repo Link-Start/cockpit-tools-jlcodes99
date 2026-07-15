@@ -59,6 +59,8 @@ const ginUserAPIKeyKey = "userApiKey"
 const defaultStreamKeepAliveSeconds = 15
 const quotaReserveMaxSnapshotAge = 3 * time.Minute
 const codexAutoReviewModel = "codex-auto-review"
+const codexSparkModel = "gpt-5.3-codex-spark"
+const codexSparkCatalogTemplateModel = "gpt-5.3-codex"
 const defaultImagesMainModel = "gpt-5.4-mini"
 const defaultImagesToolModel = "gpt-image-2"
 const imagesGenerationsPath = "/v1/images/generations"
@@ -107,10 +109,102 @@ type apiKeySpec struct {
 	Label           string               `json:"label"`
 	Key             string               `json:"key"`
 	ProviderGateway *providerGatewaySpec `json:"providerGateway,omitempty"`
+	AccountIDs      []string             `json:"accountIds"`
 	ModelPrefix     string               `json:"modelPrefix,omitempty"`
 	AllowedModels   []string             `json:"allowedModels"`
 	ExcludedModels  []string             `json:"excludedModels"`
 	Enabled         bool                 `json:"enabled"`
+}
+
+type apiKeyPriorityState struct {
+	PriorityAccountIDs  map[string][]string `json:"priorityAccountIds"`
+	PreferredAccountIDs map[string]string   `json:"preferredAccountIds"`
+}
+
+type apiKeyPriorityStateStore struct {
+	path            string
+	mu              sync.RWMutex
+	lastModUnixNano int64
+	priorities      map[string][]string
+}
+
+func newAPIKeyPriorityStateStore(manifestPath string) *apiKeyPriorityStateStore {
+	store := &apiKeyPriorityStateStore{
+		path:       filepath.Join(filepath.Dir(manifestPath), "api-key-priorities.json"),
+		priorities: make(map[string][]string),
+	}
+	store.reloadIfChanged()
+	return store
+}
+
+func (s *apiKeyPriorityStateStore) priorityAccountIDs(apiKeyID string) []string {
+	if s == nil {
+		return nil
+	}
+	s.reloadIfChanged()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return append([]string(nil), s.priorities[strings.TrimSpace(apiKeyID)]...)
+}
+
+func (s *apiKeyPriorityStateStore) reloadIfChanged() {
+	if s == nil || strings.TrimSpace(s.path) == "" {
+		return
+	}
+	info, err := os.Stat(s.path)
+	if err != nil {
+		return
+	}
+	modifiedAt := info.ModTime().UnixNano()
+	s.mu.RLock()
+	unchanged := modifiedAt == s.lastModUnixNano
+	s.mu.RUnlock()
+	if unchanged {
+		return
+	}
+
+	data, err := os.ReadFile(s.path)
+	if err != nil {
+		return
+	}
+	var state apiKeyPriorityState
+	if err := json.Unmarshal(data, &state); err != nil {
+		return
+	}
+	next := make(map[string][]string, len(state.PriorityAccountIDs))
+	for apiKeyID, accountIDs := range state.PriorityAccountIDs {
+		apiKeyID = strings.TrimSpace(apiKeyID)
+		if apiKeyID == "" {
+			continue
+		}
+		seen := make(map[string]struct{}, len(accountIDs))
+		priorities := make([]string, 0, len(accountIDs))
+		for _, accountID := range accountIDs {
+			accountID = strings.TrimSpace(accountID)
+			if accountID == "" {
+				continue
+			}
+			if _, exists := seen[accountID]; exists {
+				continue
+			}
+			seen[accountID] = struct{}{}
+			priorities = append(priorities, accountID)
+		}
+		if len(priorities) > 0 {
+			next[apiKeyID] = priorities
+		}
+	}
+	for apiKeyID, accountID := range state.PreferredAccountIDs {
+		apiKeyID = strings.TrimSpace(apiKeyID)
+		accountID = strings.TrimSpace(accountID)
+		if apiKeyID != "" && accountID != "" && len(next[apiKeyID]) == 0 {
+			next[apiKeyID] = []string{accountID}
+		}
+	}
+	s.mu.Lock()
+	s.lastModUnixNano = modifiedAt
+	s.priorities = next
+	s.mu.Unlock()
 }
 
 type providerGatewaySpec struct {
@@ -1016,6 +1110,7 @@ func buildCodexClientModelsResponse(models []string) gin.H {
 	}
 	response := gin.H(sdkopenai.CodexClientModelsResponse(sourceModels))
 	if data, ok := response["models"].([]map[string]any); ok {
+		hydrateCodexCompatibilityModels(data)
 		for index, model := range data {
 			slug, _ := model["slug"].(string)
 			if isHiddenCodexClientModel(slug) {
@@ -1032,6 +1127,33 @@ func buildCodexClientModelsResponse(models []string) gin.H {
 	return response
 }
 
+func hydrateCodexCompatibilityModels(models []map[string]any) {
+	var template map[string]any
+	for _, model := range models {
+		if model["slug"] == codexSparkCatalogTemplateModel {
+			template = model
+			break
+		}
+	}
+	if template == nil {
+		return
+	}
+
+	for index, model := range models {
+		if model["slug"] != codexSparkModel {
+			continue
+		}
+		compatibilityModel := make(map[string]any, len(template))
+		for key, value := range template {
+			compatibilityModel[key] = value
+		}
+		compatibilityModel["slug"] = codexSparkModel
+		compatibilityModel["display_name"] = "GPT-5.3 Codex Spark"
+		compatibilityModel["description"] = "GPT-5.3 Codex Spark"
+		models[index] = compatibilityModel
+	}
+}
+
 func displayNameForModel(model string) string {
 	switch model {
 	case "gpt-5-codex":
@@ -1044,7 +1166,7 @@ func displayNameForModel(model string) string {
 		return "GPT-5.4 Mini"
 	case "gpt-5.3-codex":
 		return "GPT-5.3 Codex"
-	case "gpt-5.3-codex-spark":
+	case codexSparkModel:
 		return "GPT-5.3 Codex Spark"
 	case "gpt-5.2":
 		return "GPT-5.2"
@@ -1494,11 +1616,12 @@ func requestKindFromPath(path string) string {
 }
 
 type cockpitSelector struct {
-	manifest *manifest
-	emitter  *eventEmitter
-	quota    *quotaReserveStateStore
-	mu       sync.Mutex
-	cursor   int
+	manifest   *manifest
+	emitter    *eventEmitter
+	quota      *quotaReserveStateStore
+	priorities *apiKeyPriorityStateStore
+	mu         sync.Mutex
+	cursor     int
 }
 
 type recordingSelector struct {
@@ -1749,6 +1872,7 @@ func (s *backupAccountSelector) Stop() {
 func (s *cockpitSelector) Pick(ctx context.Context, provider, model string, opts cliproxyexecutor.Options, auths []*coreauth.Auth) (*coreauth.Auth, error) {
 	_ = provider
 	_ = opts
+	auths = s.filterAuthsForAPIKeyScope(ctx, auths)
 	now := time.Now()
 	available := make([]*coreauth.Auth, 0, len(auths))
 	quotaReserveReasons := make([]string, 0)
@@ -1772,12 +1896,85 @@ func (s *cockpitSelector) Pick(ctx context.Context, provider, model string, opts
 	s.mu.Unlock()
 
 	ordered := s.orderAuths(available, start)
+	ordered = s.prioritizeAuthsForAPIKey(ctx, ordered)
 	if len(ordered) == 0 {
 		return nil, noAuthAvailableError(quotaReserveReasons)
 	}
 	selected := ordered[0]
 	s.emitAuthSelected(ctx, selected, provider, model, len(auths), len(available))
 	return selected, nil
+}
+
+func (s *cockpitSelector) prioritizeAuthsForAPIKey(ctx context.Context, auths []*coreauth.Auth) []*coreauth.Auth {
+	if s == nil || ctx == nil || len(auths) <= 1 || s.priorities == nil {
+		return auths
+	}
+	spec, _ := ctx.Value(clientAPIKeyContextKey).(*apiKeySpec)
+	if spec == nil {
+		return auths
+	}
+	priorityAccountIDs := s.priorities.priorityAccountIDs(spec.ID)
+	if len(priorityAccountIDs) == 0 {
+		return auths
+	}
+
+	ordered := make([]*coreauth.Auth, 0, len(auths))
+	selected := make(map[*coreauth.Auth]struct{}, len(priorityAccountIDs))
+	for _, priorityAccountID := range priorityAccountIDs {
+		for _, auth := range auths {
+			account := s.accountForAuth(auth)
+			if account == nil || account.ID != priorityAccountID {
+				continue
+			}
+			if _, alreadySelected := selected[auth]; alreadySelected {
+				break
+			}
+			ordered = append(ordered, auth)
+			selected[auth] = struct{}{}
+			break
+		}
+	}
+	if len(ordered) == 0 {
+		return auths
+	}
+	for _, auth := range auths {
+		if _, alreadySelected := selected[auth]; !alreadySelected {
+			ordered = append(ordered, auth)
+		}
+	}
+	return ordered
+}
+
+func (s *cockpitSelector) filterAuthsForAPIKeyScope(ctx context.Context, auths []*coreauth.Auth) []*coreauth.Auth {
+	if s == nil || s.manifest == nil || ctx == nil {
+		return auths
+	}
+	spec, _ := ctx.Value(clientAPIKeyContextKey).(*apiKeySpec)
+	if spec == nil || len(spec.AccountIDs) == 0 {
+		return auths
+	}
+
+	allowedAccountIDs := make(map[string]struct{}, len(spec.AccountIDs))
+	for _, accountID := range spec.AccountIDs {
+		if accountID = strings.TrimSpace(accountID); accountID != "" {
+			allowedAccountIDs[accountID] = struct{}{}
+		}
+	}
+	if len(allowedAccountIDs) == 0 {
+		return nil
+	}
+
+	scoped := make([]*coreauth.Auth, 0, len(auths))
+	for _, auth := range auths {
+		account := s.accountForAuth(auth)
+		if account == nil {
+			continue
+		}
+		if _, allowed := allowedAccountIDs[account.ID]; allowed {
+			scoped = append(scoped, auth)
+		}
+	}
+	return scoped
 }
 
 func quotaReserveBlockReason(account *accountSpec, now time.Time) string {
@@ -2471,6 +2668,7 @@ func buildCoreAuthSelector(cfg *config.Config, selector coreauth.Selector, m *ma
 			Fallback: selector,
 			TTL:      ttl,
 		})
+		selector = &cockpitSessionAffinitySelector{inner: selector}
 	}
 	if m != nil {
 		selector = &backupAccountSelector{manifest: m, fallback: selector}
@@ -2489,6 +2687,25 @@ func buildCoreAuthManager(cfg *config.Config, selector coreauth.Selector, hook c
 		selector = &recordingSelector{inner: selector, manifest: m, tracker: tracker}
 	}
 	return coreauth.NewManager(tokenStore, selector, hook)
+}
+
+type cockpitSessionAffinitySelector struct {
+	inner coreauth.Selector
+}
+
+func (s *cockpitSessionAffinitySelector) Pick(ctx context.Context, provider, model string, opts cliproxyexecutor.Options, auths []*coreauth.Auth) (*coreauth.Auth, error) {
+	if s == nil || s.inner == nil {
+		return nil, errors.New("session affinity selector is unavailable")
+	}
+	if spec, _ := ctx.Value(clientAPIKeyContextKey).(*apiKeySpec); spec != nil && strings.TrimSpace(spec.ID) != "" {
+		metadata := make(map[string]any, len(opts.Metadata)+1)
+		for key, value := range opts.Metadata {
+			metadata[key] = value
+		}
+		metadata[cliproxyexecutor.SessionAffinityNamespaceMetadataKey] = spec.ID
+		opts.Metadata = metadata
+	}
+	return s.inner.Pick(ctx, provider, model, opts, auths)
 }
 
 type sidecarRuntime struct {
@@ -6452,7 +6669,13 @@ func main() {
 	usageTracker := newRequestUsageTracker()
 	policy := &requestPolicy{manifest: m, emitter: emitter, tracker: usageTracker}
 	hook := &authHook{manifest: m, emitter: emitter}
-	selector := &cockpitSelector{manifest: m, emitter: emitter, quota: quotaState}
+	priorityState := newAPIKeyPriorityStateStore(*manifestPath)
+	selector := &cockpitSelector{
+		manifest:   m,
+		emitter:    emitter,
+		quota:      quotaState,
+		priorities: priorityState,
+	}
 	coreManager := buildCoreAuthManager(cfg, selector, hook, m, quotaState, usageTracker)
 
 	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

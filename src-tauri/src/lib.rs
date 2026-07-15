@@ -827,6 +827,7 @@ pub fn run() {
             commands::codex::codex_local_access_update_client_base_url_host,
             commands::codex::codex_local_access_create_api_key,
             commands::codex::codex_local_access_update_api_key,
+            commands::codex::codex_local_access_set_api_key_account_priority,
             commands::codex::codex_local_access_rotate_named_api_key,
             commands::codex::codex_local_access_delete_api_key,
             commands::codex::codex_local_access_set_enabled,
