@@ -2456,6 +2456,12 @@ fn normalize_image_model_base(model: &str) -> String {
     base_model.to_string()
 }
 
+fn is_gpt_image_generation_model(model: &str) -> bool {
+    normalize_image_model_base(model)
+        .to_ascii_lowercase()
+        .starts_with("gpt-image-")
+}
+
 fn normalize_image_response_format(value: Option<&Value>) -> String {
     value
         .and_then(Value::as_str)
@@ -3705,6 +3711,9 @@ fn build_responses_body_from_chat_completions(
         .filter(|value| !value.is_empty())
         .map(resolve_supported_model_alias)
         .ok_or("chat/completions 请求缺少 model".to_string())?;
+    if is_gpt_image_generation_model(&model) {
+        return Err("This model is not supported on the Chat Completions endpoint".to_string());
+    }
     let messages = request_obj
         .get("messages")
         .ok_or("chat/completions 请求缺少 messages".to_string())?;
@@ -27480,6 +27489,26 @@ data: {"type":"response.completed","response":{"id":"resp_123","usage":{"input_t
                 assert_eq!(requested_model, "gpt-5.4");
             }
             _ => panic!("expected chat completions adapter"),
+        }
+    }
+
+    #[test]
+    fn rejects_gpt_image_models_from_chat_completions() {
+        for model in ["gpt-image-1", "GPT-IMAGE-2", "team/gpt-image-2"] {
+            let request = ParsedRequest {
+                method: "POST".to_string(),
+                target: "/v1/chat/completions".to_string(),
+                headers: HashMap::new(),
+                body: format!(
+                    r#"{{"model":"{}","messages":[{{"role":"user","content":"draw"}}]}}"#,
+                    model
+                )
+                .into_bytes(),
+            };
+
+            let err = prepare_gateway_request(request)
+                .expect_err("image-only model should be rejected before proxying");
+            assert!(err.contains("Chat Completions"), "model={model}, err={err}");
         }
     }
 

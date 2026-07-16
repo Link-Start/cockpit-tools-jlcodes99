@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -1767,6 +1768,63 @@ func TestRelayServerExecutesNonStreamingRequestThroughRuntime(t *testing.T) {
 	}
 	if w.Header().Get("Access-Control-Allow-Origin") != "*" {
 		t.Fatalf("CORS header should match CPA server behavior")
+	}
+}
+
+func TestRelayServerRejectsGPTImageModelsOnChatCompletionsBeforeRuntime(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	runtime := &fakeRuntime{}
+	apiKey := &apiKeySpec{
+		ID:          "key_1",
+		Label:       "Test key",
+		Key:         "client-key",
+		ModelPrefix: "team",
+		Enabled:     true,
+	}
+	m := &manifest{
+		APIKeys:  []apiKeySpec{*apiKey},
+		ModelIDs: []string{"gpt-5.5", "gpt-image-2"},
+		ModelAliases: []modelAliasSpec{{
+			SourceModel: "gpt-image-2",
+			Alias:       "image-latest",
+		}},
+		apiKeyByValue: map[string]*apiKeySpec{"client-key": apiKey},
+		aliasToSource: map[string]string{"image-latest": "gpt-image-2"},
+	}
+	router := (&relayServer{
+		runtime:  runtime,
+		cfg:      &config.Config{},
+		manifest: m,
+		policy:   &requestPolicy{manifest: m},
+	}).router()
+
+	for _, model := range []string{"team/gpt-image-2", "team/image-latest"} {
+		req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(fmt.Sprintf(`{"model":%q,"messages":[{"role":"user","content":"draw"}]}`, model)))
+		req.Header.Set("Authorization", "Bearer client-key")
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("model %q status = %d, want %d; body=%s", model, w.Code, http.StatusBadRequest, w.Body.String())
+		}
+		var payload struct {
+			Error struct {
+				Message string `json:"message"`
+				Type    string `json:"type"`
+			} `json:"error"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+			t.Fatalf("model %q response should be JSON: %v", model, err)
+		}
+		if payload.Error.Type != "invalid_request_error" || !strings.Contains(payload.Error.Message, "Chat Completions") {
+			t.Fatalf("model %q unexpected error payload: %#v", model, payload.Error)
+		}
+	}
+
+	if runtime.executeCalls != 0 || runtime.streamCalls != 0 {
+		t.Fatalf("image-only models must be rejected before runtime scheduling: execute=%d stream=%d", runtime.executeCalls, runtime.streamCalls)
 	}
 }
 

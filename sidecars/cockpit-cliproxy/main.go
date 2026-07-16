@@ -4808,6 +4808,11 @@ func (s *relayServer) handleExecutorBody(c *gin.Context, spec *apiKeySpec, body 
 		writeAPIError(c, http.StatusBadRequest, "model is required", "invalid_request")
 		return
 	}
+	canonicalModel := canonicalModelForClientModel(s.manifest, spec, model)
+	if sourceFormatEqual(sourceFormat, sdktranslator.FormatOpenAI) && isGPTImageGenerationModel(canonicalModel) {
+		writeAPIError(c, http.StatusBadRequest, "This model is not supported on the Chat Completions endpoint", "invalid_request")
+		return
+	}
 
 	if spec.ProviderGateway != nil {
 		s.handleProviderGatewayRequest(c, spec.ProviderGateway, body, model, sourceFormat, fixedAlt)
@@ -6633,6 +6638,10 @@ func modelBase(model string) string {
 		model = strings.TrimSpace(model[idx+1:])
 	}
 	return model
+}
+
+func isGPTImageGenerationModel(model string) bool {
+	return strings.HasPrefix(modelBase(model), "gpt-image-")
 }
 
 func jsonContainsImageGenerationTool(body []byte) bool {
