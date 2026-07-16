@@ -3322,6 +3322,7 @@
         "disableCooling": "쿨다운 끄기",
         "saveOptions": "옵션 저장",
         "immediateSseResponse": "즉시 SSE 200",
+        "maxConcurrentImageRequests": "계정당 이미지 요청",
         "optionsSaved": "라우팅 옵션 저장됨"
       },
       "validation": {

@@ -3322,6 +3322,7 @@
         "disableCooling": "クールダウン無効",
         "saveOptions": "設定を保存",
         "immediateSseResponse": "即時 SSE 200",
+        "maxConcurrentImageRequests": "アカウントごとの画像リクエスト",
         "optionsSaved": "ルーティング設定を保存しました"
       },
       "validation": {

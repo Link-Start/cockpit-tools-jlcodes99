@@ -3322,6 +3322,7 @@
         "disableCooling": "Cooldown kapat",
         "saveOptions": "Seçenekleri kaydet",
         "immediateSseResponse": "Anında SSE 200",
+        "maxConcurrentImageRequests": "Hesap başına görsel isteği",
         "optionsSaved": "Yönlendirme seçenekleri kaydedildi"
       },
       "validation": {

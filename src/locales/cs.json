@@ -3322,6 +3322,7 @@
         "disableCooling": "Vypnout cooldown",
         "saveOptions": "Uložit volby",
         "immediateSseResponse": "Okamžitá SSE 200",
+        "maxConcurrentImageRequests": "Požadavky na obrázky na účet",
         "optionsSaved": "Volby směrování uloženy"
       },
       "validation": {

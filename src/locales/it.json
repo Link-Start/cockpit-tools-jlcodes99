@@ -3322,6 +3322,7 @@
         "disableCooling": "Disattiva cooldown",
         "saveOptions": "Salva opzioni",
         "immediateSseResponse": "SSE 200 immediato",
+        "maxConcurrentImageRequests": "Richieste di immagini per account",
         "optionsSaved": "Opzioni routing salvate"
       },
       "validation": {
