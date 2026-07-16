@@ -4115,6 +4115,23 @@ export function CodexAccountsPage() {
     [managedProviders, sponsorApiProviderTemplates],
   );
 
+  const resolveManagedProviderIdForAccount = useCallback(
+    (account: CodexAccount | null | undefined): string | null => {
+      if (!account || !isCodexApiKeyAccount(account)) return null;
+      return (
+        findCodexModelProviderById(
+          managedProviders,
+          account.api_provider_id,
+        ) ??
+        findCodexModelProviderByBaseUrl(
+          managedProviders,
+          account.api_base_url ?? "",
+        )
+      )?.id ?? null;
+    },
+    [managedProviders],
+  );
+
   useEffect(() => {
     showAddModalRef.current = showAddModal;
     addTabRef.current = addTab;
@@ -6478,6 +6495,11 @@ export function CodexAccountsPage() {
       return;
     }
     setApiModelCatalogError(null);
+    const existingApiKeyAccount = accounts.find(
+      (account) =>
+        isCodexApiKeyAccount(account) &&
+        account.openai_api_key?.trim() === validation.apiKey,
+    );
     const providerPayload = {
       ...buildApiProviderPayload(
         apiBaseUrlInput,
@@ -6504,6 +6526,9 @@ export function CodexAccountsPage() {
             )
               ? null
               : (providerPayload.apiProviderId ?? null),
+            previousProviderId: resolveManagedProviderIdForAccount(
+              existingApiKeyAccount,
+            ),
             providerName: providerPayload.apiProviderName ?? null,
             apiBaseUrl: validation.apiBaseUrl,
             apiKey: validation.apiKey,
@@ -7677,6 +7702,7 @@ export function CodexAccountsPage() {
       return;
     }
     setEditingApiModelCatalogError(null);
+    const editingAccount = accounts.find((account) => account.id === accountId);
     const providerPayload = {
       ...buildApiProviderPayload(
         editingApiBaseUrlCredentialsValue,
@@ -7716,6 +7742,8 @@ export function CodexAccountsPage() {
             )
               ? null
               : (providerPayload.apiProviderId ?? null),
+            previousProviderId:
+              resolveManagedProviderIdForAccount(editingAccount),
             providerName: providerPayload.apiProviderName ?? null,
             apiBaseUrl: validation.apiBaseUrl,
             apiKey: validation.apiKey,
@@ -7792,6 +7820,7 @@ export function CodexAccountsPage() {
     editingManagedProviderId,
     editingNewManagedProviderNameInput,
     reloadManagedProviders,
+    resolveManagedProviderIdForAccount,
     setMessage,
     t,
     upsertCodexModelProviderFromCredential,
